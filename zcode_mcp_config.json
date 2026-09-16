@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "flymemory": {
+      "command": "C:/Users/<user>/AppData/Local/Programs/Python/Python313/python.exe",
+      "args": [
+        "D:/projects/flymemory/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "D:/projects/flymemory"
+      }
+    }
+  }
+}
