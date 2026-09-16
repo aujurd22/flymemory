@@ -119,5 +119,63 @@ def flymemory_cleanup(min_retention: float = 0.1) -> str:
         save_memory()
     return f"Removed {removed} decayed memories. Remaining: {mem.size}"
 
+@mcp.tool()
+def flymemory_auto(context: str, response: str = "") -> str:
+    """Automatic memory management — call this every conversation turn.
+
+    Does two things in one call:
+    1. RECALL: searches for memories relevant to the current context
+    2. STORE: stores this interaction if it's novel enough (dopamine gate)
+
+    This is the "always-on" memory tool. Call it at the start of every
+    conversation turn with the user's message as context, and optionally
+    the AI's response.
+
+    Args:
+        context: The user's message or current conversation context
+        response: Optional — the AI's response to store
+    Returns:
+        Combined recall results + storage confirmation
+    """
+    mem = get_memory()
+    output_parts = []
+
+    # ===== RECALL: find relevant memories =====
+    if mem.size > 0:
+        results = mem.recall(context, top_k=3)
+        if results:
+            recall_parts = []
+            for entry, sim, eff in results:
+                if sim > 0.4:  # only report meaningful matches
+                    recall_parts.append(f"  [{sim:.2f}] {entry.text[:80]}")
+            if recall_parts:
+                output_parts.append("RECALLED MEMORIES:")
+                output_parts.extend(recall_parts)
+            else:
+                output_parts.append("RECALL: no relevant memories for this topic.")
+        else:
+            output_parts.append("RECALL: memory empty.")
+    else:
+        output_parts.append("RECALL: memory empty (first use).")
+
+    # ===== STORE: store this interaction if novel =====
+    combined_text = context
+    if response:
+        combined_text = f"{context} ||| {response}"
+    result = mem.remember(combined_text, tags=["auto"])
+    save_memory()
+
+    action = result["action"]
+    if action == "new":
+        output_parts.append(f"STORED: [NEW #{result.get('memory_id','?')}] {context[:60]}")
+    elif action == "merged":
+        output_parts.append(f"STORED: [MERGED] {context[:60]}")
+    elif action == "strengthened":
+        output_parts.append(f"STORED: [STRENGTHENED] {context[:60]}")
+    else:
+        output_parts.append(f"STORED: [SKIPPED] (not novel enough)")
+
+    return "\n".join(output_parts)
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

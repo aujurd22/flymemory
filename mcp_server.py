@@ -12,12 +12,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "flymemory_data.pkl")
 
+# 关键：必须在主线程启动时就把 flymemory（以及 numpy）import 好。
+# 否则 FastMCP 会在工作线程里懒加载 numpy，OpenBLAS 在子线程首次 import 会死锁，
+# 表现为工具调用永远不返回响应（tools/list 正常，因为不碰这个 import）。
+from flymemory import FlyMemoryStore
+
 # Lazy init
 _store = None
 
 def get_store():
     global _store
-    from flymemory import FlyMemoryStore
     if _store is None:
         if os.path.exists(DB_PATH):
             import pickle
