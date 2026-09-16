@@ -17,29 +17,43 @@ _store = None
 
 def get_store():
     global _store
+    from flymemory import FlyMemoryStore
     if _store is None:
         if os.path.exists(DB_PATH):
             import pickle
             with open(DB_PATH, "rb") as f:
-                _store = pickle.load(f)
+                data = pickle.load(f)
+            # 存档里只存了 patterns + 元数据（不含 W 矩阵），这里要重建出
+            # 一个真正的 FlyMemoryStore 对象，并重放 codes 把 W 矩阵攒回来。
+            # 原来的实现直接把 dict 当 store 用，重启后 remember/recall/stats
+            # 全会因为 dict 没有 .memories/.hopfield/.size 而崩。
+            store = FlyMemoryStore(
+                n_compartments=data["n_compartments"], n_bits=data["n_bits"]
+            )
+            store.memories = data["memories"]
+            store._next_id = data["_next_id"]
+            for mem in store.memories.values():
+                store.hopfield.compartments[mem.compartment].store(mem.code)
+            _store = store
         else:
-            from flymemory import FlyMemoryStore
             _store = FlyMemoryStore(n_compartments=8, n_bits=4096)
     return _store
 
 def save_store():
     if _store is None: return
     import pickle
-    # Only save patterns + metadata, NOT the W matrix (too large)
-    # Rebuild W from patterns on load
+    # 只持久化 patterns + 元数据（不存 W 矩阵，省磁盘；启动时由 get_store 重放重建）
     data = {
         "memories": _store.memories,
         "_next_id": _store._next_id,
         "n_bits": _store.n_bits,
         "n_compartments": _store.hopfield.n_compartments,
     }
-    with open(DB_PATH, "wb") as f:
+    # 先写临时文件再原子替换，避免两个 MCP 客户端同时写导致文件损坏
+    tmp = DB_PATH + ".tmp"
+    with open(tmp, "wb") as f:
         pickle.dump(data, f)
+    os.replace(tmp, DB_PATH)
 
 from mcp.server.fastmcp import FastMCP
 
