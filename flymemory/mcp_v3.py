@@ -10,6 +10,13 @@ import sys, os, json, pickle, time
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+
+# 关键：必须在主线程启动时就导入 sentence_transformers / torch 以及 flymemory.v3，
+# 否则 FastMCP 会在工作线程里首次 import 触发 OpenBLAS/torch 死锁（v1 踩过的坑）。
+# numpy 已在上方顶层 import，OpenBLAS 已在主线程初始化；这里补齐 torch 一侧。
+import sentence_transformers  # noqa: F401  强制主线程导入 torch / transformers
+from flymemory.v3 import SmartMemory, load, save  # noqa: F401
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "flymemory_v3.pkl")
 
 _mem = None
@@ -17,7 +24,6 @@ _mem = None
 def get_memory():
     global _mem
     if _mem is None:
-        from flymemory.v3 import SmartMemory, load
         if os.path.exists(DB_PATH):
             _mem = load(DB_PATH)
         else:
@@ -178,4 +184,11 @@ def flymemory_auto(context: str, response: str = "") -> str:
     return "\n".join(output_parts)
 
 if __name__ == "__main__":
+    # 主线程预加载 MiniLM 模型（首次会下载 all-MiniLM-L6-v2，约 80MB），
+    # 避免首轮 flymemory_auto 在工作线程里下载模型导致卡顿 / 超时。
+    try:
+        from flymemory.v3 import _get_model
+        _get_model()
+    except Exception as e:  # 离线等情况下跳过，首轮调用时再尝试
+        sys.stderr.write(f"[flymemory] model preload skipped: {e}\n")
     mcp.run(transport="stdio")
