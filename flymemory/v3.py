@@ -46,7 +46,7 @@ class SmartMemory:
     """Hopfield associative memory with semantic search and Ebbinghaus decay."""
 
     def __init__(self, n_bits: int = 4096, sparsity: float = 0.05,
-                 decay_half_life: float = 3600.0):  # 1 hour half-life
+                 decay_half_life: float = 2592000.0):  # 30 days: 承载长期参考知识，1h 半衰期会让不常召回的知识 4 天内衰减到清理阈值
         self.n_bits = n_bits
         self.sparsity = sparsity
         self.k_keep = max(int(n_bits * sparsity), 1)
@@ -112,7 +112,6 @@ class SmartMemory:
           memory_id: int
         """
         binary, emb = self._encode(text)
-        model = _get_model()
 
         # ===== Auto-dedup: semantic similarity check =====
         best_match = None
@@ -226,7 +225,7 @@ def load(path: str) -> SmartMemory:
     with open(path, "rb") as f:
         data = pickle.load(f)
     mem = SmartMemory(n_bits=data["n_bits"], decay_half_life=data["decay_half_life"])
-    mem._next_id = data["_next_id"]
+    mem._next_id = data.get("_next_id", len(data["memories"]))
     for md in data["memories"]:
         entry = MemoryEntry(
             text=md["text"], response=md["response"],

@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 .venv/
 flymemory.pkl
+*.log
+*.pkl
+stderr_probe.log

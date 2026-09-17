@@ -5,19 +5,59 @@ Tools:
   flymemory_recall(query, top_k) → semantic search with decay weighting
   flymemory_stats() → statistics including decay info
   flymemory_cleanup() → remove memories that have decayed below threshold
-"""
-import sys, os, json, pickle, time
-import numpy as np
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+两种运行模式：
+  python mcp_v3.py            → stdio（默认，行为与旧版一致）
+  python mcp_v3.py --http     → streamable-http 常驻服务（127.0.0.1:8765/mcp），
+                                所有会话共享一份模型与记忆，连接毫秒级；
+                                端口已被占用时直接退出（幂等，适合开机自启）。
+"""
+import sys, os, json, pickle, time, socket, argparse, threading
+import numpy as np
+_here = os.path.dirname(os.path.abspath(__file__))
+# 包目录与其父目录都入 path：父目录保证 `import flymemory` 成立（不依赖 PYTHONPATH），
+# 包目录保证直接以脚本方式运行时也能退化为同目录导入。
+sys.path.insert(0, os.path.dirname(_here))
+sys.path.insert(0, _here)
+
+# --http 常驻模式：尽早把日志落文件（pythonw 下 stderr 本为 None），
+# 必须赶在 sentence_transformers/transformers 导入之前，否则它们的 logger 绑定到旧流。
+if "--http" in sys.argv:
+    try:
+        _logf = open(os.path.join(_here, "server.log"), "a", buffering=1, encoding="utf-8", errors="replace")
+    except PermissionError:  # 主日志被残留句柄锁住时退化为带 PID 的文件名
+        _logf = open(os.path.join(_here, f"server.{os.getpid()}.log"), "a", buffering=1, encoding="utf-8", errors="replace")
+    sys.stderr = _logf
+    sys.stdout = _logf
+
+# 模型已缓存则强制离线：HF_HUB_OFFLINE 是 huggingface_hub 导入时读取的，
+# 事后再改 os.environ 无效，须在重导入前设置并同步改 constants。
+try:
+    from huggingface_hub import constants as _hf_constants
+    if (not os.environ.get("HF_HUB_OFFLINE")
+            and os.path.isdir(os.path.join(_hf_constants.HF_HUB_CACHE,
+                                           "models--sentence-transformers--all-MiniLM-L6-v2"))):
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        _hf_constants.HF_HUB_OFFLINE = True
+except Exception:
+    pass
 
 # 关键：必须在主线程启动时就导入 sentence_transformers / torch 以及 flymemory.v3，
 # 否则 FastMCP 会在工作线程里首次 import 触发 OpenBLAS/torch 死锁（v1 踩过的坑）。
 # numpy 已在上方顶层 import，OpenBLAS 已在主线程初始化；这里补齐 torch 一侧。
 import sentence_transformers  # noqa: F401  强制主线程导入 torch / transformers
-from flymemory.v3 import SmartMemory, load, save  # noqa: F401
+try:
+    from flymemory.v3 import SmartMemory, load, save, _get_model  # noqa: F401
+except ImportError:  # 无 PYTHONPATH、以脚本方式直接运行时
+    from v3 import SmartMemory, load, save, _get_model  # noqa: F401
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "flymemory_v3.pkl")
+
+HTTP_HOST = "127.0.0.1"
+HTTP_PORT = 8765
+
+# streamable-http 模式下多个请求并发进入工具线程，记忆与模型加载必须串行化
+_mem_lock = threading.Lock()
 
 _mem = None
 
@@ -27,17 +67,18 @@ def get_memory():
         if os.path.exists(DB_PATH):
             _mem = load(DB_PATH)
         else:
-            _mem = SmartMemory(n_bits=4096, decay_half_life=3600.0)
+            _mem = SmartMemory(n_bits=4096, decay_half_life=2592000.0)  # 30 天半衰期，见 v3.SmartMemory 注释
     return _mem
 
 def save_memory():
     if _mem is None: return
-    from flymemory.v3 import save
     save(_mem, DB_PATH)
 
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("flymemory", instructions="""
+# stateless_http=True：不跟踪会话，每个请求自包含——服务重启不会使已连接的
+# ZCode 会话失效（否则报 Session not found 且客户端不会自动重连）。
+mcp = FastMCP("flymemory", host=HTTP_HOST, port=HTTP_PORT, stateless_http=True, instructions="""
 FlyMemory v3: Smart associative memory inspired by Drosophila mushroom body.
 Features: auto-dedup (semantic similarity), semantic search (MiniLM cosine),
 memory decay (Ebbinghaus forgetting curve), dopamine gating (novelty-based storage).
@@ -57,10 +98,11 @@ def flymemory_remember(text: str, tags: str = "") -> str:
         text: The text to remember
         tags: Optional comma-separated tags
     """
-    mem = get_memory()
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-    result = mem.remember(text, tags=tag_list)
-    save_memory()
+    with _mem_lock:
+        mem = get_memory()
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+        result = mem.remember(text, tags=tag_list)
+        save_memory()
     action = result["action"]
     nov = result.get("novelty", 0)
     mid = result.get("memory_id", "?")
@@ -83,15 +125,16 @@ def flymemory_recall(query: str, top_k: int = 5) -> str:
     Returns:
         Relevant memories with scores, ranked by semantic similarity × decay weight
     """
-    mem = get_memory()
-    results = mem.recall(query, top_k=top_k)
-    if not results:
-        return "No relevant memories found."
-    output = []
-    for entry, sim, eff in results:
-        decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
-        output.append(f"[sim={sim:.2f} {decay_pct}] {entry.text[:80]}")
-    return "\n".join(output)
+    with _mem_lock:
+        mem = get_memory()
+        results = mem.recall(query, top_k=top_k)
+        if not results:
+            return "No relevant memories found."
+        output = []
+        for entry, sim, eff in results:
+            decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
+            output.append(f"[sim={sim:.2f} {decay_pct}] {entry.text[:80]}")
+        return "\n".join(output)
 
 def mem_decay_pct(entry, mem):
     dw = mem._decay_weight(entry)
@@ -100,17 +143,18 @@ def mem_decay_pct(entry, mem):
 @mcp.tool()
 def flymemory_stats() -> str:
     """Get memory system statistics."""
-    mem = get_memory()
-    if mem.size == 0:
-        return "Memory empty."
-    now = time.time()
-    ages = [(now - m.timestamp) / 60 for m in mem.memories]  # minutes
-    access_counts = [m.access_count for m in mem.memories]
-    avg_decay = np.mean([mem._decay_weight(m) for m in mem.memories])
-    return (f"Memories: {mem.size}, "
-            f"Oldest: {max(ages):.0f}min, Newest: {min(ages):.0f}min, "
-            f"Avg access count: {np.mean(access_counts):.1f}, "
-            f"Avg decay weight: {avg_decay:.2f}")
+    with _mem_lock:
+        mem = get_memory()
+        if mem.size == 0:
+            return "Memory empty."
+        now = time.time()
+        ages = [(now - m.timestamp) / 60 for m in mem.memories]  # minutes
+        access_counts = [m.access_count for m in mem.memories]
+        avg_decay = np.mean([mem._decay_weight(m) for m in mem.memories])
+        return (f"Memories: {mem.size}, "
+                f"Oldest: {max(ages):.0f}min, Newest: {min(ages):.0f}min, "
+                f"Avg access count: {np.mean(access_counts):.1f}, "
+                f"Avg decay weight: {avg_decay:.2f}")
 
 @mcp.tool()
 def flymemory_cleanup(min_retention: float = 0.1) -> str:
@@ -119,10 +163,11 @@ def flymemory_cleanup(min_retention: float = 0.1) -> str:
     Args:
         min_retention: Minimum decay weight to keep (default 0.1)
     """
-    mem = get_memory()
-    removed = mem.decay_cleanup(min_retention)
-    if removed > 0:
-        save_memory()
+    with _mem_lock:
+        mem = get_memory()
+        removed = mem.decay_cleanup(min_retention)
+        if removed > 0:
+            save_memory()
     return f"Removed {removed} decayed memories. Remaining: {mem.size}"
 
 @mcp.tool()
@@ -143,33 +188,34 @@ def flymemory_auto(context: str, response: str = "") -> str:
     Returns:
         Combined recall results + storage confirmation
     """
-    mem = get_memory()
-    output_parts = []
+    with _mem_lock:
+        mem = get_memory()
+        output_parts = []
 
-    # ===== RECALL: find relevant memories =====
-    if mem.size > 0:
-        results = mem.recall(context, top_k=3)
-        if results:
-            recall_parts = []
-            for entry, sim, eff in results:
-                if sim > 0.4:  # only report meaningful matches
-                    recall_parts.append(f"  [{sim:.2f}] {entry.text[:80]}")
-            if recall_parts:
-                output_parts.append("RECALLED MEMORIES:")
-                output_parts.extend(recall_parts)
+        # ===== RECALL: find relevant memories =====
+        if mem.size > 0:
+            results = mem.recall(context, top_k=3)
+            if results:
+                recall_parts = []
+                for entry, sim, eff in results:
+                    if sim > 0.4:  # only report meaningful matches
+                        recall_parts.append(f"  [{sim:.2f}] {entry.text[:80]}")
+                if recall_parts:
+                    output_parts.append("RECALLED MEMORIES:")
+                    output_parts.extend(recall_parts)
+                else:
+                    output_parts.append("RECALL: no relevant memories for this topic.")
             else:
-                output_parts.append("RECALL: no relevant memories for this topic.")
+                output_parts.append("RECALL: memory empty.")
         else:
-            output_parts.append("RECALL: memory empty.")
-    else:
-        output_parts.append("RECALL: memory empty (first use).")
+            output_parts.append("RECALL: memory empty (first use).")
 
-    # ===== STORE: store this interaction if novel =====
-    combined_text = context
-    if response:
-        combined_text = f"{context} ||| {response}"
-    result = mem.remember(combined_text, tags=["auto"])
-    save_memory()
+        # ===== STORE: store this interaction if novel =====
+        combined_text = context
+        if response:
+            combined_text = f"{context} ||| {response}"
+        result = mem.remember(combined_text, tags=["auto"])
+        save_memory()
 
     action = result["action"]
     if action == "new":
@@ -183,12 +229,44 @@ def flymemory_auto(context: str, response: str = "") -> str:
 
     return "\n".join(output_parts)
 
+def port_in_use(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex((host, port)) == 0
+
 if __name__ == "__main__":
-    # 主线程预加载 MiniLM 模型（首次会下载 all-MiniLM-L6-v2，约 80MB），
-    # 避免首轮 flymemory_auto 在工作线程里下载模型导致卡顿 / 超时。
-    try:
-        from flymemory.v3 import _get_model
-        _get_model()
-    except Exception as e:  # 离线等情况下跳过，首轮调用时再尝试
-        sys.stderr.write(f"[flymemory] model preload skipped: {e}\n")
-    mcp.run(transport="stdio")
+    parser = argparse.ArgumentParser(description="FlyMemory v3 MCP server")
+    parser.add_argument("--http", action="store_true",
+                        help="run as persistent streamable-http server instead of stdio")
+    parser.add_argument("--port", type=int, default=HTTP_PORT)
+    args = parser.parse_args()
+
+    if args.http:
+        if port_in_use(HTTP_HOST, args.port):
+            # 幂等：常驻实例已在运行（如开机自启 + 手动启动撞车）就直接退出
+            if sys.stderr:
+                sys.stderr.write(f"[flymemory] {HTTP_HOST}:{args.port} already in use, exiting.\n")
+            sys.exit(0)
+        # 日志重定向与离线判定已在模块顶部完成（须先于重导入）
+
+        def _warmup():
+            with _mem_lock:
+                get_memory()
+                try:
+                    _get_model()
+                except Exception as e:  # 离线等情况下跳过，首轮调用时再尝试
+                    sys.stderr.write(f"[flymemory] model warmup skipped: {e}\n")
+
+        # 常驻模式：先起服务（连接毫秒级可用），模型在后台线程预热，
+        # 首个工具调用若模型未就绪会在 _mem_lock 上等待预热线程完成。
+        threading.Thread(target=_warmup, daemon=True).start()
+        mcp.settings.port = args.port
+        mcp.run(transport="streamable-http")
+    else:
+        # stdio 模式保持旧行为：主线程预加载 MiniLM 模型（首次会下载 all-MiniLM-L6-v2，约 80MB），
+        # 避免首轮 flymemory_auto 在工作线程里下载模型导致卡顿 / 超时。
+        try:
+            _get_model()
+        except Exception as e:  # 离线等情况下跳过，首轮调用时再尝试
+            sys.stderr.write(f"[flymemory] model preload skipped: {e}\n")
+        mcp.run(transport="stdio")
