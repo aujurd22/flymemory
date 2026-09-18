@@ -2,7 +2,7 @@
 
 **Hopfield associative memory for AI conversations, inspired by Drosophila mushroom body architecture.**
 
-Solves the long-context memory problem: AI assistants forget earlier parts of conversations. FlyMemory stores conversation segments as sparse binary patterns in a Hopfield associative memory network — given a partial cue (new message), it recalls relevant memories via **pattern completion** (verified: 20% cue → 100% recovery).
+Solves the long-context memory problem: AI assistants forget earlier parts of conversations. FlyMemory stores conversation segments as sparse binary patterns in a Hopfield associative memory network — given a partial cue (new message), it recalls relevant memories via **pattern completion** (a 20% cue recovers 100% of the stored pattern).
 
 ## Why not RAG?
 
@@ -11,7 +11,7 @@ Solves the long-context memory problem: AI assistants forget earlier parts of co
 | Recall speed | O(log N) ANN search | **O(1) matrix multiply** |
 | Pattern completion | No (similarity only) | **Yes** (fills in missing parts) |
 | Forgetting | None (persistent) | **None** (compartmentalized) |
-| Biological basis | None | **801.9× enriched in fly brain** |
+| Biological basis | None | **Reciprocal connections enriched ~800× in fly brain** |
 | Capacity | Unlimited (external DB) | ~500 per compartment |
 
 ## Quick start
@@ -27,15 +27,19 @@ results = store.recall("what about async programming?")
 
 ## How it works
 
-Based on our Drosophila brain experiments (48-hour campaign, 46 experiments):
+The Drosophila mushroom body uses sparse coding and recurrent loops that
+resemble a Hopfield network — a design that supports associative memory and
+pattern completion. FlyMemory borrows the same building blocks:
 
 1. **Sparse coding** (k-WTA 5%): text → binary vector, prevents interference
 2. **Hopfield storage**: W += s^T s (Hebbian accumulation)
 3. **Hopfield recall**: s ← sign(W·s), iterated to convergence
-4. **Multi-compartment**: 8 independent memories (like 34 fly MBONs)
-5. **Error-gated**: only store when the code is new (not duplicate)
+4. **Multi-compartment**: 8 independent memories (analogous to fly MBON compartments)
+5. **Error-gated**: only store when the code is new (not a duplicate)
 
-The 801.9× reciprocal enrichment we discovered in the fly brain means it's built as a Hopfield network. Our system exploits this: reciprocal connections naturally support associative memory and pattern completion.
+Reciprocal connections in the fly brain are enriched roughly 800× over chance
+— a network wired this way naturally implements associative recall, which is
+the property FlyMemory exploits.
 
 ## Performance
 

@@ -24,7 +24,11 @@ def _get_model():
     global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        # 默认 CPU：MiniLM 单句编码仅 ~10-30ms，而 GPU 常被 ComfyUI 等重负载打满
+        # （显存 11.9/12.3GB、util 100% 时 cuda 排队可致工具调用 120s 超时，2026-09-18 实测）。
+        # 需要 GPU 时设 FLYMEMORY_DEVICE=cuda。
+        device = os.environ.get("FLYMEMORY_DEVICE", "cpu")
+        _model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
     return _model
 
 
