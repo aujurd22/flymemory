@@ -49,6 +49,7 @@ class MemoryEntry:
     access_count: int              # how many times recalled
     tags: list
     memory_id: int
+    superseded_by: Optional[int] = None   # 被更新的条目取代后指向新条目，默认召回跳过
 
 
 # ===== Hopfield with semantic search + decay =====
@@ -208,6 +209,18 @@ class SmartMemory:
         return {"stored": True, "action": "new",
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
+    def supersede(self, old_id: int, new_id: int) -> bool:
+        """标记旧条目被新条目取代：默认召回不再返回旧条目。
+
+        判断由调用方模型做出（它理解语义），这里只做机械标记。
+        Returns True if the old entry was found and marked.
+        """
+        for mem in self.memories:
+            if mem.memory_id == old_id:
+                mem.superseded_by = new_id
+                return True
+        return False
+
     def recall(self, query: str, top_k: int = 5) -> List[Tuple[MemoryEntry, float, float]]:
         """Semantic recall with decay weighting.
 
@@ -223,6 +236,8 @@ class SmartMemory:
 
         scored = []
         for mem in self.memories:
+            if mem.superseded_by is not None:
+                continue  # 被取代的旧状态不再进入默认召回
             # Semantic similarity (MiniLM cosine), 多块查询取最大
             sim = max(self._semantic_similarity(qe, mem.embedding) for qe in q_embs)
             # Decay weight (Ebbinghaus)
@@ -297,6 +312,7 @@ def save(memory: SmartMemory, path: str):
                 "timestamp": m.timestamp, "last_accessed": m.last_accessed,
                 "access_count": m.access_count, "tags": m.tags,
                 "memory_id": m.memory_id,
+                "superseded_by": m.superseded_by,
             } for m in memory.memories
         ],
         "_next_id": memory._next_id,
@@ -321,6 +337,7 @@ def load(path: str) -> SmartMemory:
             timestamp=md["timestamp"], last_accessed=md["last_accessed"],
             access_count=md["access_count"], tags=md["tags"],
             memory_id=md["memory_id"],
+            superseded_by=md.get("superseded_by"),
         )
         mem.memories.append(entry)
         # Rebuild W from binary codes

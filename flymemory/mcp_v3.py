@@ -179,6 +179,26 @@ def flymemory_cleanup(min_retention: float = 0.1) -> str:
     return f"Removed {removed} decayed memories. Remaining: {mem.size}"
 
 @mcp.tool()
+def flymemory_supersede(old_memory_id: int, new_memory_id: int) -> str:
+    """Mark an outdated memory as superseded by a newer one.
+
+    判断由调用方模型做出：当新结论取代了召回列表中的某条旧状态时调用本工具，
+    被取代的旧条目此后不再出现在默认召回中。
+
+    Args:
+        old_memory_id: 被取代的旧条目 id（从召回结果的 [#id] 取）
+        new_memory_id: 取代它的新条目 id（通常是刚 remember 返回的 id）
+    """
+    with _mem_lock:
+        mem = get_memory()
+        ok = mem.supersede(old_memory_id, new_memory_id)
+        if ok:
+            save_memory()
+    if ok:
+        return f"[SUPERSEDED] #{old_memory_id} -> #{new_memory_id} (excluded from default recall)"
+    return f"[NOT FOUND] memory #{old_memory_id} does not exist"
+
+@mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:
     """Automatic memory management — call this every conversation turn.
 
