@@ -57,3 +57,18 @@ git clone https://github.com/aujurd22/flymemory.git
 ## License
 
 MIT
+
+## v3 MCP server (current)
+
+The production version runs as a persistent streamable-HTTP MCP server
+(`flymemory/mcp_v3.py --http`, default `127.0.0.1:8765/mcp`) with a supervisor
+for auto-restart. Storage is chunked per sentence, deduplicated with
+length-tiered semantic thresholds, and ranked with time-stamped decay.
+
+Embedding model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+(384-dim, multilingual, ~470MB) — downloaded automatically from HuggingFace on
+first run, then served offline. Runs on CPU by default (`FLYMEMORY_DEVICE=cuda`
+to override).
+
+A `UserPromptSubmit` hook (`flymemory/hook_auto.py`) forwards every user
+message to the server, injecting recall results back into the conversation.
