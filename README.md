@@ -46,7 +46,6 @@ the property FlyMemory exploits.
 - Pattern completion: 20% cue → 100% recovery
 - Zero forgetting across 60+ memories (compartmentalized)
 - Recall time: O(1) per query (single matrix multiply)
-- Energy per recall: ~0.1 mJ (vs ~1 J for LLM-based RAG)
 
 ## Install
 
