@@ -11,6 +11,7 @@ Three upgrades over v2:
 """
 
 import numpy as np
+import re
 import time
 import os
 import pickle
@@ -28,7 +29,12 @@ def _get_model():
         # （显存 11.9/12.3GB、util 100% 时 cuda 排队可致工具调用 120s 超时，2026-09-18 实测）。
         # 需要 GPU 时设 FLYMEMORY_DEVICE=cuda。
         device = os.environ.get("FLYMEMORY_DEVICE", "cpu")
-        _model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
+        # 多语言模型：all-MiniLM-L6-v2 对中文语义近乎噪声（结构平行的无关短句实测 0.983、
+        # 相关句仅 0.50，是"记忆混乱"的总根源），L12-v2 支持 50+ 语言且同为 384 维，
+        # 换模型后须全库重嵌入。可用 FLYMEMORY_MODEL 覆盖。
+        model_name = os.environ.get("FLYMEMORY_MODEL",
+                                    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        _model = SentenceTransformer(model_name, device=device)
     return _model
 
 
@@ -105,6 +111,43 @@ class SmartMemory:
             s = new_s
         return s
 
+    def remember_text(self, text: str, response: str = "",
+                      tags: Optional[list] = None) -> Dict:
+        """分块存储入口：长文本按句切成语义块，逐块走去重/合并，返回聚合结果。
+
+        整条消息存成一条会稀释向量相似度（字面词重叠压过主题相关），分块后
+        每块主题单一，召回精度显著提升。短消息经 split_chunks 的短块合并后
+        自然回落为单块，行为不变。
+
+        Returns dict with:
+          action: "new" / "merged" / "strengthened" / "rejected" / "mixed"
+          counts: {"new": n, "merged": n, "strengthened": n}
+          memory_ids: 涉及的全部条目 id；chunks: 实际处理的块数
+        """
+        chunks = split_chunks(text)
+        counts = {"new": 0, "merged": 0, "strengthened": 0, "rejected": 0}
+        ids = []
+        last = None
+        for c in chunks:
+            r = self.remember(c, response=response, tags=tags)
+            counts[r["action"]] = counts.get(r["action"], 0) + 1
+            if r.get("memory_id") is not None:
+                ids.append(r["memory_id"])
+            last = r
+        if last is None:
+            return {"stored": False, "action": "rejected", "novelty": 0.0,
+                    "memory_id": None, "counts": counts, "memory_ids": [], "chunks": 0}
+        stored_kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
+        if sum(counts.values()) == 1:
+            action = last["action"]
+        elif len(stored_kinds) == 1:
+            action = stored_kinds[0]
+        else:
+            action = "mixed"
+        return {"stored": True, "action": action, "novelty": last.get("novelty", 0.0),
+                "memory_id": ids[-1] if ids else None, "counts": counts,
+                "memory_ids": ids, "chunks": len(chunks)}
+
     def remember(self, text: str, response: str = "",
                  tags: Optional[list] = None) -> Dict:
         """Store a memory with auto-dedup via semantic similarity.
@@ -126,15 +169,22 @@ class SmartMemory:
                 best_sim = sim
                 best_match = mem
 
-        # Threshold: >0.92 = duplicate, 0.75-0.92 = merge, <0.75 = new
-        if best_sim > 0.92:
+        # 短文本阈值高于长文本：改用多语言模型后结构噪声已消失（无关句 0.2-0.3），
+        # 但短句改写（如日期不同的相似句 0.93）仍应各自成条，故阈值略收紧。
+        if len(text) < 30:
+            dup_t, merge_t = 0.95, 0.85
+        else:
+            dup_t, merge_t = 0.92, 0.75
+
+        # Threshold: >dup_t = duplicate, merge_t~dup_t = merge, <merge_t = new
+        if best_sim > dup_t:
             # Duplicate: strengthen existing memory (rehearsal)
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "strengthened",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
-        if best_sim > 0.75:
+        if best_sim > merge_t:
             # Partially new: merge (update text if new one is longer)
             if len(text) > len(best_match.text):
                 new_binary, new_emb = self._encode(text)
@@ -162,15 +212,19 @@ class SmartMemory:
         """Semantic recall with decay weighting.
 
         Score = semantic_similarity × decay_weight
+        多句查询按块拆分、取各块相似度的最大值——整句混编会让查询向量
+        被多主题稀释，与分块存储正好互补。
         Returns top_k (memory, semantic_score, effective_score).
         """
         model = _get_model()
-        query_emb = model.encode(query, convert_to_numpy=True).astype(np.float32)
+        q_texts = split_chunks(query) or [query]
+        q_embs = [model.encode(q, convert_to_numpy=True).astype(np.float32)
+                  for q in q_texts]
 
         scored = []
         for mem in self.memories:
-            # Semantic similarity (MiniLM cosine)
-            sim = self._semantic_similarity(query_emb, mem.embedding)
+            # Semantic similarity (MiniLM cosine), 多块查询取最大
+            sim = max(self._semantic_similarity(qe, mem.embedding) for qe in q_embs)
             # Decay weight (Ebbinghaus)
             dw = self._decay_weight(mem)
             # Effective score
@@ -200,6 +254,36 @@ class SmartMemory:
     @property
     def size(self):
         return len(self.memories)
+
+
+# ===== Chunking: 每句独立成块，避免整条向量被多主题稀释 =====
+def split_chunks(text: str, min_len: int = 10, max_len: int = 120) -> List[str]:
+    """按句终止符切，每句一个块；超长句按逗号细分；过短碎片并入前块。
+
+    注意不要把多个句子缓冲进同一块——中文信息密度高，两句常是两个主题，
+    攒到 max_len 再分组会让短消息永远切不开（2026-09-19 实测踩过）。
+    """
+    chunks: List[str] = []
+    for p in (p.strip() for p in re.split(r"(?<=[。！？；!?\n])\s*", text) if p.strip()):
+        if len(p) > max_len:
+            b = ""
+            for s in re.split(r"(?<=[，,、：:])\s*", p):
+                if b and len(b) + len(s) > max_len:
+                    chunks.append(b)
+                    b = s
+                else:
+                    b = f"{b}{s}" if b else s
+            if b:
+                chunks.append(b)
+        else:
+            chunks.append(p)
+    merged: List[str] = []
+    for c in chunks:
+        if merged and len(c) < min_len:
+            merged[-1] = f"{merged[-1]}{c}"
+        else:
+            merged.append(c)
+    return [c.strip() for c in merged if c.strip()]
 
 
 # ===== Persistence =====

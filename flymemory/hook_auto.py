@@ -16,6 +16,10 @@ def main():
         prompt = (json.loads(raw).get("prompt") or "") if raw.strip() else ""
         if len(prompt) < 2:
             return
+        # 系统注入的调度/续跑提示不是用户输入，存进去只会污染召回
+        head = prompt.lstrip()[:200]
+        if head.startswith("<system-reminder") or "Continue working toward the active session goal" in head:
+            return
         body = json.dumps({
             "jsonrpc": "2.0", "id": 1, "method": "tools/call",
             "params": {"name": "flymemory_auto",

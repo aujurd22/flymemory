@@ -36,7 +36,7 @@ try:
     from huggingface_hub import constants as _hf_constants
     if (not os.environ.get("HF_HUB_OFFLINE")
             and os.path.isdir(os.path.join(_hf_constants.HF_HUB_CACHE,
-                                           "models--sentence-transformers--all-MiniLM-L6-v2"))):
+                                           "models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"))):
         os.environ["HF_HUB_OFFLINE"] = "1"
         _hf_constants.HF_HUB_OFFLINE = True
 except Exception:
@@ -101,19 +101,16 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     with _mem_lock:
         mem = get_memory()
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-        result = mem.remember(text, tags=tag_list)
+        result = mem.remember_text(text, tags=tag_list)
         save_memory()
     action = result["action"]
-    nov = result.get("novelty", 0)
-    mid = result.get("memory_id", "?")
-    if action == "new":
-        return f"[NEW #{mid}] {text[:80]}"
-    elif action == "merged":
-        return f"[MERGED #{mid}] {text[:80]}"
-    elif action == "strengthened":
-        return f"[STRENGTHENED #{mid}] {text[:80]}"
-    else:
-        return f"[REJECTED] too similar (novelty={nov:.2f})"
+    counts = result.get("counts") or {}
+    id_str = ",".join(f"#{i}" for i in (result.get("memory_ids") or [])[:8]) or "?"
+    if action == "rejected":
+        return f"[REJECTED] too similar (novelty={result.get('novelty', 0):.2f})"
+    kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
+    label = " ".join(f"{k.upper()}x{counts[k]}" if counts[k] > 1 else k.upper() for k in kinds) or action.upper()
+    return f"[{label} {id_str}] {text[:80]}"
 
 @mcp.tool()
 def flymemory_recall(query: str, top_k: int = 5) -> str:
@@ -133,12 +130,23 @@ def flymemory_recall(query: str, top_k: int = 5) -> str:
         output = []
         for entry, sim, eff in results:
             decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
-            output.append(f"[sim={sim:.2f} {decay_pct}] {entry.text[:80]}")
+            output.append(f"[sim={sim:.2f} | {_age_str(entry.timestamp)} | {decay_pct}] {entry.text[:80]}")
         return "\n".join(output)
 
 def mem_decay_pct(entry, mem):
     dw = mem._decay_weight(entry)
     return dw * 100
+
+def _age_str(ts: float) -> str:
+    """记忆条目的相对年龄标注——模型据此把旧状态当'可能已过期'处理，而非当前事实。"""
+    dt = time.time() - ts
+    if dt < 90:
+        return "刚刚"
+    if dt < 3600:
+        return f"{int(dt // 60)}分钟前"
+    if dt < 86400:
+        return f"{int(dt // 3600)}小时前"
+    return f"{int(dt // 86400)}天前"
 
 @mcp.tool()
 def flymemory_stats() -> str:
@@ -199,7 +207,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
                 recall_parts = []
                 for entry, sim, eff in results:
                     if sim > 0.4:  # only report meaningful matches
-                        recall_parts.append(f"  [{sim:.2f}] {entry.text[:80]}")
+                        recall_parts.append(f"  [{sim:.2f} | {_age_str(entry.timestamp)}] {entry.text[:80]}")
                 if recall_parts:
                     output_parts.append("RECALLED MEMORIES:")
                     output_parts.extend(recall_parts)
@@ -214,18 +222,18 @@ def flymemory_auto(context: str, response: str = "") -> str:
         combined_text = context
         if response:
             combined_text = f"{context} ||| {response}"
-        result = mem.remember(combined_text, tags=["auto"])
+        result = mem.remember_text(combined_text, tags=["auto"])
         save_memory()
 
     action = result["action"]
-    if action == "new":
-        output_parts.append(f"STORED: [NEW #{result.get('memory_id','?')}] {context[:60]}")
-    elif action == "merged":
-        output_parts.append(f"STORED: [MERGED] {context[:60]}")
-    elif action == "strengthened":
-        output_parts.append(f"STORED: [STRENGTHENED] {context[:60]}")
+    if action == "rejected":
+        output_parts.append("STORED: [SKIPPED] (not novel enough)")
     else:
-        output_parts.append(f"STORED: [SKIPPED] (not novel enough)")
+        counts = result.get("counts") or {}
+        kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
+        label = "+".join(f"{k.upper()}x{counts[k]}" if counts[k] > 1 else k.upper() for k in kinds) or action.upper()
+        id_str = ",".join(f"#{i}" for i in (result.get("memory_ids") or [])[:8])
+        output_parts.append(f"STORED: [{label} {id_str}] {context[:60]}")
 
     return "\n".join(output_parts)
 
