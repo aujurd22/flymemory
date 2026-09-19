@@ -253,23 +253,29 @@ class SmartMemory:
             self._index_entry(m)
 
     def _lex_scores(self, q_texts: Iterable[str]) -> np.ndarray:
-        """IDF-weighted lexical match ratio per memory, in [0, 1]."""
+        """IDF-weighted lexical match ratio per memory, in [0, 1].
+
+        Query tokens ABSENT from the corpus count toward the denominator at max
+        IDF — otherwise a query full of unstemmed content words ("study" when
+        only "studies" is stored) inflates the ratio for whatever matches the
+        remaining function words (measured 2026-09-19 in bench_contradiction).
+        """
         n = len(self.memories)
         scores = np.zeros(n, dtype=np.float32)
         if n == 0 or not self._df:
             return scores
         n_docs = max(n, 1)
+        idf_max = math.log(1.0 + n_docs)
         matched: Dict[int, float] = {}
         total_idf = 0.0
         for qt in q_texts:
             for tok in _tokenize(qt):
                 df = self._df.get(tok, 0)
-                if not df:
-                    continue  # token absent from corpus cannot match anything
-                idf = math.log(1.0 + n_docs / df)
+                idf = math.log(1.0 + n_docs / df) if df else idf_max
                 total_idf += idf
-                for mid in self._lex_index.get(tok, ()):
-                    matched[mid] = matched.get(mid, 0.0) + idf
+                if df:
+                    for mid in self._lex_index.get(tok, ()):
+                        matched[mid] = matched.get(mid, 0.0) + idf
         if total_idf <= 0:
             return scores
         for i, m in enumerate(self.memories):
@@ -288,10 +294,14 @@ class SmartMemory:
 
     # ----- store -----
     def remember_text(self, text: str, response: str = "",
-                      tags: Optional[list] = None, source: str = "hook") -> Dict:
+                      tags: Optional[list] = None, source: str = "hook",
+                      timestamp: Optional[float] = None) -> Dict:
         """Chunked store entry point: long text is split per sentence and each chunk
         goes through dedup/merge; short messages fall back to a single chunk via
         split_chunks' fragment merging.
+
+        timestamp: optional backdated creation time (epoch seconds) for importing
+        historical records — affects decay ordering.
 
         Returns dict with:
           action: "new" / "merged" / "strengthened" / "rejected" / "mixed"
@@ -303,7 +313,8 @@ class SmartMemory:
         ids = []
         last = None
         for c in chunks:
-            r = self.remember(c, response=response, tags=tags, source=source)
+            r = self.remember(c, response=response, tags=tags, source=source,
+                              timestamp=timestamp)
             counts[r["action"]] = counts.get(r["action"], 0) + 1
             if r.get("memory_id") is not None:
                 ids.append(r["memory_id"])
@@ -323,8 +334,11 @@ class SmartMemory:
                 "memory_ids": ids, "chunks": len(chunks)}
 
     def remember(self, text: str, response: str = "",
-                 tags: Optional[list] = None, source: str = "hook") -> Dict:
+                 tags: Optional[list] = None, source: str = "hook",
+                 timestamp: Optional[float] = None) -> Dict:
         """Store one chunk with auto-dedup via semantic similarity.
+
+        timestamp: optional backdated creation time (epoch seconds).
 
         Returns dict with: stored, action ("new"/"merged"/"strengthened"/"rejected"),
         novelty, memory_id.
@@ -367,7 +381,7 @@ class SmartMemory:
             return {"stored": True, "action": "merged",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
-        now = time.time()
+        now = timestamp if timestamp is not None else time.time()
         entry = MemoryEntry(
             text=text, response=response,
             embedding=emb, timestamp=now, last_accessed=now,
@@ -419,6 +433,11 @@ class SmartMemory:
         acc = np.array([m.access_count for m in self.memories], dtype=np.float64)
         dw = np.minimum(((1.0 + (now - last) / self.decay_tau) ** -0.5)
                         * (1.0 + 0.5 * np.log2(1.0 + acc)), 1.0)
+        if include_superseded:
+            # history mode: an explicit lookup of what was true back then.
+            # Entries are retrieved for their content, immune to decay —
+            # archived, not forgotten.
+            dw = np.ones_like(dw)
 
         lex_vec = self._lex_scores(q_texts)
         eff = dw * (sim_vec + LEX_WEIGHT * lex_vec)

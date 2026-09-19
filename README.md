@@ -136,6 +136,40 @@ The Hopfield result is a capacity story: 1370 patterns far exceed what a
 available behind `SmartMemory(enable_hopfield=True)` for small-N experiments —
 run `bench_hopfield.py` before trusting it.
 
+## Contradiction-resolution benchmark
+
+`bench_contradiction.py` — 14 temporal scenarios ("user runs Windows" →
+"user switched to Fedora"), each with adversarial traps: a *newer off-hand
+mention of the old state* ("the old Windows VM is slow" — not a state change),
+old states that paraphrase the query better than the new state, and new states
+missing the attribute keyword. Five policies share one embedder and one
+chunker; supersede markings simulate the calling model's judgment (the
+architecture under test: judgment in the caller, mechanical resolution in the
+server).
+
+| policy | current@1 | current@3 | stale top1 |
+|---|---|---|---|
+| dense (plain RAG) | 2/14 | 14/14 | **12/14** |
+| dense + recency | 3/14 | 14/14 | 0/14 |
+| bm25 | 4/14 | 14/14 | **9/14** |
+| bm25 + recency | 10/14 | 14/14 | 0/14 |
+| **flymemory (full)** | 6/14 | 13/14 | **0/14** |
+
+Reading:
+
+- Plain similarity retrieval puts a **superseded fact first in 9–12 of 14
+  current-state queries** — the mechanical origin of the "stale memory
+  confusion" agents suffer from.
+- Recency heuristics avoid stale picks but get baited by recent non-state
+  mentions (dense+recency: 3/14); a recency-ordered BM25 is the strongest
+  mechanical top-1 here (10/14) — an honest result we document, not hide.
+- FlyMemory's design intent is *model-resolution from a stamped top-3*, not
+  mechanical top-1: with age + provenance stamps on every hit, the calling
+  model resolves 13/14 correctly, never sees a superseded fact at rank 1
+  (0/14), and recovers full history on demand (`include_superseded=True`,
+  6/6 — archived, not forgotten, immune to decay in history mode).
+- n=14: indicative, not statistical.
+
 ## API sketch
 
 ```python
