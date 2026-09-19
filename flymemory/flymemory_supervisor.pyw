@@ -1,13 +1,20 @@
-"""FlyMemory 常驻服务守护进程：拉起 mcp_v3.py --http，子进程退出后自动重启。
+"""FlyMemory supervisor: keep the persistent MCP server alive.
 
-由启动文件夹 flymemory_http.lnk 以 pythonw 调起（无窗口）。
-- 服务健康（8765 有监听）时只闲逛，不重复拉起；
-- 子进程运行超过 5s 后退出（崩溃/被杀）→ 3s 内重启；
-- 子进程秒退（端口被占/启动失败）→ 退避 60s 再试，避免疯狂循环。
+Launched headless (pythonw / flymemory-host.exe) from a Startup shortcut or a
+scheduled task. Behavior:
+  - if the server port is already serving, idle (never double-launch);
+  - if the child dies after running >5s (crash/killed) → restart within 3s;
+  - if the child exits instantly (port busy / bad start) → back off 60s;
+  - the supervisor itself never exits.
 """
-import socket, subprocess, sys, time
+import os
+import socket
+import subprocess
+import sys
+import time
 
-CHILD = r"D:\projects\flymemory\flymemory\mcp_v3.py"
+HERE = os.path.dirname(os.path.abspath(__file__))
+CHILD = os.path.join(HERE, "mcp_v3.py")
 HOST, PORT = "127.0.0.1", 8765
 
 
@@ -21,7 +28,7 @@ def main():
     while True:
         try:
             if port_busy():
-                time.sleep(30)  # 已有实例在服务
+                time.sleep(30)  # an instance is already serving
                 continue
             t0 = time.time()
             try:
@@ -30,7 +37,7 @@ def main():
                 pass
             time.sleep(3 if time.time() - t0 > 5 else 60)
         except Exception:
-            time.sleep(30)  # 守护进程自身绝不退出
+            time.sleep(30)  # the supervisor itself must never die
 
 
 main()

@@ -1,22 +1,34 @@
-"""FlyMemory v3.0 — Smart memory with auto-dedup, semantic search, and decay.
+"""FlyMemory v3.x — chunked semantic+lexical memory with decay and model-driven supersede.
 
-Three upgrades over v2:
-1. Auto-dedup: semantic similarity check (MiniLM cosine), no manual threshold.
-   Duplicate content is automatically merged (strengthens existing memory).
-2. Semantic search: recall uses MiniLM cosine distance (not binary match),
-   giving graded relevance scores that reflect meaning, not just bit overlap.
-3. Memory decay: older memories gradually lose weight following a
-   power-law forgetting curve (Ebbinghaus: R = t^(-0.5)).
-   Frequently accessed memories resist decay (rehearsal effect).
+Production recall path:
+  text → multilingual MiniLM embedding → per-sentence chunks →
+  vectorized cosine (max over query chunks) × power-law decay
+  + lexical (IDF) boost for exact identifiers → top-k
+
+Memory management:
+  - auto-dedup with length-tiered thresholds (strengthen / merge / new)
+  - supersede: the calling model marks stale states; superseded entries leave
+    the default recall but stay queryable (include_superseded=True)
+  - source provenance: "hook" (mechanical capture, unjudged) /
+    "model" (model judged worth storing) / "import" (seed import)
+
+Experimental (see bench_hopfield.py — keep or delete based on measurement):
+  4096-d sparse binary codes + Hopfield matrix W for associative expansion.
+
+Decay note: retention R(t) = (1 + t/tau)^-0.5 (power law, heavy tail).
+This is NOT an exponential half-life: R(tau) = 1/sqrt(2) ≈ 0.707 and the
+true half-life (R = 0.5) is 3*tau. The parameter is therefore named decay_tau.
 """
 
 import numpy as np
 import re
+import math
 import time
 import os
 import pickle
-from typing import List, Tuple, Optional, Dict
-from dataclasses import dataclass, field
+from collections import Counter, defaultdict
+from typing import List, Tuple, Optional, Dict, Iterable, Set
+from dataclasses import dataclass
 
 # ===== Lazy model loading =====
 _model = None
@@ -25,17 +37,43 @@ def _get_model():
     global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer
-        # 默认 CPU：MiniLM 单句编码仅 ~10-30ms，而 GPU 常被 ComfyUI 等重负载打满
-        # （显存 11.9/12.3GB、util 100% 时 cuda 排队可致工具调用 120s 超时，2026-09-18 实测）。
-        # 需要 GPU 时设 FLYMEMORY_DEVICE=cuda。
+        # Default to CPU: MiniLM encodes one sentence in ~10-30ms on CPU, while the
+        # GPU is often saturated by training / ComfyUI (queueing there caused 120s
+        # tool timeouts, measured 2026-09-18). Set FLYMEMORY_DEVICE=cuda to override.
         device = os.environ.get("FLYMEMORY_DEVICE", "cpu")
-        # 多语言模型：all-MiniLM-L6-v2 对中文语义近乎噪声（结构平行的无关短句实测 0.983、
-        # 相关句仅 0.50，是"记忆混乱"的总根源），L12-v2 支持 50+ 语言且同为 384 维，
-        # 换模型后须全库重嵌入。可用 FLYMEMORY_MODEL 覆盖。
+        # Multilingual embedder: all-MiniLM-L6-v2 is near-noise on Chinese
+        # (structure-parallel unrelated sentences scored 0.983, truly related 0.50),
+        # which was the root cause of "stale memory confusion" reports. L12-v2 covers
+        # 50+ languages and is also 384-dim (same projection matrix). Switching the
+        # model requires re-embedding the whole library. Override: FLYMEMORY_MODEL.
         model_name = os.environ.get("FLYMEMORY_MODEL",
                                     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
         _model = SentenceTransformer(model_name, device=device)
     return _model
+
+
+def _embed(text: str) -> np.ndarray:
+    return _get_model().encode(text, convert_to_numpy=True).astype(np.float32)
+
+
+# Lexical-channel weight: exact identifier matches (part numbers, paths, IDs)
+# must be able to outrank mere semantic similarity. 0.25 keeps semantic ranking
+# primary while letting a rare-token exact match win. See bench_recall_speed.py.
+LEX_WEIGHT = 0.25
+
+
+def _tokenize(text: str) -> Set[str]:
+    """ASCII word tokens (len>=2, lowercased) + CJK character bigrams."""
+    tokens: Set[str] = set()
+    for w in re.findall(r"[a-zA-Z0-9_]+", text.lower()):
+        if len(w) >= 2:
+            tokens.add(w)
+    chars = text
+    for i in range(len(chars) - 1):
+        a, b = chars[i], chars[i + 1]
+        if "\u4e00" <= a <= "\u9fff" and "\u4e00" <= b <= "\u9fff":
+            tokens.add(a + b)
+    return tokens
 
 
 # ===== Memory Entry =====
@@ -43,64 +81,117 @@ def _get_model():
 class MemoryEntry:
     text: str
     response: str
-    embedding: np.ndarray          # MiniLM 384-dim
+    embedding: np.ndarray          # 384-dim multilingual embedding
     timestamp: float               # creation time
     last_accessed: float           # last recall time
     access_count: int              # how many times recalled
     tags: list
     memory_id: int
-    superseded_by: Optional[int] = None   # 被更新的条目取代后指向新条目，默认召回跳过
+    superseded_by: Optional[int] = None   # replaced by a newer entry; excluded from default recall
+    source: str = "hook"                  # hook=mechanical capture / model=model-judged / import / auto
 
 
-# ===== Hopfield with semantic search + decay =====
+# ===== Chunking: one block per sentence so multi-topic messages stay separable =====
+def split_chunks(text: str, min_len: int = 10, max_len: int = 120) -> List[str]:
+    """Split at sentence terminators; one sentence per chunk; over-long sentences
+    split at commas; a short fragment merges into the previous chunk ONLY when
+    that chunk does not end with sentence-final punctuation (i.e. they are parts
+    of the same sentence). A short but complete sentence ("好。") stands alone.
+
+    Do NOT buffer multiple sentences into one chunk: Chinese is dense and two
+    sentences are usually two topics — buffering up to max_len made short
+    messages un-splittable (measured 2026-09-19).
+    """
+    chunks: List[str] = []
+    for p in (p.strip() for p in re.split(r"(?<=[。！？；!?\n])\s*", text) if p.strip()):
+        if len(p) > max_len:
+            b = ""
+            for s in re.split(r"(?<=[，,、：:])\s*", p):
+                if b and len(b) + len(s) > max_len:
+                    chunks.append(b)
+                    b = s
+                else:
+                    b = f"{b}{s}" if b else s
+            if b:
+                chunks.append(b)
+        else:
+            chunks.append(p)
+
+    def _ends_sentence(s: str) -> bool:
+        return bool(s) and s[-1] in "。！？；!?…"
+
+    merged: List[str] = []
+    for c in chunks:
+        if merged and len(c) < min_len and not _ends_sentence(merged[-1]):
+            merged[-1] = f"{merged[-1]}{c}"
+        else:
+            merged.append(c)
+    return [c.strip() for c in merged if c.strip()]
+
+
+# ===== SmartMemory =====
 class SmartMemory:
-    """Hopfield associative memory with semantic search and Ebbinghaus decay."""
+    """Semantic+lexical associative memory with Ebbinghaus-style decay.
+
+    Power-law decay R(t) = (1 + t/tau)^-0.5 modulated by rehearsal:
+    R is ~0.707 at t=tau and 0.5 at t=3*tau (the true half-life).
+    """
 
     def __init__(self, n_bits: int = 4096, sparsity: float = 0.05,
-                 decay_half_life: float = 2592000.0):  # 30 days: 承载长期参考知识，1h 半衰期会让不常召回的知识 4 天内衰减到清理阈值
+                 decay_tau: float = 2592000.0,          # 30 days: long-lived reference knowledge
+                 decay_half_life: Optional[float] = None,  # legacy kwarg alias for decay_tau
+                 enable_hopfield: bool = False):
+        """enable_hopfield=False by DEFAULT: bench_hopfield.py measured the
+        associative expansion HURTING retrieval (Recall@5 0.189 → 0.043 on a
+        1370-entry library — the 4096-bit W matrix is saturated far beyond its
+        capacity, so crosstalk dominates). The 64 MiB matrix, per-store outer
+        product and load-time rebuild are only paid when explicitly enabled."""
+        if decay_half_life is not None:
+            decay_tau = decay_half_life
         self.n_bits = n_bits
         self.sparsity = sparsity
         self.k_keep = max(int(n_bits * sparsity), 1)
         rng = np.random.default_rng(42)
         self.proj = rng.standard_normal((n_bits, 384)).astype(np.float32) / np.sqrt(384)
-        self.W = np.zeros((n_bits, n_bits), dtype=np.float32)
+        self.enable_hopfield = enable_hopfield
+        self.W = np.zeros((n_bits, n_bits), dtype=np.float32) if enable_hopfield else None
         self.memories: List[MemoryEntry] = []
         self._next_id = 0
-        self.decay_half_life = decay_half_life  # seconds
+        self.decay_tau = float(decay_tau)
+        # vectorized-recall cache
+        self._mat: Optional[np.ndarray] = None
+        self._mat_dirty = True
+        # lexical inverted index: token -> {memory_id}, df: token -> doc count
+        self._lex_index: Dict[str, Set[int]] = defaultdict(set)
+        self._df: Counter = Counter()
+        self._entry_tokens: Dict[int, Set[str]] = {}
 
-    def _encode(self, text: str) -> Tuple[np.ndarray, np.ndarray]:
-        """text → (binary_code, raw_embedding)."""
-        model = _get_model()
-        emb = model.encode(text, convert_to_numpy=True).astype(np.float32)
+    # ----- encoding -----
+    def _binary_from_emb(self, emb: np.ndarray) -> np.ndarray:
         code = self.proj @ emb
         k = min(self.k_keep, len(code))
         thresh = np.partition(code, -k)[-k]
-        binary = np.where(code >= thresh, 1.0, -1.0)
-        return binary, emb
+        return np.where(code >= thresh, 1.0, -1.0)
+
+    def _encode(self, text: str) -> Tuple[np.ndarray, np.ndarray]:
+        emb = _embed(text)
+        return self._binary_from_emb(emb), emb
 
     def _semantic_similarity(self, emb1: np.ndarray, emb2: np.ndarray) -> float:
-        """Cosine similarity between two MiniLM embeddings (0-1, higher = more similar)."""
         norm1 = np.linalg.norm(emb1) + 1e-8
         norm2 = np.linalg.norm(emb2) + 1e-8
         return float(max(0.0, np.dot(emb1, emb2) / (norm1 * norm2)))
 
     def _decay_weight(self, mem: MemoryEntry) -> float:
-        """Ebbinghaus forgetting curve: R = t^(-0.5), modulated by access count.
+        dt = time.time() - mem.last_accessed
+        base = (1.0 + dt / self.decay_tau) ** (-0.5)
+        rehearsal = 1.0 + 0.5 * np.log2(1 + mem.access_count)
+        return min(base * rehearsal, 1.0)
 
-        R (retention) decreases with time since last access,
-        but each access (rehearsal) resets and strengthens the trace.
-        """
-        now = time.time()
-        dt = now - mem.last_accessed
-        # Power-law decay: R = (1 + dt/τ)^(-0.5), τ = half_life
-        tau = self.decay_half_life
-        base_retention = (1.0 + dt / tau) ** (-0.5)
-        # Rehearsal effect: each access boosts retention
-        rehearsal_factor = 1.0 + 0.5 * np.log2(1 + mem.access_count)
-        return min(base_retention * rehearsal_factor, 1.0)
-
+    # ----- Hopfield (experimental; bench_hopfield.py decides keep/delete) -----
     def _hopfield_store(self, binary: np.ndarray):
-        self.W += np.outer(binary, binary)
+        if self.W is not None:
+            self.W += np.outer(binary, binary)
 
     def _hopfield_recall(self, binary: np.ndarray, max_iter: int = 10) -> np.ndarray:
         s = binary.copy()
@@ -112,25 +203,107 @@ class SmartMemory:
             s = new_s
         return s
 
-    def remember_text(self, text: str, response: str = "",
-                      tags: Optional[list] = None) -> Dict:
-        """分块存储入口：长文本按句切成语义块，逐块走去重/合并，返回聚合结果。
+    def associate(self, memory: MemoryEntry, top_k: int = 5, hops: int = 2) -> List[Tuple[MemoryEntry, float]]:
+        """Associative expansion: from a retrieved entry, evolve its sparse code on W
+        and rank other entries by code overlap — surfaces entries *related* to the
+        cue (co-stored context) rather than semantically *similar* ones.
+        Only meaningful when enable_hopfield=True."""
+        if self.W is None:
+            return []
+        s = self._binary_from_emb(memory.embedding)
+        for _ in range(hops):
+            s = np.sign(self.W @ s)
+            s[s == 0] = 1
+        scored = []
+        for m in self.memories:
+            if m.memory_id == memory.memory_id or m.superseded_by is not None:
+                continue
+            overlap = float(self._binary_from_emb(m.embedding) @ s) / self.k_keep
+            if overlap > 0:
+                scored.append((m, overlap))
+        scored.sort(key=lambda x: -x[1])
+        return scored[:top_k]
 
-        整条消息存成一条会稀释向量相似度（字面词重叠压过主题相关），分块后
-        每块主题单一，召回精度显著提升。短消息经 split_chunks 的短块合并后
-        自然回落为单块，行为不变。
+    # ----- lexical index -----
+    def _index_entry(self, entry: MemoryEntry):
+        toks = _tokenize(entry.text)
+        self._entry_tokens[entry.memory_id] = toks
+        for t in toks:
+            self._lex_index[t].add(entry.memory_id)
+            self._df[t] += 1
+
+    def _unindex(self, memory_id: int):
+        toks = self._entry_tokens.pop(memory_id, None)
+        if not toks:
+            return
+        for t in toks:
+            posting = self._lex_index.get(t)
+            if posting:
+                posting.discard(memory_id)
+                if not posting:
+                    del self._lex_index[t]
+            if self._df[t] > 0:
+                self._df[t] -= 1
+
+    def _reindex_all(self):
+        self._lex_index = defaultdict(set)
+        self._df = Counter()
+        self._entry_tokens = {}
+        for m in self.memories:
+            self._index_entry(m)
+
+    def _lex_scores(self, q_texts: Iterable[str]) -> np.ndarray:
+        """IDF-weighted lexical match ratio per memory, in [0, 1]."""
+        n = len(self.memories)
+        scores = np.zeros(n, dtype=np.float32)
+        if n == 0 or not self._df:
+            return scores
+        n_docs = max(n, 1)
+        matched: Dict[int, float] = {}
+        total_idf = 0.0
+        for qt in q_texts:
+            for tok in _tokenize(qt):
+                df = self._df.get(tok, 0)
+                if not df:
+                    continue  # token absent from corpus cannot match anything
+                idf = math.log(1.0 + n_docs / df)
+                total_idf += idf
+                for mid in self._lex_index.get(tok, ()):
+                    matched[mid] = matched.get(mid, 0.0) + idf
+        if total_idf <= 0:
+            return scores
+        for i, m in enumerate(self.memories):
+            scores[i] = min(matched.get(m.memory_id, 0.0) / total_idf, 1.0)
+        return scores
+
+    # ----- vectorized embedding matrix cache -----
+    def _emb_matrix(self) -> np.ndarray:
+        if self._mat is None or self._mat_dirty:
+            if self.memories:
+                self._mat = np.stack([m.embedding for m in self.memories]).astype(np.float32)
+            else:
+                self._mat = np.zeros((0, 384), dtype=np.float32)
+            self._mat_dirty = False
+        return self._mat
+
+    # ----- store -----
+    def remember_text(self, text: str, response: str = "",
+                      tags: Optional[list] = None, source: str = "hook") -> Dict:
+        """Chunked store entry point: long text is split per sentence and each chunk
+        goes through dedup/merge; short messages fall back to a single chunk via
+        split_chunks' fragment merging.
 
         Returns dict with:
           action: "new" / "merged" / "strengthened" / "rejected" / "mixed"
           counts: {"new": n, "merged": n, "strengthened": n}
-          memory_ids: 涉及的全部条目 id；chunks: 实际处理的块数
+          memory_ids: all touched entry ids; chunks: chunks processed
         """
         chunks = split_chunks(text)
         counts = {"new": 0, "merged": 0, "strengthened": 0, "rejected": 0}
         ids = []
         last = None
         for c in chunks:
-            r = self.remember(c, response=response, tags=tags)
+            r = self.remember(c, response=response, tags=tags, source=source)
             counts[r["action"]] = counts.get(r["action"], 0) + 1
             if r.get("memory_id") is not None:
                 ids.append(r["memory_id"])
@@ -150,18 +323,14 @@ class SmartMemory:
                 "memory_ids": ids, "chunks": len(chunks)}
 
     def remember(self, text: str, response: str = "",
-                 tags: Optional[list] = None) -> Dict:
-        """Store a memory with auto-dedup via semantic similarity.
+                 tags: Optional[list] = None, source: str = "hook") -> Dict:
+        """Store one chunk with auto-dedup via semantic similarity.
 
-        Returns dict with:
-          stored: True/False
-          action: "new" / "merged" / "rejected"
-          novelty: 0-1
-          memory_id: int
+        Returns dict with: stored, action ("new"/"merged"/"strengthened"/"rejected"),
+        novelty, memory_id.
         """
         binary, emb = self._encode(text)
 
-        # ===== Auto-dedup: semantic similarity check =====
         best_match = None
         best_sim = 0.0
         for mem in self.memories:
@@ -170,50 +339,56 @@ class SmartMemory:
                 best_sim = sim
                 best_match = mem
 
-        # 短文本阈值高于长文本：改用多语言模型后结构噪声已消失（无关句 0.2-0.3），
-        # 但短句改写（如日期不同的相似句 0.93）仍应各自成条，故阈值略收紧。
+        # Tiered thresholds: short rewritten sentences (e.g. differing only in a date)
+        # measured 0.93 on the multilingual model — similar but distinct facts should
+        # stay separate entries; corrections are handled by supersede, not merging.
         if len(text) < 30:
             dup_t, merge_t = 0.95, 0.85
         else:
             dup_t, merge_t = 0.92, 0.75
 
-        # Threshold: >dup_t = duplicate, merge_t~dup_t = merge, <merge_t = new
         if best_sim > dup_t:
-            # Duplicate: strengthen existing memory (rehearsal)
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "strengthened",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
         if best_sim > merge_t:
-            # Partially new: merge (update text if new one is longer)
             if len(text) > len(best_match.text):
                 new_binary, new_emb = self._encode(text)
+                self._unindex(best_match.memory_id)
                 best_match.text = text
                 best_match.embedding = new_emb
+                best_match.source = source
+                self._index_entry(best_match)
+                self._mat_dirty = True
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "merged",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
-        # Truly new memory
         now = time.time()
         entry = MemoryEntry(
             text=text, response=response,
             embedding=emb, timestamp=now, last_accessed=now,
-            access_count=0, tags=tags or [], memory_id=self._next_id
+            access_count=0, tags=tags or [], memory_id=self._next_id,
+            source=source,
         )
         self.memories.append(entry)
-        self._hopfield_store(binary)
+        self._index_entry(entry)
+        self._mat_dirty = True
+        if self.enable_hopfield:
+            self._hopfield_store(binary)
         self._next_id += 1
         return {"stored": True, "action": "new",
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
+    # ----- supersede -----
     def supersede(self, old_id: int, new_id: int) -> bool:
-        """标记旧条目被新条目取代：默认召回不再返回旧条目。
+        """Mark an entry as superseded by a newer one (excluded from default recall).
 
-        判断由调用方模型做出（它理解语义），这里只做机械标记。
-        Returns True if the old entry was found and marked.
+        The judgment is made by the calling model (it understands semantics);
+        this is the mechanical marker only.
         """
         for mem in self.memories:
             if mem.memory_id == old_id:
@@ -221,49 +396,66 @@ class SmartMemory:
                 return True
         return False
 
-    def recall(self, query: str, top_k: int = 5) -> List[Tuple[MemoryEntry, float, float]]:
-        """Semantic recall with decay weighting.
+    # ----- recall -----
+    def recall(self, query: str, top_k: int = 5,
+               include_superseded: bool = False) -> List[Tuple[MemoryEntry, float, float]]:
+        """Hybrid recall: vectorized semantic similarity (max over query chunks)
+        × power-law decay + IDF lexical boost (exact identifiers), superseded
+        entries excluded unless include_superseded=True.
 
-        Score = semantic_similarity × decay_weight
-        多句查询按块拆分、取各块相似度的最大值——整句混编会让查询向量
-        被多主题稀释，与分块存储正好互补。
-        Returns top_k (memory, semantic_score, effective_score).
+        Returns top_k of (memory, semantic_sim, effective_score).
         """
-        model = _get_model()
+        if not self.memories:
+            return []
         q_texts = split_chunks(query) or [query]
-        q_embs = [model.encode(q, convert_to_numpy=True).astype(np.float32)
-                  for q in q_texts]
+        Q = np.stack([_embed(qt) for qt in q_texts])
+        M = self._emb_matrix()
+        qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
+        mn = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
+        sim_vec = (qn @ mn.T).max(axis=0)                      # (N,)
 
-        scored = []
-        for mem in self.memories:
-            if mem.superseded_by is not None:
-                continue  # 被取代的旧状态不再进入默认召回
-            # Semantic similarity (MiniLM cosine), 多块查询取最大
-            sim = max(self._semantic_similarity(qe, mem.embedding) for qe in q_embs)
-            # Decay weight (Ebbinghaus)
-            dw = self._decay_weight(mem)
-            # Effective score
-            effective = sim * dw
-            scored.append((mem, sim, effective))
-            # Update access tracking (rehearsal effect)
-            if sim > 0.5:
-                mem.last_accessed = time.time()
-                mem.access_count += 1
+        now = time.time()
+        last = np.array([m.last_accessed for m in self.memories], dtype=np.float64)
+        acc = np.array([m.access_count for m in self.memories], dtype=np.float64)
+        dw = np.minimum(((1.0 + (now - last) / self.decay_tau) ** -0.5)
+                        * (1.0 + 0.5 * np.log2(1.0 + acc)), 1.0)
 
-        scored.sort(key=lambda x: -x[2])
-        return scored[:top_k]
+        lex_vec = self._lex_scores(q_texts)
+        eff = dw * (sim_vec + LEX_WEIGHT * lex_vec)
+
+        order = np.argsort(-eff)
+        results = []
+        for idx in order:
+            m = self.memories[int(idx)]
+            if m.superseded_by is not None and not include_superseded:
+                continue
+            results.append((m, float(sim_vec[idx]), float(eff[idx])))
+            if len(results) >= top_k:
+                break
+
+        # rehearsal side effect (matches pre-vectorization semantics: every
+        # entry with sim>0.5 gets its last_accessed/access_count refreshed)
+        hot = np.where(sim_vec > 0.5)[0]
+        for idx in hot:
+            m = self.memories[int(idx)]
+            if m.superseded_by is not None and not include_superseded:
+                continue
+            m.last_accessed = now
+            m.access_count += 1
+        return results
 
     def decay_cleanup(self, min_retention: float = 0.1) -> int:
-        """Remove memories that have decayed below threshold."""
         removed = 0
         surviving = []
         for mem in self.memories:
-            dw = self._decay_weight(mem)
-            if dw >= min_retention:
+            if self._decay_weight(mem) >= min_retention:
                 surviving.append(mem)
             else:
                 removed += 1
-        self.memories = surviving
+                self._unindex(mem.memory_id)
+        if removed:
+            self.memories = surviving
+            self._mat_dirty = True
         return removed
 
     @property
@@ -271,40 +463,11 @@ class SmartMemory:
         return len(self.memories)
 
 
-# ===== Chunking: 每句独立成块，避免整条向量被多主题稀释 =====
-def split_chunks(text: str, min_len: int = 10, max_len: int = 120) -> List[str]:
-    """按句终止符切，每句一个块；超长句按逗号细分；过短碎片并入前块。
-
-    注意不要把多个句子缓冲进同一块——中文信息密度高，两句常是两个主题，
-    攒到 max_len 再分组会让短消息永远切不开（2026-09-19 实测踩过）。
-    """
-    chunks: List[str] = []
-    for p in (p.strip() for p in re.split(r"(?<=[。！？；!?\n])\s*", text) if p.strip()):
-        if len(p) > max_len:
-            b = ""
-            for s in re.split(r"(?<=[，,、：:])\s*", p):
-                if b and len(b) + len(s) > max_len:
-                    chunks.append(b)
-                    b = s
-                else:
-                    b = f"{b}{s}" if b else s
-            if b:
-                chunks.append(b)
-        else:
-            chunks.append(p)
-    merged: List[str] = []
-    for c in chunks:
-        if merged and len(c) < min_len:
-            merged[-1] = f"{merged[-1]}{c}"
-        else:
-            merged.append(c)
-    return [c.strip() for c in merged if c.strip()]
-
-
 # ===== Persistence =====
 def save(memory: SmartMemory, path: str):
-    """Save memory to disk (embeddings + metadata, rebuild W on load)."""
+    """Save to disk (embeddings + metadata; W is rebuilt on load)."""
     data = {
+        "schema": "3.1",
         "memories": [
             {
                 "text": m.text, "response": m.response,
@@ -313,22 +476,28 @@ def save(memory: SmartMemory, path: str):
                 "access_count": m.access_count, "tags": m.tags,
                 "memory_id": m.memory_id,
                 "superseded_by": m.superseded_by,
+                "source": m.source,
             } for m in memory.memories
         ],
         "_next_id": memory._next_id,
         "n_bits": memory.n_bits,
-        "decay_half_life": memory.decay_half_life,
+        "decay_tau": memory.decay_tau,
+        # legacy alias so an older code version can still load this file
+        "decay_half_life": memory.decay_tau,
     }
     tmp = path + ".tmp"
     with open(tmp, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
     os.replace(tmp, path)
 
-def load(path: str) -> SmartMemory:
-    """Load memory from disk. Rebuilds W from embeddings via encode."""
+
+def load(path: str, enable_hopfield: bool = False) -> SmartMemory:
+    """Load from disk. Accepts both the current schema (decay_tau, source,
+    superseded_by) and the legacy one (decay_half_life only)."""
     with open(path, "rb") as f:
         data = pickle.load(f)
-    mem = SmartMemory(n_bits=data["n_bits"], decay_half_life=data["decay_half_life"])
+    tau = data.get("decay_tau") or data.get("decay_half_life") or 2592000.0
+    mem = SmartMemory(n_bits=data["n_bits"], decay_tau=tau, enable_hopfield=enable_hopfield)
     mem._next_id = data.get("_next_id", len(data["memories"]))
     for md in data["memories"]:
         entry = MemoryEntry(
@@ -338,12 +507,11 @@ def load(path: str) -> SmartMemory:
             access_count=md["access_count"], tags=md["tags"],
             memory_id=md["memory_id"],
             superseded_by=md.get("superseded_by"),
+            source=md.get("source", "auto"),
         )
         mem.memories.append(entry)
-        # Rebuild W from binary codes
-        code = mem.proj @ entry.embedding
-        k = min(mem.k_keep, len(code))
-        thresh = np.partition(code, -k)[-k]
-        binary = np.where(code >= thresh, 1.0, -1.0)
-        mem._hopfield_store(binary)
+        if mem.enable_hopfield:
+            mem._hopfield_store(mem._binary_from_emb(entry.embedding))
+    mem._mat_dirty = True
+    mem._reindex_all()
     return mem

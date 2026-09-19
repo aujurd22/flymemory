@@ -67,7 +67,7 @@ def get_memory():
         if os.path.exists(DB_PATH):
             _mem = load(DB_PATH)
         else:
-            _mem = SmartMemory(n_bits=4096, decay_half_life=2592000.0)  # 30 天半衰期，见 v3.SmartMemory 注释
+            _mem = SmartMemory(n_bits=4096, decay_tau=2592000.0)  # 30 天特征时间，见 v3.SmartMemory 注释
     return _mem
 
 def save_memory():
@@ -79,13 +79,16 @@ from mcp.server.fastmcp import FastMCP
 # stateless_http=True：不跟踪会话，每个请求自包含——服务重启不会使已连接的
 # ZCode 会话失效（否则报 Session not found 且客户端不会自动重连）。
 mcp = FastMCP("flymemory", host=HTTP_HOST, port=HTTP_PORT, stateless_http=True, instructions="""
-FlyMemory v3: Smart associative memory inspired by Drosophila mushroom body.
-Features: auto-dedup (semantic similarity), semantic search (MiniLM cosine),
-memory decay (Ebbinghaus forgetting curve), dopamine gating (novelty-based storage).
+FlyMemory v3: long-term memory for AI agents — chunked storage, hybrid
+recall (multilingual embeddings + IDF lexical boost for exact identifiers),
+power-law decay, semantic dedup, and model-driven supersede (stale states
+are marked by the calling model and leave the default recall).
+A Hopfield associative-expansion layer is experimental (bench_hopfield.py).
 
-Use flymemory_remember to store important findings.
-Use flymemory_recall to retrieve relevant memories via semantic search.
-Use flymemory_cleanup to remove decayed memories.
+Use flymemory_remember to store important findings (source=model).
+Use flymemory_recall to retrieve; pass include_superseded for history queries.
+Use flymemory_supersede to mark an outdated memory as replaced by a newer one.
+Use flymemory_cleanup to remove fully decayed memories.
 """)
 
 @mcp.tool()
@@ -101,7 +104,7 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     with _mem_lock:
         mem = get_memory()
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-        result = mem.remember_text(text, tags=tag_list)
+        result = mem.remember_text(text, tags=tag_list, source="model")
         save_memory()
     action = result["action"]
     counts = result.get("counts") or {}
@@ -113,24 +116,29 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     return f"[{label} {id_str}] {text[:80]}"
 
 @mcp.tool()
-def flymemory_recall(query: str, top_k: int = 5) -> str:
-    """Recall relevant memories via semantic search + Hopfield pattern completion.
+def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = False) -> str:
+    """Hybrid recall: semantic similarity + IDF lexical boost (exact identifiers),
+    ranked by similarity × time decay. Superseded (outdated) entries are excluded
+    unless include_superseded=True — use it for history questions like
+    "did I ever use X?".
 
     Args:
         query: The query text (can be partial/incomplete)
         top_k: Number of memories to return
+        include_superseded: include entries marked as superseded
     Returns:
-        Relevant memories with scores, ranked by semantic similarity × decay weight
+        Relevant memories with scores, age and provenance stamps
     """
     with _mem_lock:
         mem = get_memory()
-        results = mem.recall(query, top_k=top_k)
+        results = mem.recall(query, top_k=top_k, include_superseded=include_superseded)
         if not results:
             return "No relevant memories found."
         output = []
         for entry, sim, eff in results:
             decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
-            output.append(f"[sim={sim:.2f} | {_age_str(entry.timestamp)} | {decay_pct}] {entry.text[:80]}")
+            output.append(f"[sim={sim:.2f} | {_age_str(entry.timestamp)} | "
+                          f"src={entry.source} | {decay_pct}] {entry.text[:80]}")
         return "\n".join(output)
 
 def mem_decay_pct(entry, mem):
@@ -242,7 +250,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
         combined_text = context
         if response:
             combined_text = f"{context} ||| {response}"
-        result = mem.remember_text(combined_text, tags=["auto"])
+        result = mem.remember_text(combined_text, tags=["auto"], source="hook")
         save_memory()
 
     action = result["action"]
