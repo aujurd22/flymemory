@@ -20,6 +20,10 @@ def main():
         head = prompt.lstrip()[:200]
         if head.startswith("<system-reminder") or "Continue working toward the active session goal" in head:
             return
+        # 凭据永不入库：token 密钥一旦进入记忆库，会被召回注入未来所有会话
+        if any(pat in prompt for pat in ("ghp_", "github_pat_", "pypi-AgEI", "sk-ant-", "sk-proj-",
+                                         "AKIA", "-----BEGIN", "xoxb-", "xoxp-")):
+            return
         body = json.dumps({
             "jsonrpc": "2.0", "id": 1, "method": "tools/call",
             "params": {"name": "flymemory_auto",
