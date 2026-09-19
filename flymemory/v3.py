@@ -61,6 +61,15 @@ def _embed(text: str) -> np.ndarray:
 # primary while letting a rare-token exact match win. See bench_recall_speed.py.
 LEX_WEIGHT = 0.25
 
+# Source weight = cheap importance proxy (the "importance" dimension without a
+# judge model): model-precision-stored and curated-import entries were judged
+# worth keeping by the calling agent; hook captures are unjudged transcript —
+# including self-referential complaints that would otherwise outrank the very
+# content they complain about (measured 2026-09-20: hook echo 0.719 beat the
+# novel-progress entry at 0.71 on the same topic).
+SOURCE_WEIGHT = {"model": 1.15, "import": 1.15, "model-supersede": 1.15,
+                 "hook": 0.9, "auto": 1.0}
+
 
 def _tokenize(text: str) -> Set[str]:
     """ASCII word tokens (len>=2, lowercased) + CJK character bigrams."""
@@ -74,6 +83,21 @@ def _tokenize(text: str) -> Set[str]:
         if "\u4e00" <= a <= "\u9fff" and "\u4e00" <= b <= "\u9fff":
             tokens.add(a + b)
     return tokens
+
+
+def _is_junk_chunk(text: str) -> bool:
+    """Reject chunks that are mostly symbols/table-borders/markdown debris.
+
+    ASCII-art lines ("┌────┐", "│ ● │") and markdown leftovers ("---", "**x**")
+    embed into vectors that spuriously match unrelated queries (measured 0.65
+    cosine against a Chinese prose query, 2026-09-20) and outrank real content
+    via lexical ties. Contentful = letters / digits / CJK.
+    """
+    if not text:
+        return True
+    contentful = sum(1 for ch in text if ch.isascii() and ch.isalnum()
+                     or "\u4e00" <= ch <= "\u9fff")
+    return contentful / len(text) < 0.45 or contentful < 4
 
 
 # ===== Memory Entry =====
@@ -308,7 +332,7 @@ class SmartMemory:
           counts: {"new": n, "merged": n, "strengthened": n}
           memory_ids: all touched entry ids; chunks: chunks processed
         """
-        chunks = split_chunks(text)
+        chunks = [c for c in split_chunks(text) if not _is_junk_chunk(c)]
         counts = {"new": 0, "merged": 0, "strengthened": 0, "rejected": 0}
         ids = []
         last = None
@@ -339,10 +363,14 @@ class SmartMemory:
         """Store one chunk with auto-dedup via semantic similarity.
 
         timestamp: optional backdated creation time (epoch seconds).
+        Junk chunks (symbol/table-border debris) are rejected.
 
         Returns dict with: stored, action ("new"/"merged"/"strengthened"/"rejected"),
         novelty, memory_id.
         """
+        if _is_junk_chunk(text):
+            return {"stored": False, "action": "rejected", "novelty": 0.0,
+                    "memory_id": None}
         binary, emb = self._encode(text)
 
         best_match = None
@@ -440,7 +468,9 @@ class SmartMemory:
             dw = np.ones_like(dw)
 
         lex_vec = self._lex_scores(q_texts)
-        eff = dw * (sim_vec + LEX_WEIGHT * lex_vec)
+        src_w = np.array([SOURCE_WEIGHT.get(m.source, 1.0) for m in self.memories],
+                         dtype=np.float32)
+        eff = dw * src_w * (sim_vec + LEX_WEIGHT * lex_vec)
 
         order = np.argsort(-eff)
         results = []
