@@ -200,6 +200,32 @@ def test_decay_tau_legacy_kwarg_alias():
     assert mem.decay_tau == 123.0
 
 
+# ------------------------------------------------- directed forgetting
+def test_directed_cleanup_protects_model_stored(mem, warm_model):
+    """Directed-forgetting asymmetry (FlyPoet REPORT_MEM §③): pruning targets
+    unjudged hook chatter; model-stored knowledge gets a 3x lower prune rate."""
+    now = time.time()
+    mem.remember("模型精存的长期知识", source="model")
+    mem.remember("hook 机械捕获的寒暄碎片", source="hook")
+    # age chosen so dw ≈ 0.30: above the protected threshold (0.5/3 ≈ 0.167),
+    # below the plain threshold (0.5)
+    for m in mem.memories:
+        m.last_accessed = now - 10.1 * 3600
+        m.access_count = 0
+    removed = mem.decay_cleanup(min_retention=0.5, protect_model_stored=True)
+    assert removed == 1
+    assert mem.memories[0].source == "model"
+
+
+def test_forget_hard_deletes_by_id(mem, warm_model):
+    mem.remember("一条错误记忆，需要定点清除")
+    mid = mem.memories[0].memory_id
+    assert mem.forget(mid) is not None
+    assert mem.size == 0
+    assert mem.recall("错误记忆", top_k=1) == []
+    assert mem.forget(mid) is None  # second forget: already gone
+
+
 # ---------------------------------------------------------------- lexical
 def test_exact_identifier_recall(mem, warm_model):
     """Part numbers / IDs are invisible to embeddings; the lexical channel must

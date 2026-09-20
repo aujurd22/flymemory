@@ -493,11 +493,25 @@ class SmartMemory:
             m.access_count += 1
         return results
 
-    def decay_cleanup(self, min_retention: float = 0.1) -> int:
+    def decay_cleanup(self, min_retention: float = 0.1,
+                      protect_model_stored: bool = False) -> int:
+        """Directed forgetting (cf. the directed-forgetting shower, REPORT_MEM §③):
+        prune entries whose retention fell below min_retention.
+
+        protect_model_stored=True implements the asymmetry measured in
+        forgetting_shower.py — forgetting must target fine detail, not backbone:
+        model/import-stored entries (judged worth keeping) are only pruned when
+        retention falls below min_retention/3, while unjudged hook chatter is
+        pruned at the full threshold.
+        """
         removed = 0
         surviving = []
         for mem in self.memories:
-            if self._decay_weight(mem) >= min_retention:
+            dw = self._decay_weight(mem)
+            threshold = min_retention
+            if protect_model_stored and mem.source in ("model", "import"):
+                threshold = min_retention / 3.0
+            if dw >= threshold:
                 surviving.append(mem)
             else:
                 removed += 1
@@ -506,6 +520,19 @@ class SmartMemory:
             self.memories = surviving
             self._mat_dirty = True
         return removed
+
+    def forget(self, memory_id: int) -> Optional[str]:
+        """Targeted forgetting: hard-delete one entry by id (Berry et al. 2018:
+        active forgetting is a function, not a failure). Returns the deleted
+        text, or None if the id does not exist."""
+        for i, mem in enumerate(self.memories):
+            if mem.memory_id == memory_id:
+                self._unindex(memory_id)
+                text = mem.text
+                self.memories.pop(i)
+                self._mat_dirty = True
+                return text
+        return None
 
     @property
     def size(self):

@@ -173,18 +173,40 @@ def flymemory_stats() -> str:
                 f"Avg decay weight: {avg_decay:.2f}")
 
 @mcp.tool()
-def flymemory_cleanup(min_retention: float = 0.1) -> str:
-    """Remove memories that have decayed below the retention threshold.
+def flymemory_cleanup(min_retention: float = 0.1, protect_model_stored: bool = True) -> str:
+    """Directed forgetting: remove memories whose retention decayed below the
+    threshold. With protect_model_stored=True (default), model/import-stored
+    entries are only pruned below min_retention/3 — forgetting targets unjudged
+    hook chatter, not judged knowledge.
 
     Args:
         min_retention: Minimum decay weight to keep (default 0.1)
+        protect_model_stored: shield model/import-stored entries (3x lower prune threshold)
     """
     with _mem_lock:
         mem = get_memory()
-        removed = mem.decay_cleanup(min_retention)
+        removed = mem.decay_cleanup(min_retention, protect_model_stored=protect_model_stored)
         if removed > 0:
             save_memory()
     return f"Removed {removed} decayed memories. Remaining: {mem.size}"
+
+@mcp.tool()
+def flymemory_forget(memory_id: int) -> str:
+    """Targeted forgetting: hard-delete one memory by id.
+
+    For entries that are WRONG (not merely outdated — use flymemory_supersede
+    for replaced-but-true history). The judgment is made by the calling model.
+    Args:
+        memory_id: id of the memory to delete (from recall results)
+    """
+    with _mem_lock:
+        mem = get_memory()
+        text = mem.forget(memory_id)
+        if text is not None:
+            save_memory()
+    if text is not None:
+        return f"[FORGOT #{memory_id}] {text[:80]}"
+    return f"[NOT FOUND] memory #{memory_id} does not exist"
 
 @mcp.tool()
 def flymemory_supersede(old_memory_id: int, new_memory_id: int) -> str:
