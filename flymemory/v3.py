@@ -164,12 +164,18 @@ class SmartMemory:
     def __init__(self, n_bits: int = 4096, sparsity: float = 0.05,
                  decay_tau: float = 2592000.0,          # 30 days: long-lived reference knowledge
                  decay_half_life: Optional[float] = None,  # legacy kwarg alias for decay_tau
-                 enable_hopfield: bool = False):
+                 enable_hopfield: bool = False,
+                 two_stage: bool = False,
+                 hamming_candidates: int = 100):
         """enable_hopfield=False by DEFAULT: bench_hopfield.py measured the
         associative expansion HURTING retrieval (Recall@5 0.189 → 0.043 on a
         1370-entry library — the 4096-bit W matrix is saturated far beyond its
         capacity, so crosstalk dominates). The 64 MiB matrix, per-store outer
-        product and load-time rebuild are only paid when explicitly enabled."""
+        product and load-time rebuild are only paid when explicitly enabled.
+
+        two_stage: Hamming prefilter (packed sparse codes) + dense rerank.
+        OFF by default — see README "Two-stage retrieval" for the usage
+        preconditions. Enable only for large libraries (N >= ~5000)."""
         if decay_half_life is not None:
             decay_tau = decay_half_life
         self.n_bits = n_bits
@@ -179,12 +185,18 @@ class SmartMemory:
         self.proj = rng.standard_normal((n_bits, 384)).astype(np.float32) / np.sqrt(384)
         self.enable_hopfield = enable_hopfield
         self.W = np.zeros((n_bits, n_bits), dtype=np.float32) if enable_hopfield else None
+        self.two_stage = two_stage
+        self.hamming_candidates = max(int(hamming_candidates), 1)
         self.memories: List[MemoryEntry] = []
         self._next_id = 0
         self.decay_tau = float(decay_tau)
         # vectorized-recall cache
         self._mat: Optional[np.ndarray] = None
         self._mat_dirty = True
+        self._codes_dirty = True
+        # packed-code cache for the Hamming prefilter (built lazily)
+        self._codes: Optional[np.ndarray] = None
+        self._codes_dirty = True
         # lexical inverted index: token -> {memory_id}, df: token -> doc count
         self._lex_index: Dict[str, Set[int]] = defaultdict(set)
         self._df: Counter = Counter()
@@ -247,6 +259,42 @@ class SmartMemory:
                 scored.append((m, overlap))
         scored.sort(key=lambda x: -x[1])
         return scored[:top_k]
+
+    # ----- packed-code cache (Hamming prefilter) -----
+    _popcount = getattr(np, "bitwise_count", None)
+
+    def _pack_bits(self, bits: np.ndarray) -> np.ndarray:
+        return np.packbits(bits.astype(np.uint8), axis=-1)
+
+    def _query_code(self, q_embs: List[np.ndarray]) -> np.ndarray:
+        """Query binary code: per-chunk k-WTA code, OR-unioned over chunks
+        (a prefilter must widen, not narrow). Returns packed (n_bytes,) uint8."""
+        union = np.zeros(self.n_bits, dtype=bool)
+        for qe in q_embs:
+            union |= self._binary_from_emb(qe) > 0
+        return np.packbits(union.astype(np.uint8))
+
+    def _packed_code_matrix(self) -> np.ndarray:
+        """(N, n_bits/8) uint8 packed codes, rebuilt lazily from embeddings."""
+        if self._codes is None or self._codes_dirty:
+            if self.memories:
+                E = np.stack([m.embedding for m in self.memories]).astype(np.float32)
+                code = E @ self.proj.T
+                k = min(self.k_keep, code.shape[1])
+                thresh = np.partition(code, -k, axis=1)[:, -k][:, None]
+                self._codes = np.packbits((code >= thresh).astype(np.uint8), axis=1)
+            else:
+                self._codes = np.zeros((0, self.n_bits // 8), dtype=np.uint8)
+            self._codes_dirty = False
+        return self._codes
+
+    def _hamming(self, q_packed: np.ndarray) -> np.ndarray:
+        codes = self._packed_code_matrix()
+        xor = np.bitwise_xor(codes, q_packed)
+        pc = self._popcount
+        if pc is not None:
+            return pc(xor).sum(axis=-1, dtype=np.int32)
+        return np.unpackbits(xor, axis=-1).sum(axis=-1, dtype=np.int32)
 
     # ----- lexical index -----
     def _index_entry(self, entry: MemoryEntry):
@@ -404,6 +452,7 @@ class SmartMemory:
                 best_match.source = source
                 self._index_entry(best_match)
                 self._mat_dirty = True
+                self._codes_dirty = True
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "merged",
@@ -419,6 +468,7 @@ class SmartMemory:
         self.memories.append(entry)
         self._index_entry(entry)
         self._mat_dirty = True
+        self._codes_dirty = True
         if self.enable_hopfield:
             self._hopfield_store(binary)
         self._next_id += 1
@@ -440,10 +490,16 @@ class SmartMemory:
 
     # ----- recall -----
     def recall(self, query: str, top_k: int = 5,
-               include_superseded: bool = False) -> List[Tuple[MemoryEntry, float, float]]:
+               include_superseded: bool = False,
+               two_stage: Optional[bool] = None) -> List[Tuple[MemoryEntry, float, float]]:
         """Hybrid recall: vectorized semantic similarity (max over query chunks)
         × power-law decay + IDF lexical boost (exact identifiers), superseded
         entries excluded unless include_superseded=True.
+
+        two_stage: Hamming prefilter over packed sparse codes, then dense rerank
+        on the top-C candidates (constructor: two_stage=True, hamming_candidates).
+        Usage preconditions in README "Two-stage retrieval" — enable only for
+        large libraries (N >= ~5000); below that the dense path is faster.
 
         Returns top_k of (memory, semantic_sim, effective_score).
         """
@@ -451,6 +507,47 @@ class SmartMemory:
             return []
         q_texts = split_chunks(query) or [query]
         Q = np.stack([_embed(qt) for qt in q_texts])
+        qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
+        now = time.time()
+        use_2s = self.two_stage if two_stage is None else two_stage
+
+        if use_2s:
+            # stage 1: Hamming prefilter over packed codes (query code = OR-union
+            # of per-chunk codes — a prefilter must widen, not narrow)
+            q_packed = self._query_code(list(Q))
+            ham = self._hamming(q_packed)
+            c = min(self.hamming_candidates, len(self.memories))
+            cand = np.argsort(ham, kind="stable")[:c]
+            # stage 2: dense rerank on candidates only
+            Mc = self._emb_matrix()[cand]
+            mnc = Mc / (np.linalg.norm(Mc, axis=1, keepdims=True) + 1e-8)
+            sim_cand = (qn @ mnc.T).max(axis=0)
+            mems = [self.memories[int(i)] for i in cand]
+            last = np.array([m.last_accessed for m in mems], dtype=np.float64)
+            acc = np.array([m.access_count for m in mems], dtype=np.float64)
+            dw_c = np.minimum(((1.0 + (now - last) / self.decay_tau) ** -0.5)
+                              * (1.0 + 0.5 * np.log2(1.0 + acc)), 1.0)
+            lex_cand = self._lex_scores(q_texts)[cand]
+            sw_c = np.array([SOURCE_WEIGHT.get(m.source, 1.0) for m in mems],
+                            dtype=np.float32)
+            eff_c = dw_c * sw_c * (sim_cand + LEX_WEIGHT * lex_cand)
+            order = cand[np.argsort(-eff_c)]
+            results = []
+            for idx in order:
+                m = self.memories[int(idx)]
+                if m.superseded_by is not None and not include_superseded:
+                    continue
+                pos = int(np.where(cand == idx)[0][0])
+                results.append((m, float(sim_cand[pos]), float(eff_c[pos])))
+                if len(results) >= top_k:
+                    break
+            # rehearsal side effect on returned candidates only (prefilter mode:
+            # non-candidates were never scored)
+            for m, _, _ in results:
+                m.last_accessed = now
+                m.access_count += 1
+            return results
+
         M = self._emb_matrix()
         qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
         mn = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
@@ -519,6 +616,7 @@ class SmartMemory:
         if removed:
             self.memories = surviving
             self._mat_dirty = True
+        self._codes_dirty = True
         return removed
 
     def forget(self, memory_id: int) -> Optional[str]:
@@ -531,6 +629,7 @@ class SmartMemory:
                 text = mem.text
                 self.memories.pop(i)
                 self._mat_dirty = True
+                self._codes_dirty = True
                 return text
         return None
 

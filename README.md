@@ -136,6 +136,36 @@ The Hopfield result is a capacity story: 1370 patterns far exceed what a
 available behind `SmartMemory(enable_hopfield=True)` for small-N experiments —
 run `bench_hopfield.py` before trusting it.
 
+## Two-stage retrieval (Hamming prefilter + dense rerank)
+
+For large libraries, recall can run in two stages: a Hamming-distance prefilter
+over packed 4096-bit sparse codes (bitwise ops, 512 B/entry), then dense cosine
+rerank on the top-C candidates (default C=100).
+
+```python
+mem = SmartMemory(two_stage=True, hamming_candidates=100)
+# or per-call: mem.recall(q, two_stage=True)
+```
+
+### Usage preconditions — read before enabling
+
+1. **Library size N ≥ ~5000.** Below that, dense scoring is already ~1 ms
+   (measured 1.2 ms at N≈1.4k via BLAS matmul) and the prefilter + rerank
+   overhead makes two-stage a net loss. The pay-off region is 10⁴–10⁵+
+   entries, where full-matrix scoring approaches 0.1 s/query.
+2. **Code stability must hold on YOUR data.** The quality premise comes from
+   the FlyPoet sparse-code retrieval experiment: Hamming lookup hit@1 0.123 vs
+   dense 0.128 (Δ ≈ 0.005) on *trained char-level codes* with a measured
+   address stability of 1.52×. FlyMemory's codes come from a *random
+   projection* — before trusting the prefilter, verify on your own library:
+   `recall(q, two_stage=True)` must agree with `recall(q, two_stage=False)`
+   on realistic queries (the tests pin this only for the small-N case).
+3. **Memory overhead**: +512 B per entry for the packed codes.
+4. **Rehearsal side effect is scoped to returned candidates** in prefilter
+   mode (non-candidates are never scored, so their access counters do not
+   refresh). With `include_superseded=True`, history mode stays decay-immune
+   as in the dense path.
+
 ## Contradiction-resolution benchmark
 
 `bench_contradiction.py` — 14 temporal scenarios ("user runs Windows" →

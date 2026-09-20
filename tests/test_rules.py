@@ -200,6 +200,42 @@ def test_decay_tau_legacy_kwarg_alias():
     assert mem.decay_tau == 123.0
 
 
+# ------------------------------------------------- two-stage retrieval
+def test_two_stage_default_off():
+    assert SmartMemory(n_bits=64).two_stage is False
+
+
+def test_two_stage_matches_dense_when_candidates_cover_library(mem, warm_model):
+    """With hamming_candidates >= N the prefilter covers everything, so the
+    two-stage path must return EXACTLY the dense path's ranking."""
+    mem2 = SmartMemory(n_bits=4096, two_stage=True, hamming_candidates=100)
+    for t in ["果蝇视觉系统的稀疏编码", "打印机色带耗材库存预警",
+              "用户偏好深色主题界面", "跨境外币汇率对账流程",
+              "周五下午三点产品评审会", "数据库每日备份策略"]:
+        mem.remember(t)
+        mem2.remember(t)
+    q = "色带库存还剩多少"
+    a = [h[0].memory_id for h in mem.recall(q, top_k=4)]
+    b = [h[0].memory_id for h in mem2.recall(q, top_k=4, two_stage=True)]
+    assert a == b
+
+
+def test_two_stage_prefilter_still_finds_relevant_entry(warm_model):
+    mem = SmartMemory(n_bits=4096, two_stage=True, hamming_candidates=5)
+    for i in range(20):
+        mem.remember(f"填充条目编号{i}：记录一些与查询无关的上下文细节")
+    mem.remember("量子纠错的表面码阈值分析")
+    hits = mem.recall("量子纠错的表面码阈值", top_k=3)
+    assert any("量子纠错" in h[0].text for h in hits)
+
+
+def test_two_stage_explicit_override(warm_model):
+    mem = SmartMemory(n_bits=4096)  # constructor default off
+    mem.remember("显式覆盖测试条目")
+    hits = mem.recall("显式覆盖测试条目", top_k=1, two_stage=True)
+    assert hits and "显式覆盖" in hits[0][0].text
+
+
 # ------------------------------------------------- directed forgetting
 def test_directed_cleanup_protects_model_stored(mem, warm_model):
     """Directed-forgetting asymmetry (FlyPoet REPORT_MEM §③): pruning targets
