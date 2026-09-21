@@ -143,6 +143,12 @@ cd flymemory
 pip install -r requirements.txt
 ```
 
+or install as a package (adds a `flymemory-server` command):
+
+```bash
+pip install git+https://github.com/aujurd22/flymemory.git
+```
+
 `requirements.txt` covers torch, sentence-transformers, mcp (pinned `>=1.30,<2`),
 uvicorn, numpy, pytest.
 
@@ -152,7 +158,7 @@ uvicorn, numpy, pytest.
 python -m pytest tests/
 ```
 
-36 behavioral rule tests. The first run downloads
+behavioral rule tests. The first run downloads
 `paraphrase-multilingual-MiniLM-L12-v2` (~470 MB) from HuggingFace into the
 standard HF cache; after that everything works offline. If HuggingFace is
 unreachable from your network, set a mirror endpoint first:
@@ -164,7 +170,7 @@ export HF_ENDPOINT=https://hf-mirror.com    # PowerShell: $env:HF_ENDPOINT="http
 ### 3. Start the server
 
 ```bash
-python flymemory/mcp_v3.py --http
+python flymemory/mcp_v3.py --http          # or: flymemory-server --http
 # → serves the MCP endpoint at http://127.0.0.1:8765/mcp
 # → logs to flymemory/server.log (or server.<pid>.log if that file is locked)
 ```

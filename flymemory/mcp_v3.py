@@ -354,7 +354,7 @@ def port_in_use(host: str, port: int) -> bool:
         s.settimeout(0.5)
         return s.connect_ex((host, port)) == 0
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="FlyMemory v3 MCP server")
     parser.add_argument("--http", action="store_true",
                         help="run as persistent streamable-http server instead of stdio")
@@ -390,3 +390,7 @@ if __name__ == "__main__":
         except Exception as e:  # 离线等情况下跳过，首轮调用时再尝试
             sys.stderr.write(f"[flymemory] model preload skipped: {e}\n")
         mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

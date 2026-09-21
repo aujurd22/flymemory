@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flymemory"
+version = "3.3.0"
+description = "Long-term memory layer for personal AI agents: chunked semantic+lexical recall, power-law decay, semantic dedup, model-driven supersede, MCP server"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.24",
+    "sentence-transformers>=2.2",
+    "mcp>=1.30,<2",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyarrow>=14", "scikit-learn>=1.3"]
+
+[project.scripts]
+flymemory-server = "flymemory.mcp_v3:main"
+
+[tool.setuptools]
+packages = ["flymemory"]
