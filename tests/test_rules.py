@@ -261,9 +261,9 @@ def test_da_gate_model_entries_decay_slower(warm_model):
     m_model = next(m for m in mem.memories if m.source == "model")
     m_hook = next(m for m in mem.memories if m.source == "hook")
     assert mem._decay_weight(m_model) > mem._decay_weight(m_hook)
-    # at 60 days: model tau=60d -> 0.707; hook tau=30d -> 0.5
+    # at 60 days: model tau=60d -> (2)^-0.5 = 0.707; hook tau=30d -> (3)^-0.5 = 0.577
     assert abs(mem._decay_weight(m_model) - 0.7071) < 0.01
-    assert abs(mem._decay_weight(m_hook) - 0.5) < 0.01
+    assert abs(mem._decay_weight(m_hook) - 0.5774) < 0.01
 
 
 def test_decay_tau_legacy_kwarg_alias():
