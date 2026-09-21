@@ -25,6 +25,7 @@ import re
 import math
 import time
 import os
+import sys
 import pickle
 from collections import Counter, defaultdict
 from typing import List, Tuple, Optional, Dict, Iterable, Set
@@ -32,6 +33,11 @@ from dataclasses import dataclass
 
 # ===== Lazy model loading =====
 _model = None
+
+def _model_name() -> str:
+    return os.environ.get("FLYMEMORY_MODEL",
+                          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
 
 def _get_model():
     global _model
@@ -46,9 +52,7 @@ def _get_model():
         # which was the root cause of "stale memory confusion" reports. L12-v2 covers
         # 50+ languages and is also 384-dim (same projection matrix). Switching the
         # model requires re-embedding the whole library. Override: FLYMEMORY_MODEL.
-        model_name = os.environ.get("FLYMEMORY_MODEL",
-                                    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-        _model = SentenceTransformer(model_name, device=device)
+        _model = SentenceTransformer(_model_name(), device=device)
     return _model
 
 
@@ -151,6 +155,22 @@ def split_chunks(text: str, min_len: int = 10, max_len: int = 120) -> List[str]:
         else:
             merged.append(c)
     return [c.strip() for c in merged if c.strip()]
+
+
+_CRED_PATTERNS = ("ghp_", "github_pat_", "pypi-AgEI", "sk-ant-", "sk-proj-",
+                  "AKIA", "-----BEGIN", "xoxb-", "xoxp-")
+
+
+def _contains_credential(text: str) -> bool:
+    """Server-side sanitizer: applies to EVERY write path (hook, model, import),
+    not just the hook -- the hook filter alone is a single point of trust."""
+    return any(p in text for p in _CRED_PATTERNS)
+
+
+# merge provenance rule: a restatement must never demote the provenance of the
+# entry it merges into (a hook retelling of a model-judged conclusion stays
+# "model" -- SOURCE_WEIGHT depends on it)
+_SOURCE_RANK = {"auto": 0, "hook": 1, "import": 2, "model": 3}
 
 
 # ===== SmartMemory =====
@@ -380,6 +400,11 @@ class SmartMemory:
           counts: {"new": n, "merged": n, "strengthened": n}
           memory_ids: all touched entry ids; chunks: chunks processed
         """
+        if _contains_credential(text):
+            # server-side sanitizer: credentials never enter the library,
+            # regardless of which write path delivered them
+            return {"stored": False, "action": "rejected", "novelty": 0.0,
+                    "memory_id": None, "reason": "credential-like content"}
         chunks = [c for c in split_chunks(text) if not _is_junk_chunk(c)]
         counts = {"new": 0, "merged": 0, "strengthened": 0, "rejected": 0}
         ids = []
@@ -421,9 +446,19 @@ class SmartMemory:
                     "memory_id": None}
         binary, emb = self._encode(text)
 
+        if _contains_credential(text):
+            # server-side sanitizer: credentials never enter the library,
+            # regardless of which write path delivered them
+            return {"stored": False, "action": "rejected", "novelty": 0.0,
+                    "memory_id": None, "reason": "credential-like content"}
+
         best_match = None
         best_sim = 0.0
         for mem in self.memories:
+            if mem.superseded_by is not None:
+                continue  # P0: the history layer is never a dedup target -- new
+            # facts must not be written into superseded nodes where default
+            # recall can no longer see them
             sim = self._semantic_similarity(emb, mem.embedding)
             if sim > best_sim:
                 best_sim = sim
@@ -449,10 +484,18 @@ class SmartMemory:
                 self._unindex(best_match.memory_id)
                 best_match.text = text
                 best_match.embedding = new_emb
-                best_match.source = source
                 self._index_entry(best_match)
                 self._mat_dirty = True
                 self._codes_dirty = True
+            # merge semantics (explicit): text/embedding may refresh from a
+            # longer restatement; source NEVER downgrades (rank order: model >
+            # import > hook > auto); creation timestamp and tags are preserved
+            # (the age stamp reflects when the fact was first learned); response
+            # refreshes only when the restatement provides one.
+            if _SOURCE_RANK.get(source, 0) >= _SOURCE_RANK.get(best_match.source, 0):
+                best_match.source = source
+            if response:
+                best_match.response = response
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "merged",
@@ -476,17 +519,32 @@ class SmartMemory:
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
     # ----- supersede -----
-    def supersede(self, old_id: int, new_id: int) -> bool:
+    def supersede(self, old_id: int, new_id: int) -> Tuple[bool, str]:
         """Mark an entry as superseded by a newer one (excluded from default recall).
 
         The judgment is made by the calling model (it understands semantics);
-        this is the mechanical marker only.
+        this is the mechanical marker only. Validates both ids, rejects
+        self-supersede and cycles (a must never end up superseded by its own
+        chain), so superseded_by forms a proper lineage, not arbitrary ints.
+
+        Returns (ok, reason).
         """
-        for mem in self.memories:
-            if mem.memory_id == old_id:
-                mem.superseded_by = new_id
-                return True
-        return False
+        if old_id == new_id:
+            return False, "old_id == new_id"
+        by_id = {m.memory_id: m for m in self.memories}
+        if old_id not in by_id:
+            return False, f"old #{old_id} does not exist"
+        if new_id not in by_id:
+            return False, f"new #{new_id} does not exist"
+        cur, seen = new_id, set()
+        while cur is not None and cur not in seen:
+            if cur == old_id:
+                return False, "cycle: new already (transitively) supersedes old"
+            seen.add(cur)
+            nxt = by_id.get(cur)
+            cur = nxt.superseded_by if nxt else None
+        by_id[old_id].superseded_by = new_id
+        return True, "ok"
 
     # ----- recall -----
     def recall(self, query: str, top_k: int = 5,
@@ -602,12 +660,26 @@ class SmartMemory:
         trail.sort(key=lambda m: m.timestamp)
         return trail[-limit:]
 
+    @staticmethod
+    def _cut(text: str, n: int) -> str:
+        """Truncate at a sentence boundary when possible (a hard cut can turn
+        'don't use A, use B' into 'don't use A' -- measured concern, 2026-09-21)."""
+        if len(text) <= n:
+            return text
+        cut = text[:n]
+        for p in ("。", "！", "？", ".", "!", "?", "；", ";"):
+            i = cut.rfind(p)
+            if i >= n * 0.5:
+                return cut[:i + 1]
+        return cut
+
     def session_pack(self, minutes: float = 180,
                      trail_limit: int = 15, conclusions_limit: int = 5) -> str:
-        """Compression-recovery pack: the recent working trail plus the newest
-        model-stored conclusions. Injected by the SessionStart(compact) hook
-        right after the host compresses a conversation. Empty string when there
-        is nothing to recover (fresh session / server recently reset)."""
+        """Compression-recovery pack: the recent session trail plus the active
+        long-term conclusions. Injected by the SessionStart(compact) hook right
+        after the host compresses a conversation. Lines carry memory ids so the
+        model can supersede/forget from the pack. Empty string when there is
+        nothing to recover."""
         now = time.time()
         trail = self.recent(minutes=minutes, limit=trail_limit)
         conclusions = sorted((m for m in self.memories
@@ -615,13 +687,15 @@ class SmartMemory:
                              key=lambda m: -m.timestamp)[:conclusions_limit]
         parts = []
         if trail:
-            lines = [f"  [{time.strftime('%H:%M', time.localtime(m.timestamp))}] "
-                     f"({m.source}) {m.text[:90]}" for m in trail]
-            parts.append("RECENT TRAIL (oldest → newest):\n" + "\n".join(lines))
+            lines = [f"  [#{m.memory_id} | "
+                     f"{time.strftime('%H:%M', time.localtime(m.timestamp))} | "
+                     f"{m.source}] {self._cut(m.text, 120)}" for m in trail]
+            parts.append("RECENT SESSION TRAIL (oldest → newest):\n" + "\n".join(lines))
         if conclusions:
-            lines = [f"  [{time.strftime('%m-%d %H:%M', time.localtime(m.timestamp))}] "
-                     f"{m.text[:90]}" for m in conclusions]
-            parts.append("LATEST MODEL-STORED CONCLUSIONS:\n" + "\n".join(lines))
+            lines = [f"  [#{m.memory_id} | "
+                     f"{time.strftime('%m-%d %H:%M', time.localtime(m.timestamp))} | "
+                     f"{m.source}] {self._cut(m.text, 140)}" for m in conclusions]
+            parts.append("ACTIVE LONG-TERM CONCLUSIONS (newest first):\n" + "\n".join(lines))
         return "\n".join(parts)
 
     def decay_cleanup(self, min_retention: float = 0.1,
@@ -676,7 +750,13 @@ class SmartMemory:
 def save(memory: SmartMemory, path: str):
     """Save to disk (embeddings + metadata; W is rebuilt on load)."""
     data = {
-        "schema": "3.1",
+        "schema": "3.2",
+        "embedder": _model_name(),          # identity of the embedding model
+        "config": {                          # runtime flags, honored on load
+            "enable_hopfield": memory.enable_hopfield,
+            "two_stage": memory.two_stage,
+            "hamming_candidates": memory.hamming_candidates,
+        },
         "memories": [
             {
                 "text": m.text, "response": m.response,
@@ -700,13 +780,24 @@ def save(memory: SmartMemory, path: str):
     os.replace(tmp, path)
 
 
-def load(path: str, enable_hopfield: bool = False) -> SmartMemory:
+def load(path: str, enable_hopfield: Optional[bool] = None) -> SmartMemory:
     """Load from disk. Accepts both the current schema (decay_tau, source,
-    superseded_by) and the legacy one (decay_half_life only)."""
+    superseded_by, config, embedder) and the legacy one (decay_half_life only).
+    enable_hopfield: None = honor the config stored in the file."""
     with open(path, "rb") as f:
         data = pickle.load(f)
     tau = data.get("decay_tau") or data.get("decay_half_life") or 2592000.0
-    mem = SmartMemory(n_bits=data["n_bits"], decay_tau=tau, enable_hopfield=enable_hopfield)
+    cfg = data.get("config") or {}
+    hop = enable_hopfield if enable_hopfield is not None else cfg.get("enable_hopfield", False)
+    mem = SmartMemory(n_bits=data["n_bits"], decay_tau=tau, enable_hopfield=hop,
+                      two_stage=cfg.get("two_stage", False),
+                      hamming_candidates=cfg.get("hamming_candidates", 100))
+    stored_embedder = data.get("embedder")
+    if stored_embedder and stored_embedder != _model_name():
+        # embeddings were produced by a different model: retrieval quality is
+        # degraded until the library is re-embedded -- fail loud in the log
+        sys.stderr.write(f"[flymemory] WARNING: library embedded with '{stored_embedder}', "
+                         f"current model is '{_model_name()}' -- re-embed recommended\n")
     mem._next_id = data.get("_next_id", len(data["memories"]))
     for md in data["memories"]:
         entry = MemoryEntry(

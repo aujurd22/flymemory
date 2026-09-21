@@ -221,12 +221,12 @@ def flymemory_supersede(old_memory_id: int, new_memory_id: int) -> str:
     """
     with _mem_lock:
         mem = get_memory()
-        ok = mem.supersede(old_memory_id, new_memory_id)
+        ok, reason = mem.supersede(old_memory_id, new_memory_id)
         if ok:
             save_memory()
     if ok:
         return f"[SUPERSEDED] #{old_memory_id} -> #{new_memory_id} (excluded from default recall)"
-    return f"[NOT FOUND] memory #{old_memory_id} does not exist"
+    return f"[REJECTED] {reason}"
 
 @mcp.tool()
 def flymemory_session_pack(minutes: float = 180) -> str:

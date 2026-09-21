@@ -1,5 +1,7 @@
 # FlyMemory
 
+*Last updated: 2026-09-21 · v3.3*
+
 **A long-term memory layer for personal AI agents: chunked semantic + lexical recall, time decay, semantic dedup, and model-driven supersede.**
 
 FlyMemory gives a coding agent a persistent, self-managed memory: every user message is captured by a hook, stored as per-sentence chunks, deduplicated, and recalled into later conversations with age and provenance stamps. Stale facts are not deleted — the calling model marks them *superseded*, so history stays queryable while current state stays clean.
@@ -14,7 +16,7 @@ FlyMemory gives a coding agent a persistent, self-managed memory: every user mes
 
 ```text
 user message
-   ↓  UserPromptSubmit hook (mechanical, ~10ms)
+   ↓  UserPromptSubmit hook (mechanical: capture + recall + store)
 chunked store: one block per sentence (multi-topic messages stay separable)
    ↓
 semantic dedup, length-tiered thresholds
@@ -109,7 +111,7 @@ shortcut or a scheduled task.
 
 ```bash
 pip install -r requirements.txt   # torch, sentence-transformers, mcp, uvicorn, numpy, pytest
-python -m pytest tests/           # 26 behavioral rule tests
+python -m pytest tests/           # 36 behavioral rule tests
 ```
 
 The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`, 384-dim,
@@ -194,10 +196,15 @@ Reading:
   mentions (dense+recency: 3/14); a recency-ordered BM25 is the strongest
   mechanical top-1 here (10/14) — an honest result we document, not hide.
 - FlyMemory's design intent is *model-resolution from a stamped top-3*, not
-  mechanical top-1: with age + provenance stamps on every hit, the calling
-  model resolves 13/14 correctly, never sees a superseded fact at rank 1
-  (0/14), and recovers full history on demand (`include_superseded=True`,
-  6/6 — archived, not forgotten, immune to decay in history mode).
+  mechanical top-1. Measured: 13/14 of the correct current answers are present
+  in the model-facing top-3 (with age + provenance stamps); **a superseded
+  fact never appears at rank 1 (0/14)**, and full history is recovered on
+  demand (`include_superseded=True`, 6/6 — archived, not forgotten, immune to
+  decay in history mode). Note: the benchmark measures *presence in top-3*,
+  not an actual LLM resolution step.
+- This is a **system-level** comparison: the FlyMemory arm runs the whole
+  pipeline (supersede + decay + source weighting + lexical + chunking + dedup)
+  while baselines run bare similarity. Component ablation is future work.
 - n=14: indicative, not statistical.
 
 ## API sketch

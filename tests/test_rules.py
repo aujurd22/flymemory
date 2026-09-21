@@ -161,7 +161,59 @@ def test_include_superseded_recovers_history(mem, warm_model):
 
 
 def test_supersede_unknown_id_returns_false(mem):
-    assert mem.supersede(99999, 100000) is False
+    ok, reason = mem.supersede(99999, 100000)
+    assert not ok and "old" in reason
+
+
+def test_supersede_validates_ids_and_cycles(mem, warm_model):
+    a = mem.remember("状态 A：使用 X")["memory_id"]
+    b = mem.remember("状态 B：改用 Y")["memory_id"]
+    ok, reason = mem.supersede(a, a)
+    assert not ok and "==" in reason
+    ok, reason = mem.supersede(a, 999999)
+    assert not ok and "new" in reason
+    ok, _ = mem.supersede(a, b)          # A -> B
+    assert ok
+    ok, reason = mem.supersede(b, a)     # cycle: B -> A must be rejected
+    assert not ok and "cycle" in reason
+    assert mem.memories[0].superseded_by == b  # A unchanged by the rejected call
+
+
+def test_dedup_ignores_superseded_history(mem, warm_model):
+    """P0 regression: new facts about a superseded topic must become ACTIVE
+    entries, never be written back into the superseded (history) node where
+    default recall cannot see them."""
+    old = mem.remember("用户使用 Windows 11 办公")["memory_id"]
+    new = mem.remember("用户把主力系统换成了 Linux")["memory_id"]
+    mem.supersede(old, new)
+    r = mem.remember("用户又在 Windows 上部署了一个新服务")
+    assert r["action"] == "new"
+    assert r["memory_id"] not in (old, new)
+    hits = mem.recall("Windows 上部署了什么", top_k=3)
+    assert any("新服务" in h[0].text for h in hits)
+
+
+def test_merge_source_never_downgrades_and_keeps_origin(mem, warm_model):
+    """Merge semantics: a longer hook restatement may refresh text/embedding,
+    but source never demotes (model stays model), creation timestamp is
+    preserved (age stamp = when the fact was learned), and a provided response
+    refreshes."""
+    created = time.time() - 3600
+    mem.remember("结论：采用方案 B，弃用方案 A", source="model", timestamp=created)
+    r = mem.remember("经过讨论最终结论是采用方案 B，同时彻底弃用方案 A，理由记录在案",
+                     source="hook")
+    assert r["action"] == "merged"
+    e = mem.memories[0]
+    assert e.source == "model"
+    assert abs(e.timestamp - created) < 1e-6
+    assert e.response == ""
+
+
+def test_server_side_credential_rejection(mem, warm_model):
+    r = mem.remember("我的新 key 是 github_pat_ABCDEF1234567890xyz，记得更新")
+    assert r["action"] == "rejected"
+    assert r.get("reason") == "credential-like content"
+    assert mem.size == 0
 
 
 # -------------------------------------------------------------- decay math
@@ -265,9 +317,10 @@ def test_session_pack_contains_trail_and_conclusions(mem, warm_model):
     mem.remember("最近的轨迹消息", source="hook")
     mem.remember("重要的模型结论：采用方案 B", source="model")
     pack = mem.session_pack(minutes=180)
-    assert "RECENT TRAIL" in pack
-    assert "LATEST MODEL-STORED CONCLUSIONS" in pack
+    assert "RECENT SESSION TRAIL" in pack
+    assert "ACTIVE LONG-TERM CONCLUSIONS" in pack
     assert "采用方案 B" in pack
+    assert "#0" in pack and "#1" in pack  # ids present: model can supersede/forget from the pack
 
 
 def test_session_pack_empty_when_nothing_recent(mem, warm_model):
