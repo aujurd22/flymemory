@@ -651,13 +651,12 @@ class SmartMemory:
             if len(results) >= top_k:
                 break
 
-        # rehearsal side effect (matches pre-vectorization semantics: every
-        # entry with sim>0.5 gets its last_accessed/access_count refreshed)
-        hot = np.where(sim_vec > 0.5)[0]
-        for idx in hot:
-            m = self.memories[int(idx)]
-            if m.superseded_by is not None and not include_superseded:
-                continue
+        # rehearsal = reactivation: only entries actually INJECTED into the
+        # caller's context get refreshed. The earlier wide rule (refresh every
+        # entry with sim>0.5) made ALL entries immortal -- measured 2026-09-20:
+        # 100% pinned at retention 1.0, decay inert, cleanup never fires
+        # (bench_rehearsal_sim.py). Rehearsal must stay scarce to mean anything.
+        for m, _, _ in results:
             m.last_accessed = now
             m.access_count += 1
         return results
