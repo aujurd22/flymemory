@@ -247,9 +247,10 @@ def test_rehearsal_slows_decay():
     assert mem._decay_weight(rehearsed) > mem._decay_weight(fresh)
 
 
-def test_da_gate_model_entries_decay_slower(mem, warm_model):
+def test_da_gate_model_entries_decay_slower(warm_model):
     """Dopamine-gated decay (D3): model-stored entries get 2x effective tau --
     judged knowledge persists longer than unjudged hook chatter."""
+    mem = SmartMemory(n_bits=4096, decay_tau=30 * 86400.0)
     now = time.time()
     mem.remember("模型精存的重要结论", source="model")
     mem.remember("hook 机械捕获的同主题闲聊", source="hook")
