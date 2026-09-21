@@ -328,6 +328,22 @@ mem = SmartMemory(two_stage=True, hamming_candidates=100)
 6. A C-extension popcount or a real binary ANN (faiss/hnswlib) would change
    the latency picture, but fidelity remains the binding constraint.
 
+### Measured verdict (2026-09-22, diverse 10k-entry library)
+
+| N | prefilter fidelity@100 | Hamming scan | dense scan |
+|---|---|---|---|
+| 1 000 | 0.922 | 6.35 ms | 0.21 ms |
+| 2 000 | 0.965 | 11.90 ms | 0.34 ms |
+| 5 000 | 0.903 | 31.94 ms | 0.56 ms |
+| 10 000 | 0.878 | 55.93 ms | 0.94 ms |
+
+**The numpy Hamming scan is ~60x slower than the BLAS dense matmul at every
+scale** (no SIMD popcount in numpy; BLAS is heavily optimized), and fidelity
+decays as N grows. Two-stage retrieval is therefore **rejected for the numpy
+implementation at every scale** -- the dense path is both faster and more
+faithful. The code stays behind the flag as a documented negative result; the
+sensible scale path is a real ANN index (faiss/hnswlib) at N > 1e5.
+
 ## Contradiction-resolution benchmark
 
 `bench_contradiction.py` — 14 temporal scenarios ("user runs Windows" →
