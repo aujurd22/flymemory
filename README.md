@@ -124,6 +124,7 @@ remain queryable via `include_superseded=True`.
 | Recall exact identifiers | IDF lexical channel (part numbers, file paths, IDs) |
 | Forget slowly, never abruptly | power-law decay + rehearsal; `flymemory_cleanup` prunes below threshold |
 | Multi-topic messages stay separable | per-sentence chunking on store, per-chunk max on query |
+| Fragmented knowledge gets abstracted | `flymemory_consolidate(ids, conclusion)` builds a higher-order entry with `evidence_ids` back-links; raw entries kept as evidence |
 
 ## Requirements & install
 
