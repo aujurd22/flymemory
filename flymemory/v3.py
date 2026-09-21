@@ -29,7 +29,7 @@ import sys
 import pickle
 from collections import Counter, defaultdict
 from typing import List, Tuple, Optional, Dict, Iterable, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # ===== Lazy model loading =====
 _model = None
@@ -117,6 +117,7 @@ class MemoryEntry:
     memory_id: int
     superseded_by: Optional[int] = None   # replaced by a newer entry; excluded from default recall
     source: str = "hook"                  # hook=mechanical capture / model=model-judged / import / auto
+    evidence_ids: List[int] = field(default_factory=list)  # for consolidated entries: the raw entries kept as evidence
 
 
 # ===== Chunking: one block per sentence so multi-topic messages stay separable =====
@@ -766,6 +767,7 @@ def save(memory: SmartMemory, path: str):
                 "memory_id": m.memory_id,
                 "superseded_by": m.superseded_by,
                 "source": m.source,
+                "evidence_ids": list(m.evidence_ids),
             } for m in memory.memories
         ],
         "_next_id": memory._next_id,
@@ -808,6 +810,7 @@ def load(path: str, enable_hopfield: Optional[bool] = None) -> SmartMemory:
             memory_id=md["memory_id"],
             superseded_by=md.get("superseded_by"),
             source=md.get("source", "auto"),
+            evidence_ids=list(md.get("evidence_ids", [])),
         )
         mem.memories.append(entry)
         if mem.enable_hopfield:

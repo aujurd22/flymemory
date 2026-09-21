@@ -244,6 +244,41 @@ def flymemory_session_pack(minutes: float = 180) -> str:
     return pack if pack else "Nothing to recover: no entries in the requested window."
 
 @mcp.tool()
+def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
+    """Consolidate several related memories into ONE higher-order conclusion.
+
+    The judgment (which ids belong together, what the conclusion says) belongs
+    to the calling model. Mechanics: creates a new model-stored entry carrying
+    evidence_ids linking back to the raw entries — raw entries are KEPT as
+    evidence (never deleted), so consolidation adds abstraction without
+    destroying history.
+
+    Args:
+        memory_ids: ids of the related memories being consolidated (>= 2)
+        conclusion: the higher-order conclusion text
+    """
+    with _mem_lock:
+        mem = get_memory()
+        ids = [int(i) for i in memory_ids]
+        if len(set(ids)) < 2:
+            return "[REJECTED] consolidation needs at least 2 distinct memories"
+        by_id = {m.memory_id: m for m in mem.memories}
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            return f"[REJECTED] missing memory ids: {missing}"
+        if _contains_credential(conclusion):
+            return "[REJECTED] credential-like content in conclusion"
+        r = mem.remember_text(conclusion, tags=["consolidation"], source="model")
+        if not r.get("stored"):
+            return "[REJECTED] conclusion not stored (dedup rejected)"
+        eid = r["memory_id"]
+        entry = next(m for m in mem.memories if m.memory_id == eid)
+        entry.evidence_ids = sorted(set(ids) - {eid})
+        save_memory()
+    return (f"[CONSOLIDATED -> #{eid}] evidence: {entry.evidence_ids} | "
+            f"{conclusion[:80]}")
+
+@mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:
     """Automatic memory management — call this every conversation turn.
 

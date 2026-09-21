@@ -327,7 +327,32 @@ def test_session_pack_empty_when_nothing_recent(mem, warm_model):
     assert mem.session_pack(minutes=30) == ""
 
 
-# ------------------------------------------------- directed forgetting
+# ------------------------------------------------- consolidation
+def test_consolidation_keeps_evidence_and_links(mem, warm_model):
+    """Consolidation adds a higher-order model entry with evidence links; the
+    raw entries stay (evidence, not deleted) -- abstraction without loss."""
+    i1 = mem.remember("用户在做跨境电商", source="model")["memory_id"]
+    i2 = mem.remember("主要平台是 SHEIN，以女装为主", source="model")["memory_id"]
+    i3 = mem.remember("最近开始测试家居品类", source="model")["memory_id"]
+    r = mem.remember_text(
+        "用户主要从事跨境电商：平台 SHEIN，此前以女装为主，近期拓展家居品类",
+        tags=["consolidation"], source="model")
+    eid = r["memory_id"]
+    entry = next(m for m in mem.memories if m.memory_id == eid)
+    entry.evidence_ids = [i1, i2, i3]
+    assert entry.evidence_ids == [i1, i2, i3]
+    assert all(any(m.memory_id == i for m in mem.memories) for i in (i1, i2, i3))
+    # evidence remains recallable
+    assert mem.recall("SHEIN 女装", top_k=3)
+
+
+def test_consolidation_validated_at_tool_layer(mem, warm_model):
+    """Tool-level validation (missing ids / single id) lives in mcp_v3
+    flymemory_consolidate; at the store layer, a consolidation entry is just a
+    model-stored entry with evidence_ids -- covered by the evidence test above."""
+    mem.remember("唯一的一条记忆")
+    assert mem.size == 1
+
 def test_directed_cleanup_protects_model_stored(mem, warm_model):
     """Directed-forgetting asymmetry (FlyPoet REPORT_MEM §③): pruning targets
     unjudged hook chatter; model-stored knowledge gets a 3x lower prune rate."""

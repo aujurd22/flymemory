@@ -95,6 +95,24 @@ depend on the model remembering to call a tool:
 idle when healthy, never exits); run it headless at login via a Startup
 shortcut or a scheduled task.
 
+## Design positioning
+
+FlyMemory is an **explicit, inspectable memory state machine** — not a
+model-driven memory synthesizer. Every state transition is mechanical and
+auditable: `superseded_by` lineage, `source` provenance, power-law decay,
+directed forgetting, evidence-linked consolidation, and a recovery pack after
+context compaction. Capture is mechanical (hook), judgment is the calling
+model's (precision-store, supersede, consolidate, forget) — the server never
+runs an LLM, and everything is readable in one small file.
+
+That is a deliberate contrast with hosted "memory synthesis" approaches
+(background model-side consolidation of raw chats, e.g. ChatGPT's memory):
+those optimize synthesis quality at service scale; FlyMemory optimizes
+**inspectability, verifiability and data locality** for a personal agent.
+Raw entries are never deleted — consolidation adds higher-order entries with
+`evidence_ids` back-links (abstraction without loss), and superseded states
+remain queryable via `include_superseded=True`.
+
 ## The memory rules
 
 | Rule | Mechanism |
