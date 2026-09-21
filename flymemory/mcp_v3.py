@@ -47,9 +47,9 @@ except Exception:
 # numpy 已在上方顶层 import，OpenBLAS 已在主线程初始化；这里补齐 torch 一侧。
 import sentence_transformers  # noqa: F401  强制主线程导入 torch / transformers
 try:
-    from flymemory.v3 import SmartMemory, load, save, _get_model  # noqa: F401
+    from flymemory.v3 import SmartMemory, load, save, _get_model, _contains_credential  # noqa: F401
 except ImportError:  # 无 PYTHONPATH、以脚本方式直接运行时
-    from v3 import SmartMemory, load, save, _get_model  # noqa: F401
+    from v3 import SmartMemory, load, save, _get_model, _contains_credential  # noqa: F401
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "flymemory_v3.pkl")
 

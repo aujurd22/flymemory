@@ -245,9 +245,16 @@ class SmartMemory:
         norm2 = np.linalg.norm(emb2) + 1e-8
         return float(max(0.0, np.dot(emb1, emb2) / (norm1 * norm2)))
 
+    def _decay_tau_for(self, mem: MemoryEntry) -> float:
+        """Dopamine-gated decay (the DA-neuron analogy): model-stored entries
+        were JUDGED worth keeping, so their effective tau doubles. Unjudged
+        hook chatter decays at the base rate."""
+        return self.decay_tau * (2.0 if mem.source == "model" else 1.0)
+
     def _decay_weight(self, mem: MemoryEntry) -> float:
         dt = time.time() - mem.last_accessed
-        base = (1.0 + dt / self.decay_tau) ** (-0.5)
+        tau = self._decay_tau_for(mem)
+        base = (1.0 + dt / tau) ** (-0.5)
         rehearsal = 1.0 + 0.5 * np.log2(1 + mem.access_count)
         return min(base * rehearsal, 1.0)
 
@@ -628,7 +635,8 @@ class SmartMemory:
         now = time.time()
         last = np.array([m.last_accessed for m in self.memories], dtype=np.float64)
         acc = np.array([m.access_count for m in self.memories], dtype=np.float64)
-        dw = np.minimum(((1.0 + (now - last) / self.decay_tau) ** -0.5)
+        taus = np.array([self._decay_tau_for(m) for m in self.memories], dtype=np.float64)
+        dw = np.minimum(((1.0 + (now - last) / taus) ** -0.5)
                         * (1.0 + 0.5 * np.log2(1.0 + acc)), 1.0)
         if include_superseded:
             # history mode: an explicit lookup of what was true back then.

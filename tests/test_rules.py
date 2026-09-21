@@ -247,6 +247,24 @@ def test_rehearsal_slows_decay():
     assert mem._decay_weight(rehearsed) > mem._decay_weight(fresh)
 
 
+def test_da_gate_model_entries_decay_slower(mem, warm_model):
+    """Dopamine-gated decay (D3): model-stored entries get 2x effective tau --
+    judged knowledge persists longer than unjudged hook chatter."""
+    now = time.time()
+    mem.remember("模型精存的重要结论", source="model")
+    mem.remember("hook 机械捕获的同主题闲聊", source="hook")
+    age = 60 * 86400  # 60 days: base tau is 30d, model tau is 60d
+    for m in mem.memories:
+        m.last_accessed = now - age
+        m.access_count = 0
+    m_model = next(m for m in mem.memories if m.source == "model")
+    m_hook = next(m for m in mem.memories if m.source == "hook")
+    assert mem._decay_weight(m_model) > mem._decay_weight(m_hook)
+    # at 60 days: model tau=60d -> 0.707; hook tau=30d -> 0.5
+    assert abs(mem._decay_weight(m_model) - 0.7071) < 0.01
+    assert abs(mem._decay_weight(m_hook) - 0.5) < 0.01
+
+
 def test_decay_tau_legacy_kwarg_alias():
     mem = SmartMemory(n_bits=64, decay_half_life=123.0)
     assert mem.decay_tau == 123.0
