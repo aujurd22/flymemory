@@ -229,6 +229,21 @@ def flymemory_supersede(old_memory_id: int, new_memory_id: int) -> str:
     return f"[NOT FOUND] memory #{old_memory_id} does not exist"
 
 @mcp.tool()
+def flymemory_session_pack(minutes: float = 180) -> str:
+    """Compression-recovery pack: the recent working trail plus the newest
+    model-stored conclusions, chronological. Injected by the SessionStart
+    (compact) hook right after the host compresses a conversation; also useful
+    manually after returning to a session.
+
+    Args:
+        minutes: how far back the trail reaches (default 180)
+    """
+    with _mem_lock:
+        mem = get_memory()
+        pack = mem.session_pack(minutes=minutes)
+    return pack if pack else "Nothing to recover: no entries in the requested window."
+
+@mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:
     """Automatic memory management — call this every conversation turn.
 
@@ -250,6 +265,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
         mem = get_memory()
         output_parts = []
 
+        recalled_ids = set()
         # ===== RECALL: find relevant memories =====
         if mem.size > 0:
             results = mem.recall(context, top_k=3)
@@ -257,6 +273,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
                 recall_parts = []
                 for entry, sim, eff in results:
                     if sim > 0.4:  # only report meaningful matches
+                        recalled_ids.add(entry.memory_id)
                         recall_parts.append(f"  [{sim:.2f} | {_age_str(entry.timestamp)}] {entry.text[:80]}")
                 if recall_parts:
                     output_parts.append("RECALLED MEMORIES:")
@@ -267,6 +284,16 @@ def flymemory_auto(context: str, response: str = "") -> str:
                 output_parts.append("RECALL: memory empty.")
         else:
             output_parts.append("RECALL: memory empty (first use).")
+
+        # ===== RECENT channel: compression protection for the working thread =====
+        # Pure recency, independent of similarity — deictic references ("that
+        # thing from just now") survive compaction through this block.
+        recent = [m for m in mem.recent(minutes=90, limit=6)
+                  if m.memory_id not in recalled_ids]
+        if recent:
+            output_parts.append("RECENT CONTEXT (last ~90 min):")
+            output_parts.extend(f"  [{_age_str(m.timestamp)}] {m.text[:70]}"
+                                for m in recent)
 
         # ===== STORE: store this interaction if novel =====
         combined_text = context

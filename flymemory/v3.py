@@ -590,6 +590,40 @@ class SmartMemory:
             m.access_count += 1
         return results
 
+    def recent(self, minutes: float = 90, limit: int = 12) -> List[MemoryEntry]:
+        """Working-memory trail: entries captured within the last `minutes`,
+        chronological, superseded excluded. This is the compression-protection
+        channel — context compaction destroys the recent narrative thread, and
+        no semantic query can recover a deictic reference like "that thing from
+        just now"; the time-ordered trail can."""
+        cutoff = time.time() - minutes * 60
+        trail = [m for m in self.memories
+                 if m.timestamp >= cutoff and m.superseded_by is None]
+        trail.sort(key=lambda m: m.timestamp)
+        return trail[-limit:]
+
+    def session_pack(self, minutes: float = 180,
+                     trail_limit: int = 15, conclusions_limit: int = 5) -> str:
+        """Compression-recovery pack: the recent working trail plus the newest
+        model-stored conclusions. Injected by the SessionStart(compact) hook
+        right after the host compresses a conversation. Empty string when there
+        is nothing to recover (fresh session / server recently reset)."""
+        now = time.time()
+        trail = self.recent(minutes=minutes, limit=trail_limit)
+        conclusions = sorted((m for m in self.memories
+                              if m.source == "model" and m.superseded_by is None),
+                             key=lambda m: -m.timestamp)[:conclusions_limit]
+        parts = []
+        if trail:
+            lines = [f"  [{time.strftime('%H:%M', time.localtime(m.timestamp))}] "
+                     f"({m.source}) {m.text[:90]}" for m in trail]
+            parts.append("RECENT TRAIL (oldest → newest):\n" + "\n".join(lines))
+        if conclusions:
+            lines = [f"  [{time.strftime('%m-%d %H:%M', time.localtime(m.timestamp))}] "
+                     f"{m.text[:90]}" for m in conclusions]
+            parts.append("LATEST MODEL-STORED CONCLUSIONS:\n" + "\n".join(lines))
+        return "\n".join(parts)
+
     def decay_cleanup(self, min_retention: float = 0.1,
                       protect_model_stored: bool = False) -> int:
         """Directed forgetting (cf. the directed-forgetting shower, REPORT_MEM §③):

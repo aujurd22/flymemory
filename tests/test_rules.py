@@ -236,6 +236,44 @@ def test_two_stage_explicit_override(warm_model):
     assert hits and "显式覆盖" in hits[0][0].text
 
 
+# --------------------------------------------- recency / compression pack
+def test_recent_trail_window_and_order(mem, warm_model):
+    """recent() returns the working trail: within the window, chronological,
+    superseded entries excluded."""
+    now = time.time()
+    old = mem.remember("三天前的旧条目", timestamp=now - 3 * 86400)["memory_id"]
+    r1 = mem.remember("一小时前的对话", timestamp=now - 3600)["memory_id"]
+    r2 = mem.remember("刚刚的对话", timestamp=now - 30)["memory_id"]
+    mid = mem.remember("即将被取代的条目", timestamp=now - 60)["memory_id"]
+    mem.supersede(mid, r2)
+    trail = mem.recent(minutes=120, limit=10)
+    ids = [m.memory_id for m in trail]
+    assert ids == [r1, r2]          # in-window, chronological, superseded gone
+    assert old not in ids           # outside the window
+
+
+def test_recent_trail_limit_keeps_newest(mem, warm_model):
+    now = time.time()
+    for i in range(8):
+        mem.remember(f"轨迹条目{i}", timestamp=now - (8 - i) * 60)
+    trail = mem.recent(minutes=120, limit=3)
+    assert [m.memory_id for m in trail] == mem.memories[-3:].__class__(
+        [m.memory_id for m in sorted(mem.memories, key=lambda x: x.timestamp)[-3:]])
+
+
+def test_session_pack_contains_trail_and_conclusions(mem, warm_model):
+    mem.remember("最近的轨迹消息", source="hook")
+    mem.remember("重要的模型结论：采用方案 B", source="model")
+    pack = mem.session_pack(minutes=180)
+    assert "RECENT TRAIL" in pack
+    assert "LATEST MODEL-STORED CONCLUSIONS" in pack
+    assert "采用方案 B" in pack
+
+
+def test_session_pack_empty_when_nothing_recent(mem, warm_model):
+    assert mem.session_pack(minutes=30) == ""
+
+
 # ------------------------------------------------- directed forgetting
 def test_directed_cleanup_protects_model_stored(mem, warm_model):
     """Directed-forgetting asymmetry (FlyPoet REPORT_MEM §③): pruning targets
