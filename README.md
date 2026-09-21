@@ -126,18 +126,143 @@ remain queryable via `include_superseded=True`.
 | Multi-topic messages stay separable | per-sentence chunking on store, per-chunk max on query |
 | Fragmented knowledge gets abstracted | `flymemory_consolidate(ids, conclusion)` builds a higher-order entry with `evidence_ids` back-links; raw entries kept as evidence |
 
-## Requirements & install
+## Install
+
+### 0. Prerequisites
+
+- Python **3.10+** (3.13 tested), Git
+- ~5 GB disk for dependencies (torch is the big one) + a ~470 MB embedding model
+- OS: developed on Windows; POSIX should work (pure Python + uvicorn), feedback welcome
+- A GPU is **not** required — CPU inference is the default and is fast enough
+
+### 1. Clone and install
 
 ```bash
-pip install -r requirements.txt   # torch, sentence-transformers, mcp, uvicorn, numpy, pytest
-python -m pytest tests/           # 36 behavioral rule tests
+git clone https://github.com/aujurd22/flymemory.git
+cd flymemory
+pip install -r requirements.txt
 ```
 
-The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`, 384-dim,
-~470MB) downloads automatically from HuggingFace on first run, then works
-offline. CPU inference by default (~10ms/sentence); set `FLYMEMORY_DEVICE=cuda`
-to override. The library file (`flymemory_v3.pkl`) is local data and is
-git-ignored — no conversation content ships with this repo.
+`requirements.txt` covers torch, sentence-transformers, mcp (pinned `>=1.30,<2`),
+uvicorn, numpy, pytest.
+
+### 2. Run the tests (also downloads the embedding model)
+
+```bash
+python -m pytest tests/
+```
+
+36 behavioral rule tests. The first run downloads
+`paraphrase-multilingual-MiniLM-L12-v2` (~470 MB) from HuggingFace into the
+standard HF cache; after that everything works offline. If HuggingFace is
+unreachable from your network, set a mirror endpoint first:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com    # PowerShell: $env:HF_ENDPOINT="https://hf-mirror.com"
+```
+
+### 3. Start the server
+
+```bash
+python flymemory/mcp_v3.py --http
+# → serves the MCP endpoint at http://127.0.0.1:8765/mcp
+# → logs to flymemory/server.log (or server.<pid>.log if that file is locked)
+```
+
+Smoke test (writes one test entry into a fresh library, and reads it back):
+
+```bash
+python flymemory/test_http_client.py
+```
+
+Without `--http` the server speaks MCP over stdio (for clients that spawn it
+per-session).
+
+### 4. Register the MCP server
+
+Any streamable-HTTP MCP client works. ZCode example
+(`~/.zcode/cli/config.json`, adjust paths):
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "flymemory": {
+        "type": "http",
+        "url": "http://127.0.0.1:8765/mcp",
+        "timeoutMs": 120000
+      }
+    }
+  }
+}
+```
+
+Restart the client afterwards; you should see the `flymemory_*` tools
+(remember / recall / auto / supersede / consolidate / forget / cleanup /
+stats / session_pack).
+
+### 5. (Recommended) mechanical capture hooks
+
+Two optional hooks make memory work without the model having to remember
+anything. Same config file:
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "UserPromptSubmit": [
+        { "hooks": [ { "type": "process",
+          "command": "C:/path/to/python.exe",
+          "args": ["D:/path/to/flymemory/flymemory/hook_auto.py"],
+          "timeoutMs": 10000 } ] }
+      ],
+      "SessionStart": [
+        { "matcher": "compact",
+          "hooks": [ { "type": "process",
+          "command": "C:/path/to/python.exe",
+          "args": ["D:/path/to/flymemory/flymemory/hook_compact.py"],
+          "timeoutMs": 15000 } ] }
+      ]
+    }
+  }
+}
+```
+
+- `hook_auto.py` (UserPromptSubmit): stores every user message and injects
+  recall results into the turn.
+- `hook_compact.py` (SessionStart on `compact`): injects a recovery pack
+  (recent trail + latest conclusions) right after the client compresses the
+  conversation.
+
+Both are silent no-ops when the server is down.
+
+### 6. (Optional) keep-alive
+
+`flymemory/flymemory_supervisor.pyw` restarts the server if it dies and idles
+while it is healthy. Run it headless at login — on Windows, a Startup-folder
+shortcut to `pythonw.exe flymemory_supervisor.pyw`, or a per-user scheduled
+task every few minutes as a second layer of protection.
+
+### 7. Data & configuration
+
+- The library lives next to the code as `flymemory/flymemory_v3.pkl`
+  (git-ignored — your conversation content never leaves the machine unless
+  you copy it).
+- Environment variables: `FLYMEMORY_DEVICE` (default `cpu`, set `cuda` to use
+  the GPU), `FLYMEMORY_MODEL` (default
+  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`),
+  `HF_HUB_OFFLINE` (auto-set when the model cache is detected).
+- Schema upgrades are automatic: new code loads older library files in place.
+
+### Troubleshooting
+
+- Nothing listens on `127.0.0.1:8765` → wait ~20 s (model warm-up), then check
+  the newest `flymemory/server*.log`.
+- First tool call right after startup can block for a few seconds while the
+  embedder loads — that is the warm-up gate, not a hang.
+- Library embedded with a different model name → the server logs a warning;
+  re-embed (delete the `.pkl` and re-import, or switch `FLYMEMORY_MODEL` back).
 
 ## Benchmarks
 
