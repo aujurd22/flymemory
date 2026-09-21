@@ -122,7 +122,8 @@ remain queryable via `include_superseded=True`.
 | Don't resurrect stale states | `flymemory_supersede` marks them; default recall skips them |
 | Distinguish "captured" from "judged important" | `source`: hook / model, stamped on every entry and shown in recall output |
 | Recall exact identifiers | IDF lexical channel (part numbers, file paths, IDs) |
-| Forget slowly, never abruptly | power-law decay + rehearsal; `flymemory_cleanup` prunes below threshold |
+| Forget slowly, never abruptly | power-law decay (tau doubled for model-stored entries -- dopamine-gated) + rehearsal; `flymemory_cleanup` prunes below threshold |
+| Rehearsal stays scarce | only entries injected into context refresh; a wide sim>0.5 rule measured 100% of entries pinned at retention 1.0 (immortal chatter, decay inert) |
 | Multi-topic messages stay separable | per-sentence chunking on store, per-chunk max on query |
 | Fragmented knowledge gets abstracted | `flymemory_consolidate(ids, conclusion)` builds a higher-order entry with `evidence_ids` back-links; raw entries kept as evidence |
 
@@ -312,11 +313,20 @@ mem = SmartMemory(two_stage=True, hamming_candidates=100)
    projection* — before trusting the prefilter, verify on your own library:
    `recall(q, two_stage=True)` must agree with `recall(q, two_stage=False)`
    on realistic queries (the tests pin this only for the small-N case).
-3. **Memory overhead**: +512 B per entry for the packed codes.
-4. **Rehearsal side effect is scoped to returned candidates** in prefilter
+   Measured fidelity also degrades with N (0.73 @1k → 0.55 @20k in
+   `bench_two_stage_scale.py`) — at 20k entries, 45% of dense answers leak
+   past the prefilter.
+3. **Keep fraction matters — a lot.** The prefilter code sparsity follows a
+   U-curve like FlyPoet's channel sparsity: measured fidelity@100 was 0.691
+   at the biology-derived 5%, 0.849 at 25%, 0.861 at 50% (adopted default,
+   `code_keep=0.5`). The biology-derived 5% was too sparse for retrieval.
+4. **Memory overhead**: +512 B per entry for the packed codes.
+5. **Rehearsal side effect is scoped to returned candidates** in prefilter
    mode (non-candidates are never scored, so their access counters do not
    refresh). With `include_superseded=True`, history mode stays decay-immune
    as in the dense path.
+6. A C-extension popcount or a real binary ANN (faiss/hnswlib) would change
+   the latency picture, but fidelity remains the binding constraint.
 
 ## Contradiction-resolution benchmark
 
