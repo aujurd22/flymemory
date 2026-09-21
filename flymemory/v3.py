@@ -187,7 +187,8 @@ class SmartMemory:
                  decay_half_life: Optional[float] = None,  # legacy kwarg alias for decay_tau
                  enable_hopfield: bool = False,
                  two_stage: bool = False,
-                 hamming_candidates: int = 100):
+                 hamming_candidates: int = 100,
+                 code_keep: float = 0.5):
         """enable_hopfield=False by DEFAULT: bench_hopfield.py measured the
         associative expansion HURTING retrieval (Recall@5 0.189 → 0.043 on a
         1370-entry library — the 4096-bit W matrix is saturated far beyond its
@@ -208,6 +209,11 @@ class SmartMemory:
         self.W = np.zeros((n_bits, n_bits), dtype=np.float32) if enable_hopfield else None
         self.two_stage = two_stage
         self.hamming_candidates = max(int(hamming_candidates), 1)
+        # keep fraction for the PREFILTER binary codes. Measured sweep
+        # (bench_prefilter_sweep.py, N=1370, C=100): fidelity@C 0.691 @5%,
+        # 0.849 @25%, 0.861 @50% -- the biology-derived 5% is too sparse for
+        # retrieval prefiltering (FlyPoet's U-curve transfers here).
+        self.code_keep = float(code_keep)
         self.memories: List[MemoryEntry] = []
         self._next_id = 0
         self.decay_tau = float(decay_tau)
@@ -292,7 +298,10 @@ class SmartMemory:
         (a prefilter must widen, not narrow). Returns packed (n_bytes,) uint8."""
         union = np.zeros(self.n_bits, dtype=bool)
         for qe in q_embs:
-            union |= self._binary_from_emb(qe) > 0
+            code = self.proj @ qe
+            k = max(min(int(self.n_bits * self.code_keep), len(code)), 1)
+            thresh = np.partition(code, -k)[-k]
+            union |= code >= thresh
         return np.packbits(union.astype(np.uint8))
 
     def _packed_code_matrix(self) -> np.ndarray:
@@ -301,7 +310,7 @@ class SmartMemory:
             if self.memories:
                 E = np.stack([m.embedding for m in self.memories]).astype(np.float32)
                 code = E @ self.proj.T
-                k = min(self.k_keep, code.shape[1])
+                k = max(min(int(self.n_bits * self.code_keep), code.shape[1]), 1)
                 thresh = np.partition(code, -k, axis=1)[:, -k][:, None]
                 self._codes = np.packbits((code >= thresh).astype(np.uint8), axis=1)
             else:
@@ -453,17 +462,21 @@ class SmartMemory:
             return {"stored": False, "action": "rejected", "novelty": 0.0,
                     "memory_id": None, "reason": "credential-like content"}
 
+        # dedup scan, vectorized (max cosine over the cached matrix); superseded
+        # entries excluded -- P0: the history layer is never a dedup target, new
+        # facts must not be written into nodes default recall cannot see
+        active_idx = [i for i, m in enumerate(self.memories)
+                      if m.superseded_by is None]
         best_match = None
         best_sim = 0.0
-        for mem in self.memories:
-            if mem.superseded_by is not None:
-                continue  # P0: the history layer is never a dedup target -- new
-            # facts must not be written into superseded nodes where default
-            # recall can no longer see them
-            sim = self._semantic_similarity(emb, mem.embedding)
-            if sim > best_sim:
-                best_sim = sim
-                best_match = mem
+        if active_idx:
+            M = self._emb_matrix()[active_idx]
+            M = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
+            e = emb / (np.linalg.norm(emb) + 1e-8)
+            sims = M @ e
+            j = int(np.argmax(sims))
+            best_sim = float(sims[j])
+            best_match = self.memories[active_idx[j]]
 
         # Tiered thresholds: short rewritten sentences (e.g. differing only in a date)
         # measured 0.93 on the multilingual model — similar but distinct facts should

@@ -6,3 +6,5 @@ flymemory.pkl
 *.log
 *.pkl
 stderr_probe.log
+learned_projection_attic.npz
+*.npz
