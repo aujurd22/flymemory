@@ -1,12 +1,22 @@
-"""FlyMemory Core — Hopfield Associative Memory Engine.
+"""FlyMemory Core — Hopfield Associative Memory Engine (v1/v2 experimental).
 
-Based on Drosophila mushroom body architecture:
-- Sparse coding (k-WTA, top 5%)
-- Reciprocal Hopfield network (801.9x enrichment in fly brain)
-- Error-gated storage (only store when prediction changes)
-- Multi-compartment (like 34 MBONs, prevents interference)
+STATUS (2026-09-21): NOT part of the production v3 recall path. Kept for the
+v1/v2 experiments and small-N research. Theory notes for future work:
 
-Pattern completion verified: 20% cue -> 100% recovery (T94).
+1. Capacity: `0.138 * n_bits` is the classic DENSE Hopfield bound (Hopfield
+   1982 / Amit-Gutfreund-Sompolinsky). With 5% sparse k-WTA codes the constant
+   is different (sparse codes increase capacity per Amir et al. 1983-style
+   analysis, but the exact factor for this projection+clipping pipeline was
+   never derived here). bench_hopfield.py measured crosstalk already dominating
+   at N=1370 -- far below 0.138*4096 ≈ 565 -- so treat 500/compartment as an
+   UNVERIFIED folk number.
+2. The Hebbian accumulation keeps the diagonal W[i,i] = |s|^2 terms (standard
+   Hopfield formulations usually zero it); harmless at this scale, nonstandard.
+3. Synchronous update can enter period-2 oscillations; the `prev` comparison
+   detects one 2-cycle shape but is not a convergence guarantee. Asynchronous
+   (random-order) update would have the energy-monotonicity guarantee.
+
+Pattern completion verified: 20% cue -> 100% recovery (T94, small-N regime).
 """
 
 import numpy as np
