@@ -23,7 +23,7 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, "flymemory"))
 
-from flymemory.v3 import SmartMemory, MemoryEntry, _embed, _tokenize  # noqa: E402
+from flymemory.v3 import SmartMemory, MemoryEntry, _embed, _tokenize, split_chunks, load, save  # noqa: E402
 
 
 def parse_lme_date(s):
@@ -39,6 +39,8 @@ def main():
     ap.add_argument("--data", default=os.path.join(_HERE, "data_longmemeval", "longmemeval_oracle.json"))
     ap.add_argument("--max-turns", type=int, default=10_000_000)
     ap.add_argument("--topk", type=int, default=3)
+    ap.add_argument("--reuse", action="store_true",
+                    help="load longmemeval_bench.pkl instead of re-ingesting")
     args = ap.parse_args()
     K = args.topk
 
@@ -46,48 +48,54 @@ def main():
         data = json.load(f)
     print(f"questions: {len(data)}", flush=True)
 
-    sessions = {}
-    for q in data:
-        for sid, ds, sess in zip(q["haystack_session_ids"], q["haystack_dates"], q["haystack_sessions"]):
-            if sid not in sessions:
-                ts = parse_lme_date(ds)
-                turns = [f"{t.get('role', 'user')}: {t.get('content', '')}" for t in sess]
-                sessions[sid] = (ts, turns)
-    order = sorted(sessions.items(), key=lambda kv: (kv[1][0] is None, kv[1][0]))
-    total_turns = sum(len(t) for _, t in order)
-    print(f"unique sessions: {len(order)}, total turns: {total_turns}", flush=True)
+    pkl_path = os.path.join(_HERE, "longmemeval_bench.pkl")
+    if args.reuse and os.path.exists(pkl_path):
+        mem = load(pkl_path)
+        print(f"reused library: {mem.size} entries", flush=True)
+    else:
+        sessions = {}
+        for q in data:
+            for sid, ds, sess in zip(q["haystack_session_ids"], q["haystack_dates"], q["haystack_sessions"]):
+                if sid not in sessions:
+                    ts = parse_lme_date(ds)
+                    turns = [f"{t.get('role', 'user')}: {t.get('content', '')}" for t in sess]
+                    sessions[sid] = (ts, turns)
+        order = sorted(sessions.items(), key=lambda kv: (kv[1][0] is None, kv[1][0]))
+        total_turns = sum(len(t) for _, t in order)
+        print(f"unique sessions: {len(order)}, total turns: {total_turns}", flush=True)
 
-    mem = SmartMemory(n_bits=4096, code_keep=0.5)
-    accepted = []          # normalized embeddings of accepted turns (greedy near-dup gate)
-    done = 0
-    t_ing = time.time()
-    for sid, (ts, turns) in order:
-        ts = ts or 0.0
-        for turn in turns:
-            if done >= args.max_turns:
-                break
-            emb = _embed(turn)
-            en = emb / (np.linalg.norm(emb) + 1e-8)
-            dup = False
-            if accepted:
-                acc = np.stack(accepted[-4000:])
-                sims = acc @ en
-                if float(sims.max()) > 0.985:
-                    dup = True
-            if dup:
+        mem = SmartMemory(n_bits=4096, code_keep=0.5)
+        accepted = []
+        done = 0
+        t_ing = time.time()
+        for sid, (ts, turns) in order:
+            ts = ts or 0.0
+            for turn in turns:
+                if done >= args.max_turns:
+                    break
+                emb = _embed(turn)
+                en = emb / (np.linalg.norm(emb) + 1e-8)
+                dup = False
+                if accepted:
+                    acc = np.stack(accepted[-4000:])
+                    sims = acc @ en
+                    if float(sims.max()) > 0.985:
+                        dup = True
+                if dup:
+                    done += 1
+                    continue
+                accepted.append(en)
+                e = MemoryEntry(text=turn, response="", embedding=en,
+                                timestamp=ts, last_accessed=ts, access_count=0,
+                                tags=["lme", sid], memory_id=mem._next_id)
+                mem._next_id += 1
+                mem.memories.append(e)
+                mem._index_entry(e)
+                mem._mat_dirty = True
+                mem._codes_dirty = True
                 done += 1
-                continue
-            accepted.append(en)
-            e = MemoryEntry(text=turn, response="", embedding=en,
-                            timestamp=ts, last_accessed=ts, access_count=0,
-                            tags=["lme", sid], memory_id=mem._next_id)
-            mem._next_id += 1
-            mem.memories.append(e)
-            mem._index_entry(e)
-            mem._mat_dirty = True
-            mem._codes_dirty = True
-            done += 1
-    print(f"ingested turns: {done} in {time.time()-t_ing:.0f}s; library: {mem.size}", flush=True)
+        print(f"ingested turns: {done} in {time.time()-t_ing:.0f}s; library: {mem.size}", flush=True)
+        save(mem, pkl_path)
 
     # ---- QA scoring structures ----
     E = mem._emb_matrix()
@@ -106,6 +114,8 @@ def main():
         for t in toks:
             df[t] = df.get(t, 0) + 1
     n_docs = len(entry_tokens)
+
+    idf_max = np.log(1.0 + n_docs)
 
     def bm25_top(q_text, k):
         scored = {}

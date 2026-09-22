@@ -95,6 +95,31 @@ depend on the model remembering to call a tool:
 idle when healthy, never exits); run it headless at login via a Startup
 shortcut or a scheduled task.
 
+## LongMemEval-oracle retrieval benchmark
+
+`bench_longmemeval.py` adapts the LongMemEval oracle edition (500 questions,
+940 evidence-haystack sessions, 10,866 turns, 2021-2024) to FlyMemory: all
+sessions ingested at turn granularity into one shared memory, questions
+answered by recall, scored by evidence-session hit@3 (retrieval-level metric;
+answer generation + LLM judging not included).
+
+| policy | evidence-hit@3 |
+|---|---|
+| **flymemory full** (semantic max-over-chunks + decay + lexical + source) | **303/500 = 61%** |
+| BM25-only (IDF lexical) | 314/500 = 63% |
+| recency-only (newest turns) | 1/500 = 0% (dates span 3 years — recency is uninformative here) |
+
+Per ability: knowledge-update **83%** (the supersede/lineage strong suit),
+single-session-assistant 98%, multi-session 56%, single-session-user 54%,
+temporal-reasoning 44%, single-session-preference 40%.
+
+Honest reading: BM25-only statistically ties the full pipeline on this corpus
+— exact-token overlap carries most retrieval weight on chit-chat style
+sessions, and the multilingual embedder adds less on English casual text than
+on Chinese technical content. n=500, retrieval-only, no LLM layer: indicative,
+not comparable to published end-to-end LongMemEval scores (which include an
+answering LLM).
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
