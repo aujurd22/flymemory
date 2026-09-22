@@ -188,7 +188,10 @@ class SmartMemory:
                  enable_hopfield: bool = False,
                  two_stage: bool = False,
                  hamming_candidates: int = 100,
-                 code_keep: float = 0.5):
+                 code_keep: float = 0.5,
+                 enable_rerank: bool = False,
+                 rerank_pool: int = 10,
+                 rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
         """enable_hopfield=False by DEFAULT: bench_hopfield.py measured the
         associative expansion HURTING retrieval (Recall@5 0.189 → 0.043 on a
         1370-entry library — the 4096-bit W matrix is saturated far beyond its
@@ -197,7 +200,12 @@ class SmartMemory:
 
         two_stage: Hamming prefilter (packed sparse codes) + dense rerank.
         OFF by default — see README "Two-stage retrieval" for the usage
-        preconditions. Enable only for large libraries (N >= ~5000)."""
+        preconditions. Enable only for large libraries (N >= ~5000).
+
+        enable_rerank: cross-encoder reranks the fused top-rerank_pool before
+        returning top_k. OFF by default: costs one CE pass (~0.2-0.4s CPU per
+        call) per recall. Measured on LongMemEval-oracle (500 questions,
+        9.7k entries): see README "Cross-encoder rerank"."""
         if decay_half_life is not None:
             decay_tau = decay_half_life
         self.n_bits = n_bits
@@ -209,6 +217,10 @@ class SmartMemory:
         self.W = np.zeros((n_bits, n_bits), dtype=np.float32) if enable_hopfield else None
         self.two_stage = two_stage
         self.hamming_candidates = max(int(hamming_candidates), 1)
+        self.enable_rerank = enable_rerank
+        self.rerank_pool = max(int(rerank_pool), 1)
+        self.rerank_model = rerank_model
+        self._reranker = None
         # keep fraction for the PREFILTER binary codes. Measured sweep
         # (bench_prefilter_sweep.py, N=1370, C=100): fidelity@C 0.691 @5%,
         # 0.849 @25%, 0.861 @50% -- the biology-derived 5% is too sparse for
@@ -568,6 +580,18 @@ class SmartMemory:
         return True, "ok"
 
     # ----- recall -----
+    def _get_reranker(self):
+        """Lazy cross-encoder (built on first reranked recall, never pickled —
+        save() stores only the flag/model name). Torch threads are capped:
+        full-core default livelocks against a concurrent training job
+        (measured 2026-09-23: first predict 220s+ vs 0.3s capped)."""
+        if self._reranker is None:
+            import torch
+            torch.set_num_threads(min(4, os.cpu_count() or 4))
+            from sentence_transformers import CrossEncoder
+            self._reranker = CrossEncoder(self.rerank_model, max_length=256)
+        return self._reranker
+
     def recall(self, query: str, top_k: int = 5,
                include_superseded: bool = False,
                two_stage: Optional[bool] = None) -> List[Tuple[MemoryEntry, float, float]]:
@@ -659,6 +683,18 @@ class SmartMemory:
         for rank, idx in enumerate(lex_order):
             fused[int(idx)] = fused.get(int(idx), 0.0) + 1.0 / (60 + rank)
         order = np.array(sorted(fused, key=lambda i: -fused[i]))
+
+        if self.enable_rerank and len(order) > 1:
+            # cross-encoder rerank of the fused pool. Superseded entries are
+            # excluded BEFORE pooling so a dead entry cannot burn a rerank slot.
+            pool = [int(i) for i in order[:self.rerank_pool]
+                    if include_superseded or self.memories[int(i)].superseded_by is None]
+            pool = pool[:self.rerank_pool]
+            if len(pool) > 1:
+                pairs = [(query, self.memories[i].text) for i in pool]
+                ce = self._get_reranker().predict(pairs, batch_size=8,
+                                                  show_progress_bar=False)
+                order = np.array([pool[i] for i in np.argsort(-np.asarray(ce))])
 
         results = []
         for idx in order:
@@ -787,6 +823,9 @@ def save(memory: SmartMemory, path: str):
             "enable_hopfield": memory.enable_hopfield,
             "two_stage": memory.two_stage,
             "hamming_candidates": memory.hamming_candidates,
+            "enable_rerank": memory.enable_rerank,
+            "rerank_pool": memory.rerank_pool,
+            "rerank_model": memory.rerank_model,
         },
         "memories": [
             {
@@ -823,7 +862,11 @@ def load(path: str, enable_hopfield: Optional[bool] = None) -> SmartMemory:
     hop = enable_hopfield if enable_hopfield is not None else cfg.get("enable_hopfield", False)
     mem = SmartMemory(n_bits=data["n_bits"], decay_tau=tau, enable_hopfield=hop,
                       two_stage=cfg.get("two_stage", False),
-                      hamming_candidates=cfg.get("hamming_candidates", 100))
+                      hamming_candidates=cfg.get("hamming_candidates", 100),
+                      enable_rerank=cfg.get("enable_rerank", False),
+                      rerank_pool=cfg.get("rerank_pool", 10),
+                      rerank_model=cfg.get(
+                          "rerank_model", "cross-encoder/ms-marco-MiniLM-L-6-v2"))
     stored_embedder = data.get("embedder")
     if stored_embedder and stored_embedder != _model_name():
         # embeddings were produced by a different model: retrieval quality is

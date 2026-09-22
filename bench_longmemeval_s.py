@@ -13,6 +13,7 @@ Run: python bench_longmemeval_s.py [--max-turns 210000] [--topk 3]
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -28,10 +29,18 @@ from flymemory.v3 import SmartMemory, MemoryEntry, _embed, _tokenize, split_chun
 
 
 def parse_lme_date(s):
-    try:
-        return datetime.strptime(s.split("(")[0].strip(), "%Y/%m/%d %H:%M").timestamp()
-    except Exception:
-        return None
+    """'2023/05/20 (Sat) 02:21' / '2023/05/21 21:10' -> epoch seconds.
+
+    The S-edition haystack_dates put the weekday paren MIDWAY, so the old
+    split('(')[0] stripped the time too and every parse silently returned
+    None -> 199,509 entries with last_accessed=None -> dw all-NaN -> the
+    production-scoring arm scored a bogus 0/500 (found 2026-09-23 via
+    diag_full_zero.py). Regex extraction + a hard failure now."""
+    m = re.search(r"(\d{4}/\d{2}/\d{2})(?:\s*\([^)]*\))?\s*(\d{1,2}:\d{2})?", s)
+    if not m:
+        raise ValueError(f"unparseable LME date: {s!r}")
+    date, hm = m.group(1), m.group(2) or "00:00"
+    return datetime.strptime(f"{date} {hm}", "%Y/%m/%d %H:%M").timestamp()
 
 
 def main():

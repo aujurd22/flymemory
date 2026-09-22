@@ -475,3 +475,55 @@ def test_new_schema_written_with_legacy_alias(mem, warm_model, tmp_path):
     with open(p, "rb") as f:
         data = pickle.load(f)
     assert data["decay_tau"] == data["decay_half_life"]
+
+
+# ---------------------------------------------------- cross-encoder rerank
+def test_rerank_default_off():
+    """enable_rerank must be opt-in: default recall never builds a CE."""
+    m = SmartMemory(n_bits=4096, decay_tau=3600.0)
+    assert m.enable_rerank is False
+    assert m.rerank_pool == 10
+    assert m._reranker is None
+
+
+def test_rerank_config_roundtrip(tmp_path):
+    p = str(tmp_path / "rr.pkl")
+    m = SmartMemory(n_bits=4096, enable_rerank=True, rerank_pool=7,
+                    rerank_model="cross-encoder/custom")
+    m.remember("打印桥走 17778 端口", source="model")
+    save(m, p)
+    m2 = load(p)
+    assert m2.enable_rerank is True
+    assert m2.rerank_pool == 7
+    assert m2.rerank_model == "cross-encoder/custom"
+    assert m2._reranker is None  # model itself is never persisted
+
+
+def test_rerank_recalls_exact_answer(reranker_ready, warm_model):
+    """With rerank enabled, the unambiguous answer entry must surface in
+    top-3 and the returned order stays sane."""
+    m = SmartMemory(n_bits=4096, decay_tau=3600.0, enable_rerank=True)
+    m.remember("用户的打印机型号是 HTW-Deli-888B，网络端口 9100", source="model")
+    m.remember("用户经营一家 SHEIN 跨境电商店铺，主要卖女装", source="model")
+    m.remember("周三下午三点开产品评审会", source="model")
+    r = m.recall("用户的打印机是什么型号？", top_k=3)
+    assert r, "rerank recall returned nothing"
+    assert any("888B" in mm.text for mm, _, _ in r)
+    assert m._reranker is not None  # lazily built
+
+
+def test_rerank_pool_skips_superseded(reranker_ready, warm_model):
+    """Superseded entries are excluded BEFORE pooling so a dead entry cannot
+    burn a rerank slot (2026-09-23 design rule)."""
+    m = SmartMemory(n_bits=4096, decay_tau=3600.0, enable_rerank=True)
+    r_old = m.remember("生产环境部署在老机房，具体是 A 栋三楼 301 机柜，网络出口走的电信专线",
+                       source="model")
+    assert r_old["action"] == "new"
+    r_new = m.remember("生产环境上周已经整体迁移到 B 栋新机房，出口换成了联通双线，机柜号 118",
+                       source="model")
+    assert r_new["action"] == "new"  # must not merge into the old entry
+    m.remember("团队的周报每周五下班前提交到共享盘", source="model")
+    ok, _ = m.supersede(r_old["memory_id"], r_new["memory_id"])
+    assert ok
+    r = m.recall("生产环境部署在哪个机房的机柜？", top_k=3)
+    assert all(mm.superseded_by is None for mm, _, _ in r)
