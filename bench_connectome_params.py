@@ -75,14 +75,31 @@ def main():
                "接口文档里写的是另一套口径"]
 
     # store with the production path (dedup on), diverse texts
+    # direct construction: a parameterization benchmark needs N distinct
+    # entries; remember_text dedup would infinitely merge templated texts
+    from flymemory.v3 import MemoryEntry, _embed
+    now0 = time.time()
     for target in [1000, 2000, 5000, min(args.max_n, 10000)]:
         while mem.size < target:
-            t = topics[mem.size % len(topics)]
-            a = aspects[mem.size % len(aspects)]
-            e = entities[mem.size % len(entities)]
-            d = details[mem.size % len(details)]
-            mem.remember_text(f"{t}的{a}：涉及{e}，{d}。记录编号 C{mem.size:06d}。",
-                              source="bench")
+            i = mem.size
+            t = topics[i % len(topics)]
+            a = aspects[i % len(aspects)]
+            e = entities[i % len(entities)]
+            d = details[i % len(details)]
+            emb = _embed(f"{t}的{a}：涉及{e}，{d}。记录编号 C{i:06d}。")
+            entry = MemoryEntry(
+                text=f"{t}的{a}：涉及{e}，{d}。记录编号 C{i:06d}。",
+                response="", embedding=emb, timestamp=now0,
+                last_accessed=now0, access_count=0,
+                tags=["bench"], memory_id=mem._next_id)
+            mem._next_id += 1
+            mem.memories.append(entry)
+            mem._index_entry(entry)
+            mem._mat_dirty = True
+            mem._codes_dirty = True
+            if mem.size % 1000 == 0:
+                print(f"  stored {mem.size}", flush=True)
+        print(f"  target {target} reached, mem.size={mem.size}", flush=True)
     N = mem.size
     E = mem._emb_matrix()
     queries = [f"{topics[rng.integers(0, len(topics))]}的{aspects[rng.integers(0, len(aspects))]}现状如何"
