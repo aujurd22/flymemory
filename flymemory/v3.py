@@ -649,7 +649,17 @@ class SmartMemory:
                          dtype=np.float32)
         eff = dw * src_w * (sim_vec + LEX_WEIGHT * lex_vec)
 
-        order = np.argsort(-eff)
+        # lexical channel as a separate ranked list for RRF fusion with the
+        # semantic ranking (each channel covers what the other misses)
+        lex_order = np.argsort(-lex_vec)[:200]
+        dense_order = np.argsort(-sim_vec)[:200]
+        fused = {}
+        for rank, idx in enumerate(dense_order):
+            fused[int(idx)] = fused.get(int(idx), 0.0) + 1.0 / (60 + rank)
+        for rank, idx in enumerate(lex_order):
+            fused[int(idx)] = fused.get(int(idx), 0.0) + 1.0 / (60 + rank)
+        order = np.array(sorted(fused, key=lambda i: -fused[i]))
+
         results = []
         for idx in order:
             m = self.memories[int(idx)]
