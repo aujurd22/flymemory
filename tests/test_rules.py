@@ -527,3 +527,46 @@ def test_rerank_pool_skips_superseded(reranker_ready, warm_model):
     assert ok
     r = m.recall("生产环境部署在哪个机房的机柜？", top_k=3)
     assert all(mm.superseded_by is None for mm, _, _ in r)
+
+
+# ---------------------------------------------- graph invariants (2026-09-23)
+def test_force_new_bypasses_dedup(mem, warm_model):
+    """force_new must create a new entity even for a near-duplicate text —
+    a consolidation node may never be merged INTO an existing memory."""
+    t = "用户经营一家 SHEIN 跨境电商店铺，主要卖女装，同时管理三个店铺的日常运营与库存"
+    first = mem.remember(t, source="model")
+    second = mem.remember(t + "（补充：主打欧美市场）", source="model", force_new=True)
+    assert first["action"] == "new"
+    assert second["action"] == "new"
+    assert second["memory_id"] != first["memory_id"]
+
+
+def test_remember_text_all_rejected_reports_stored_false(mem, warm_model):
+    """When every chunk is rejected, stored must be False — the old hardcoded
+    stored=True made consolidate dereference memory_id=None (StopIteration)."""
+    r = mem.remember_text("──── ──── ──── ════")
+    assert r["stored"] is False
+    assert r["memory_id"] is None
+
+
+def test_supersede_rejects_already_superseded_new(mem, warm_model):
+    """supersede(old, new) means new is the CURRENT state: pointing a lineage
+    edge at an already-superseded node must be rejected."""
+    a = mem.remember("状态 A：部署在旧机房")["memory_id"]
+    b = mem.remember("状态 B：迁移到新机房")["memory_id"]
+    c = mem.remember("状态 C：又换了云上机房")["memory_id"]
+    assert mem.supersede(b, c)[0]        # B -> C
+    ok, reason = mem.supersede(a, b)     # A -> B, but B is already superseded by C
+    assert not ok and "superseded" in reason
+    assert mem.memories[a - 1].superseded_by is None  # a untouched
+
+
+def test_forget_removes_evidence_reference(mem, warm_model):
+    """forget must not leave dangling evidence_ids behind."""
+    i1 = mem.remember("证据条目一：打印桥走 17777 端口", source="model")["memory_id"]
+    i2 = mem.remember("证据条目二：备份走 17778 端口", source="model")["memory_id"]
+    concl = mem.remember("结论：打印体系双端口并行", source="model")["memory_id"]
+    entry = next(m for m in mem.memories if m.memory_id == concl)
+    entry.evidence_ids = [i1, i2]
+    mem.forget(i1)
+    assert entry.evidence_ids == [i2]

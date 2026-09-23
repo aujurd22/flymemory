@@ -110,6 +110,8 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     counts = result.get("counts") or {}
     id_str = ",".join(f"#{i}" for i in (result.get("memory_ids") or [])[:8]) or "?"
     if action == "rejected":
+        if result.get("reason") == "credential-like content":
+            return "[REJECTED] credential-like content never enters the library"
         return f"[REJECTED] too similar (novelty={result.get('novelty', 0):.2f})"
     kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
     label = " ".join(f"{k.upper()}x{counts[k]}" if counts[k] > 1 else k.upper() for k in kinds) or action.upper()
@@ -268,15 +270,26 @@ def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
             return f"[REJECTED] missing memory ids: {missing}"
         if _contains_credential(conclusion):
             return "[REJECTED] credential-like content in conclusion"
-        r = mem.remember_text(conclusion, tags=["consolidation"], source="model")
+        # force_new: a consolidation node is a NEW entity carrying evidence —
+        # letting dedup merge it into an arbitrary existing entry would retype
+        # that entry and corrupt the graph (invariant added 2026-09-23)
+        r = mem.remember_text(conclusion, tags=["consolidation"], source="model",
+                              force_new=True)
         if not r.get("stored"):
-            return "[REJECTED] conclusion not stored (dedup rejected)"
-        eid = r["memory_id"]
-        entry = next(m for m in mem.memories if m.memory_id == eid)
-        entry.evidence_ids = sorted(set(ids) - {eid})
+            reason = r.get("reason") or "dedup rejected"
+            return f"[REJECTED] conclusion not stored ({reason})"
+        chunk_ids = [i for i in (r.get("memory_ids") or []) if i not in ids]
+        if not chunk_ids:
+            return "[REJECTED] conclusion not stored"
+        # every conclusion chunk carries the full evidence list — chunking must
+        # not orphans earlier pieces (multi-chunk bug fixed 2026-09-23)
+        evidence = sorted(set(ids))
+        for cid in chunk_ids:
+            entry = next(m for m in mem.memories if m.memory_id == cid)
+            entry.evidence_ids = evidence
         save_memory()
-    return (f"[CONSOLIDATED -> #{eid}] evidence: {entry.evidence_ids} | "
-            f"{conclusion[:80]}")
+        return (f"[CONSOLIDATED -> #{chunk_ids[-1]}] chunks {len(chunk_ids)} "
+                f"evidence: {evidence} | {conclusion[:80]}")
 
 @mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:

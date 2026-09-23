@@ -1,6 +1,6 @@
 # FlyMemory
 
-*Last updated: 2026-09-21 · v3.3*
+*Last updated: 2026-09-23 · v3.4*
 
 **A long-term memory layer for personal AI agents: chunked semantic + lexical recall, time decay, semantic dedup, and model-driven supersede.**
 
@@ -231,7 +231,7 @@ uvicorn, numpy, pytest.
 python -m pytest tests/
 ```
 
-36 behavioral rule tests. The first run downloads
+51 behavioral rule tests. The first run downloads
 `paraphrase-multilingual-MiniLM-L12-v2` (~470 MB) from HuggingFace into the
 standard HF cache; after that everything works offline. If HuggingFace is
 unreachable from your network, set a mirror endpoint first:

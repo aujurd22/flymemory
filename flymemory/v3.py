@@ -416,7 +416,8 @@ class SmartMemory:
     # ----- store -----
     def remember_text(self, text: str, response: str = "",
                       tags: Optional[list] = None, source: str = "hook",
-                      timestamp: Optional[float] = None) -> Dict:
+                      timestamp: Optional[float] = None,
+                      force_new: bool = False) -> Dict:
         """Chunked store entry point: long text is split per sentence and each chunk
         goes through dedup/merge; short messages fall back to a single chunk via
         split_chunks' fragment merging.
@@ -424,10 +425,15 @@ class SmartMemory:
         timestamp: optional backdated creation time (epoch seconds) for importing
         historical records — affects decay ordering.
 
+        force_new: bypass dedup — every stored chunk becomes a NEW entry
+        (consolidation nodes must be new entities, never rewrites of existing
+        memories into a different node type).
+
         Returns dict with:
           action: "new" / "merged" / "strengthened" / "rejected" / "mixed"
           counts: {"new": n, "merged": n, "strengthened": n}
           memory_ids: all touched entry ids; chunks: chunks processed
+          stored: True only if at least one chunk was stored (new/merged/strengthened)
         """
         if _contains_credential(text):
             # server-side sanitizer: credentials never enter the library,
@@ -440,7 +446,7 @@ class SmartMemory:
         last = None
         for c in chunks:
             r = self.remember(c, response=response, tags=tags, source=source,
-                              timestamp=timestamp)
+                              timestamp=timestamp, force_new=force_new)
             counts[r["action"]] = counts.get(r["action"], 0) + 1
             if r.get("memory_id") is not None:
                 ids.append(r["memory_id"])
@@ -449,23 +455,27 @@ class SmartMemory:
             return {"stored": False, "action": "rejected", "novelty": 0.0,
                     "memory_id": None, "counts": counts, "memory_ids": [], "chunks": 0}
         stored_kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
+        stored_any = bool(stored_kinds)
         if sum(counts.values()) == 1:
             action = last["action"]
         elif len(stored_kinds) == 1:
             action = stored_kinds[0]
         else:
             action = "mixed"
-        return {"stored": True, "action": action, "novelty": last.get("novelty", 0.0),
+        return {"stored": stored_any, "action": action, "novelty": last.get("novelty", 0.0),
                 "memory_id": ids[-1] if ids else None, "counts": counts,
                 "memory_ids": ids, "chunks": len(chunks)}
 
     def remember(self, text: str, response: str = "",
                  tags: Optional[list] = None, source: str = "hook",
-                 timestamp: Optional[float] = None) -> Dict:
+                 timestamp: Optional[float] = None,
+                 force_new: bool = False) -> Dict:
         """Store one chunk with auto-dedup via semantic similarity.
 
         timestamp: optional backdated creation time (epoch seconds).
         Junk chunks (symbol/table-border debris) are rejected.
+        force_new: bypass the dedup/merge branches — always create a new entry
+        (used by consolidation; a node must not be retyped by similarity).
 
         Returns dict with: stored, action ("new"/"merged"/"strengthened"/"rejected"),
         novelty, memory_id.
@@ -484,8 +494,8 @@ class SmartMemory:
         # dedup scan, vectorized (max cosine over the cached matrix); superseded
         # entries excluded -- P0: the history layer is never a dedup target, new
         # facts must not be written into nodes default recall cannot see
-        active_idx = [i for i, m in enumerate(self.memories)
-                      if m.superseded_by is None]
+        active_idx = [] if force_new else [i for i, m in enumerate(self.memories)
+                                           if m.superseded_by is None]
         best_match = None
         best_sim = 0.0
         if active_idx:
@@ -576,6 +586,13 @@ class SmartMemory:
             seen.add(cur)
             nxt = by_id.get(cur)
             cur = nxt.superseded_by if nxt else None
+        if by_id[new_id].superseded_by is not None:
+            # supersede means "old is replaced by the CURRENT state new" — a
+            # lineage edge into an already-superseded node would point at
+            # history instead of the active state (invariant 2026-09-23).
+            # Checked AFTER cycles: new == old's own successor is a cycle.
+            return False, (f"new #{new_id} is itself superseded by "
+                           f"#{by_id[new_id].superseded_by}; supersede old -> that one")
         by_id[old_id].superseded_by = new_id
         return True, "ok"
 
@@ -598,6 +615,14 @@ class SmartMemory:
         """Hybrid recall: vectorized semantic similarity (max over query chunks)
         × power-law decay + IDF lexical boost (exact identifiers), superseded
         entries excluded unless include_superseded=True.
+
+        Ranking semantics (be precise): candidate ORDER on the main path comes
+        from reciprocal-rank fusion of the dense ranking and the lexical
+        ranking (RRF k=60, pool 200). Decay, source weights and the eff score
+        do NOT reorder the main path — they surface in the returned
+        effective_score column and order candidates inside two_stage mode.
+        Whether decay*source should rerank AFTER fusion is measured by the
+        state10/state20 arms in bench_rerank_full.py.
 
         two_stage: Hamming prefilter over packed sparse codes, then dense rerank
         on the top-C candidates (constructor: two_stage=True, hamming_candidates).
@@ -797,7 +822,11 @@ class SmartMemory:
     def forget(self, memory_id: int) -> Optional[str]:
         """Targeted forgetting: hard-delete one entry by id (Berry et al. 2018:
         active forgetting is a function, not a failure). Returns the deleted
-        text, or None if the id does not exist."""
+        text, or None if the id does not exist.
+
+        Evidence-graph policy: the deleted id is also removed from every
+        remaining entry's evidence_ids — dangling references would silently
+        corrupt the inspectable evidence graph."""
         for i, mem in enumerate(self.memories):
             if mem.memory_id == memory_id:
                 self._unindex(memory_id)
@@ -805,6 +834,10 @@ class SmartMemory:
                 self.memories.pop(i)
                 self._mat_dirty = True
                 self._codes_dirty = True
+                for m in self.memories:
+                    if memory_id in m.evidence_ids:
+                        m.evidence_ids = [x for x in m.evidence_ids
+                                          if x != memory_id]
                 return text
         return None
 
