@@ -1,562 +1,1515 @@
 {
-  "benchmark_version": "1.0",
-  "description": "Memory Judgment Benchmark v1: does an LLM correctly operate the FlyMemory state machine? 14 supersede (from bench_contradiction scenarios), 10 adversarial no-op, 8 consolidation, 6 forget (2 of them traps where the right action is supersede, not forget).",
-  "protocol": {
-    "output_schema": {
-      "remember": ["array of new fact strings"],
-      "supersede": [{"old_id": "int, existing memory id", "remember_index": "int, index into this response's remember array"}],
-      "consolidate": [{"memory_ids": ["ints"], "conclusion": "string"}],
-      "forget": [{"memory_id": "int"}],
-      "reason": "string"
-    },
-    "notes": "Empty arrays = no-op. Mentioning an old fact is NOT an update. forget is only for factually WRONG entries; merely old-but-true facts are superseded, never forgotten."
-  },
-  "cases": [
+ "benchmark_version": "1.0",
+ "description": "Memory Judgment Benchmark v1: does an LLM correctly operate the FlyMemory state machine? 14 supersede (from bench_contradiction scenarios), 10 adversarial no-op, 8 consolidation, 6 forget (2 of them traps where the right action is supersede, not forget).",
+ "protocol": {
+  "output_schema": {
+   "remember": [
+    "array of new fact strings"
+   ],
+   "supersede": [
     {
-      "case_id": "sup_01",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user runs Windows 11 on their main laptop.", "days_ago": 400},
-        {"id": 2, "text": "The user maintains an e-commerce logistics dashboard.", "days_ago": 200},
-        {"id": 3, "text": "The user complained that their old Windows VM in the cloud is slow.", "days_ago": 2}
-      ],
-      "turn": "I switched my laptop to Fedora Linux last week.",
-      "gold": {
-        "remember": ["The user switched their laptop to Fedora Linux last week."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_02",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user writes most backend code in Python.", "days_ago": 500},
-        {"id": 2, "text": "The user drinks too much coffee while coding.", "days_ago": 300},
-        {"id": 3, "text": "The user keeps an old Python 2 script archive around for reference.", "days_ago": 1}
-      ],
-      "turn": "I migrated my backend services to Rust in March.",
-      "gold": {
-        "remember": ["The user migrated their backend services to Rust in March."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_03",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user lives in Shenzhen.", "days_ago": 600},
-        {"id": 2, "text": "The user likes hiking on weekends.", "days_ago": 250},
-        {"id": 3, "text": "The user's Shenzhen apartment lease expired last year.", "days_ago": 3}
-      ],
-      "turn": "I moved to Hangzhou for a new job two months ago.",
-      "gold": {
-        "remember": ["The user moved to Hangzhou for a new job two months ago."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_04",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user's primary editor is PyCharm.", "days_ago": 350},
-        {"id": 2, "text": "The user plays badminton twice a week.", "days_ago": 150},
-        {"id": 3, "text": "The user uninstalled three JetBrains plugins they no longer needed.", "days_ago": 2}
-      ],
-      "turn": "I've moved all my daily editing to Neovim recently.",
-      "gold": {
-        "remember": ["The user moved all daily editing to Neovim recently."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_05",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user's phone number is 138-0000-1111.", "days_ago": 450},
-        {"id": 2, "text": "The user prefers email for formal communication.", "days_ago": 200},
-        {"id": 3, "text": "The old 138 number still appears on some printed business cards.", "days_ago": 4}
-      ],
-      "turn": "I updated my contact number to 139-9999-8888 in June.",
-      "gold": {
-        "remember": ["The user updated their contact number to 139-9999-8888 in June."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_06",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user is building a ticket-scraping side project.", "days_ago": 300},
-        {"id": 2, "text": "The ticket-scraping side project is finished and archived.", "days_ago": 20},
-        {"id": 3, "text": "The user thinks side projects are fun.", "days_ago": 100}
-      ],
-      "turn": "I've wrapped up the ticket-scraping side project — these days my evenings go to a connectome analysis toolkit.",
-      "gold": {
-        "remember": ["The user now spends evenings on a connectome analysis toolkit."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_07",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user subscribes to the Pro tier of a design tool.", "days_ago": 380},
-        {"id": 2, "text": "The user once wrote a glowing review of the Pro tier.", "days_ago": 2}
-      ],
-      "turn": "I cancelled the Pro subscription in February and I'm on the free tier with limited exports now.",
-      "gold": {
-        "remember": ["The user cancelled the Pro subscription in February and uses the free tier with limited exports now."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_08",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user drives an old gasoline hatchback.", "days_ago": 700},
-        {"id": 2, "text": "The user complains about petrol prices out of habit.", "days_ago": 30},
-        {"id": 3, "text": "The user installs charging apps on their phone.", "days_ago": 3}
-      ],
-      "turn": "I sold the hatchback and bought an electric car in May.",
-      "gold": {
-        "remember": ["The user sold the hatchback and bought an electric car in May."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_09",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user reports to Manager Zhang.", "days_ago": 500},
-        {"id": 2, "text": "The user attends the weekly team sync every Monday.", "days_ago": 250},
-        {"id": 3, "text": "Manager Zhang still appears in some old meeting notes.", "days_ago": 1}
-      ],
-      "turn": "My new manager is Manager Liu since the reorg.",
-      "gold": {
-        "remember": ["The user's new manager is Manager Liu since the reorg."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_10",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user's warehouse uses the XinDa label printer.", "days_ago": 400},
-        {"id": 2, "text": "The user fixes shipping labels daily.", "days_ago": 200},
-        {"id": 3, "text": "An old XinDa ribbon cartridge sits in the supply drawer.", "days_ago": 2}
-      ],
-      "turn": "The warehouse switched its label printer to the HTW-109 in August.",
-      "gold": {
-        "remember": ["The warehouse switched its label printer to the HTW-109 in August."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_11",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user studies Japanese with a paper textbook.", "days_ago": 550},
-        {"id": 2, "text": "The user watches Japanese dramas without subtitles sometimes.", "days_ago": 90},
-        {"id": 3, "text": "The paper textbook still sits on the desk.", "days_ago": 3}
-      ],
-      "turn": "I switched to a spaced-repetition app for Japanese in April.",
-      "gold": {
-        "remember": ["The user switched to a spaced-repetition app for Japanese in April."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_12",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user hosts their blog on a rented VPS.", "days_ago": 480},
-        {"id": 2, "text": "The user writes two posts per month.", "days_ago": 220},
-        {"id": 3, "text": "An old VPS backup archive still exists on their disk.", "days_ago": 1}
-      ],
-      "turn": "I migrated the blog to a static hosting platform in July.",
-      "gold": {
-        "remember": ["The user migrated the blog to a static hosting platform in July."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_13",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user prefers dark mode in every app.", "days_ago": 600},
-        {"id": 2, "text": "The user reads on a tablet in the evening.", "days_ago": 200},
-        {"id": 3, "text": "Their old screenshots all show dark mode themes.", "days_ago": 2}
-      ],
-      "turn": "I switched to light mode after my eye surgery last month.",
-      "gold": {
-        "remember": ["The user switched to light mode after eye surgery last month."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "sup_14",
-      "type": "supersede",
-      "memories": [
-        {"id": 1, "text": "The user's team is called Team Falcon.", "days_ago": 520},
-        {"id": 2, "text": "The user designs circuit boards at work.", "days_ago": 250},
-        {"id": 3, "text": "A Falcon logo is still printed on their mug.", "days_ago": 2}
-      ],
-      "turn": "The team was renamed to Team Kestrel in September.",
-      "gold": {
-        "remember": ["The team was renamed to Team Kestrel in September."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "noop_01",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user switched their laptop to Fedora Linux last week.", "days_ago": 5},
-        {"id": 2, "text": "The user maintains an e-commerce logistics dashboard.", "days_ago": 200}
-      ],
-      "turn": "I spent this morning fixing something on my old Windows VM in the cloud.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_02",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user migrated their backend services to Rust in March.", "days_ago": 10},
-        {"id": 2, "text": "The user keeps an old Python 2 script archive around for reference.", "days_ago": 1}
-      ],
-      "turn": "Last night I wrote a quick Python script to rename a bunch of files.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_03",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user moved to Hangzhou for a new job two months ago.", "days_ago": 60},
-        {"id": 2, "text": "The user likes hiking on weekends.", "days_ago": 250}
-      ],
-      "turn": "My old roommate from Shenzhen called me yesterday.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_04",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user updated their contact number to 139-9999-8888 in June.", "days_ago": 90},
-        {"id": 2, "text": "The user prefers email for formal communication.", "days_ago": 200}
-      ],
-      "turn": "I found some old business cards with my 138 number while cleaning the desk.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_05",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user moved all daily editing to Neovim recently.", "days_ago": 7},
-        {"id": 2, "text": "The user plays badminton twice a week.", "days_ago": 150}
-      ],
-      "turn": "I was reviewing some old project code in PyCharm this afternoon.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_06",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user sold the hatchback and bought an electric car in May.", "days_ago": 120},
-        {"id": 2, "text": "The user installs charging apps on their phone.", "days_ago": 3}
-      ],
-      "turn": "Petrol prices went up again, glad I don't need to care that much anymore.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_07",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user switched to a spaced-repetition app for Japanese in April.", "days_ago": 140},
-        {"id": 2, "text": "The user watches Japanese dramas without subtitles sometimes.", "days_ago": 90}
-      ],
-      "turn": "The paper textbook is still sitting on my desk, never got around to throwing it out.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_08",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user migrated the blog to a static hosting platform in July.", "days_ago": 55},
-        {"id": 2, "text": "The user writes two posts per month.", "days_ago": 220}
-      ],
-      "turn": "I still have the old VPS backup archive on my backup drive.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_09",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The user switched to light mode after eye surgery last month.", "days_ago": 30},
-        {"id": 2, "text": "The user reads on a tablet in the evening.", "days_ago": 200}
-      ],
-      "turn": "All my old screenshots from before are still in dark mode, looks funny now.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "noop_10",
-      "type": "noop",
-      "memories": [
-        {"id": 1, "text": "The team was renamed to Team Kestrel in September.", "days_ago": 12},
-        {"id": 2, "text": "The user designs circuit boards at work.", "days_ago": 250}
-      ],
-      "turn": "I drank coffee from my old Falcon mug today.",
-      "gold": {"remember": [], "supersede": [], "consolidate": [], "forget": []}
-    },
-    {
-      "case_id": "cons_01",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user mainly runs a cross-border e-commerce business.", "days_ago": 300},
-        {"id": 2, "text": "The user's main platform is SHEIN.", "days_ago": 280},
-        {"id": 3, "text": "The store started out focused on women's clothing.", "days_ago": 260},
-        {"id": 4, "text": "The user recently started testing home-goods categories.", "days_ago": 30}
-      ],
-      "turn": "Can you give me an overview of what my store looks like right now?",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3, 4], "conclusion_points": ["cross-border e-commerce", "SHEIN", "started women's clothing", "recently testing home goods"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_02",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user's production server is at 192.168.1.50.", "days_ago": 200},
-        {"id": 2, "text": "The user's backup server runs at 192.168.1.51.", "days_ago": 190},
-        {"id": 3, "text": "The user ships weekly releases every Thursday.", "days_ago": 150},
-        {"id": 4, "text": "The user's cat is named Mochi.", "days_ago": 100}
-      ],
-      "turn": "Summarize what you know about my infrastructure setup.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3], "conclusion_points": ["production at 192.168.1.50", "backup at 192.168.1.51", "weekly Thursday releases"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_03",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user studies Japanese for JLPT N3.", "days_ago": 120},
-        {"id": 2, "text": "The user uses a spaced-repetition app daily.", "days_ago": 100},
-        {"id": 3, "text": "The user watches Japanese dramas without subtitles on weekends.", "days_ago": 60}
-      ],
-      "turn": "How would you describe my Japanese learning routine overall?",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3], "conclusion_points": ["studying for JLPT N3", "daily spaced-repetition app", "weekend drama immersion"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_04",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user prints shipping labels daily.", "days_ago": 180},
-        {"id": 2, "text": "The label printer is the HTW-109 on the local network.", "days_ago": 150},
-        {"id": 3, "text": "The user's phone can print to it through a PC proxy on port 17777.", "days_ago": 90}
-      ],
-      "turn": "Give me a quick picture of my printing setup.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3], "conclusion_points": ["daily shipping labels", "HTW-109 printer", "phone prints via PC proxy port 17777"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_05",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user trains badminton twice a week.", "days_ago": 150},
-        {"id": 2, "text": "The user does a 20-minute stretching routine on off days.", "days_ago": 90},
-        {"id": 3, "text": "The user's goal is to reach amateur competition level this year.", "days_ago": 40},
-        {"id": 4, "text": "The user prefers email summaries over meetings.", "days_ago": 200}
-      ],
-      "turn": "Sum up my training situation.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3], "conclusion_points": ["badminton twice a week", "stretching on off days", "goal: amateur competition this year"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_06",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user writes blog posts about electronics.", "days_ago": 220},
-        {"id": 2, "text": "The blog is on a static hosting platform.", "days_ago": 55},
-        {"id": 3, "text": "The user aims for two posts per month.", "days_ago": 200}
-      ],
-      "turn": "What's the state of my blog, in your own words?",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3], "conclusion_points": ["electronics blog", "static hosting", "two posts per month target"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_07",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user's main laptop runs Fedora Linux.", "days_ago": 90},
-        {"id": 2, "text": "An old cloud Windows VM is kept for legacy testing.", "days_ago": 80},
-        {"id": 3, "text": "The user edits everything in Neovim now.", "days_ago": 70},
-        {"id": 4, "text": "The user's backend language is Rust.", "days_ago": 100}
-      ],
-      "turn": "Describe my development environment as a whole.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 2, 3, 4], "conclusion_points": ["Fedora main laptop", "Windows VM for legacy testing", "Neovim editor", "Rust backend"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "cons_08",
-      "type": "consolidation",
-      "memories": [
-        {"id": 1, "text": "The user's warehouse team switched to the HTW-109 label printer in August.", "days_ago": 35},
-        {"id": 2, "text": "An old XinDa ribbon cartridge is still in the supply drawer.", "days_ago": 2},
-        {"id": 3, "text": "The user fixes shipping labels daily for the e-commerce store.", "days_ago": 200},
-        {"id": 4, "text": "The user's favorite programming language is Rust.", "days_ago": 150}
-      ],
-      "turn": "Give me an overview of my warehouse labeling situation.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [{"memory_ids": [1, 3], "conclusion_points": ["daily label fixing for e-commerce store", "switched to HTW-109 in August"]}],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "frt_01",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user's production server is 192.168.1.50.", "days_ago": 200},
-        {"id": 2, "text": "The user's blog is on a static hosting platform.", "days_ago": 55}
-      ],
-      "turn": "Hey, small correction — my production server was never 192.168.1.50, that was a typo. Please drop that entry entirely.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [],
-        "forget": [{"memory_id": 1}]
-      }
-    },
-    {
-      "case_id": "frt_02",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user's phone number is 138-0000-1111.", "days_ago": 450},
-        {"id": 2, "text": "The user prefers email for formal communication.", "days_ago": 200}
-      ],
-      "turn": "That 138 number you have stored is wrong, I never had it. Delete it from your memory.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [],
-        "forget": [{"memory_id": 1}]
-      }
-    },
-    {
-      "case_id": "frt_03",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user's team is called Team Falcon.", "days_ago": 520},
-        {"id": 2, "text": "The user designs circuit boards at work.", "days_ago": 250}
-      ],
-      "turn": "Actually the Team Falcon entry is just false, there was never a team with that name. Remove it.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [],
-        "forget": [{"memory_id": 1}]
-      }
-    },
-    {
-      "case_id": "frt_04",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user's warehouse uses the XinDa label printer.", "days_ago": 400},
-        {"id": 2, "text": "The user fixes shipping labels daily.", "days_ago": 200}
-      ],
-      "turn": "That XinDa printer record is incorrect, we never used that model. Please forget it.",
-      "gold": {
-        "remember": [],
-        "supersede": [],
-        "consolidate": [],
-        "forget": [{"memory_id": 1}]
-      }
-    },
-    {
-      "case_id": "frt_05",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user lives in Shenzhen.", "days_ago": 600},
-        {"id": 2, "text": "The user likes hiking on weekends.", "days_ago": 250}
-      ],
-      "turn": "I moved to Hangzhou for a new job two months ago, by the way. You can get rid of the Shenzhen entry.",
-      "gold": {
-        "remember": ["The user moved to Hangzhou for a new job two months ago."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
-    },
-    {
-      "case_id": "frt_06",
-      "type": "forget",
-      "memories": [
-        {"id": 1, "text": "The user writes most backend code in Python.", "days_ago": 500},
-        {"id": 2, "text": "The user drinks too much coffee while coding.", "days_ago": 300}
-      ],
-      "turn": "My backend work is all Rust now. The Python entry is outdated — don't delete it though, it's still true that I used to write Python.",
-      "gold": {
-        "remember": ["The user migrated their backend services to Rust."],
-        "supersede": [{"old_id": 1, "remember_index": 0}],
-        "consolidate": [],
-        "forget": []
-      }
+     "old_id": "int, existing memory id",
+     "remember_index": "int, index into this response's remember array"
     }
-  ]
+   ],
+   "consolidate": [
+    {
+     "memory_ids": [
+      "ints"
+     ],
+     "conclusion": "string"
+    }
+   ],
+   "forget": [
+    {
+     "memory_id": "int"
+    }
+   ],
+   "reason": "string"
+  },
+  "notes": "Empty arrays = no-op. Mentioning an old fact is NOT an update. forget is only for factually WRONG entries; merely old-but-true facts are superseded, never forgotten."
+ },
+ "cases": [
+  {
+   "case_id": "sup_01",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user runs Windows 11 on their main laptop.",
+     "days_ago": 400
+    },
+    {
+     "id": 2,
+     "text": "The user maintains an e-commerce logistics dashboard.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The user complained that their old Windows VM in the cloud is slow.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "I switched my laptop to Fedora Linux last week.",
+   "gold": {
+    "remember": [
+     "The user switched their laptop to Fedora Linux last week."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which operating system does the user currently run on their laptop?",
+    "current_keywords": [
+     "Fedora"
+    ],
+    "stale_keywords": [
+     "Windows 11"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_02",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user writes most backend code in Python.",
+     "days_ago": 500
+    },
+    {
+     "id": 2,
+     "text": "The user drinks too much coffee while coding.",
+     "days_ago": 300
+    },
+    {
+     "id": 3,
+     "text": "The user keeps an old Python 2 script archive around for reference.",
+     "days_ago": 1
+    }
+   ],
+   "turn": "I migrated my backend services to Rust in March.",
+   "gold": {
+    "remember": [
+     "The user migrated their backend services to Rust in March."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What language does the user currently use for backend work?",
+    "current_keywords": [
+     "Rust"
+    ],
+    "stale_keywords": [
+     "Python"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_03",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lives in Shenzhen.",
+     "days_ago": 600
+    },
+    {
+     "id": 2,
+     "text": "The user likes hiking on weekends.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "The user's Shenzhen apartment lease expired last year.",
+     "days_ago": 3
+    }
+   ],
+   "turn": "I moved to Hangzhou for a new job two months ago.",
+   "gold": {
+    "remember": [
+     "The user moved to Hangzhou for a new job two months ago."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which city does the user live in now?",
+    "current_keywords": [
+     "Hangzhou"
+    ],
+    "stale_keywords": [
+     "Shenzhen"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_04",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's primary editor is PyCharm.",
+     "days_ago": 350
+    },
+    {
+     "id": 2,
+     "text": "The user plays badminton twice a week.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user uninstalled three JetBrains plugins they no longer needed.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "I've moved all my daily editing to Neovim recently.",
+   "gold": {
+    "remember": [
+     "The user moved all daily editing to Neovim recently."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which editor does the user mainly use for daily work?",
+    "current_keywords": [
+     "Neovim"
+    ],
+    "stale_keywords": [
+     "PyCharm"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_05",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's phone number is 138-0000-1111.",
+     "days_ago": 450
+    },
+    {
+     "id": 2,
+     "text": "The user prefers email for formal communication.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The old 138 number still appears on some printed business cards.",
+     "days_ago": 4
+    }
+   ],
+   "turn": "I updated my contact number to 139-9999-8888 in June.",
+   "gold": {
+    "remember": [
+     "The user updated their contact number to 139-9999-8888 in June."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What is the user's current phone number?",
+    "current_keywords": [
+     "139-9999-8888"
+    ],
+    "stale_keywords": [
+     "138-0000-1111"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_06",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user is building a ticket-scraping side project.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The ticket-scraping side project is finished and archived.",
+     "days_ago": 20
+    },
+    {
+     "id": 3,
+     "text": "The user thinks side projects are fun.",
+     "days_ago": 100
+    }
+   ],
+   "turn": "I've wrapped up the ticket-scraping side project — these days my evenings go to a connectome analysis toolkit.",
+   "gold": {
+    "remember": [
+     "The user now spends evenings on a connectome analysis toolkit."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What does the user work on in the evenings these days?",
+    "current_keywords": [
+     "connectome"
+    ],
+    "stale_keywords": [
+     "ticket-scraping"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_07",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user subscribes to the Pro tier of a design tool.",
+     "days_ago": 380
+    },
+    {
+     "id": 2,
+     "text": "The user once wrote a glowing review of the Pro tier.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "I cancelled the Pro subscription in February and I'm on the free tier with limited exports now.",
+   "gold": {
+    "remember": [
+     "The user cancelled the Pro subscription in February and uses the free tier with limited exports now."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What is the user's current subscription status for the design tool?",
+    "current_keywords": [
+     "free tier"
+    ],
+    "stale_keywords": [
+     "Pro tier"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_08",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user drives an old gasoline hatchback.",
+     "days_ago": 700
+    },
+    {
+     "id": 2,
+     "text": "The user complains about petrol prices out of habit.",
+     "days_ago": 30
+    },
+    {
+     "id": 3,
+     "text": "The user installs charging apps on their phone.",
+     "days_ago": 3
+    }
+   ],
+   "turn": "I sold the hatchback and bought an electric car in May.",
+   "gold": {
+    "remember": [
+     "The user sold the hatchback and bought an electric car in May."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What kind of car does the user drive?",
+    "current_keywords": [
+     "electric"
+    ],
+    "stale_keywords": [
+     "gasoline",
+     "hatchback"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_09",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user reports to Manager Zhang.",
+     "days_ago": 500
+    },
+    {
+     "id": 2,
+     "text": "The user attends the weekly team sync every Monday.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "Manager Zhang still appears in some old meeting notes.",
+     "days_ago": 1
+    }
+   ],
+   "turn": "My new manager is Manager Liu since the reorg.",
+   "gold": {
+    "remember": [
+     "The user's new manager is Manager Liu since the reorg."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Who is the user's current manager?",
+    "current_keywords": [
+     "Manager Liu"
+    ],
+    "stale_keywords": [
+     "Manager Zhang"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_10",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's warehouse uses the XinDa label printer.",
+     "days_ago": 400
+    },
+    {
+     "id": 2,
+     "text": "The user fixes shipping labels daily.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "An old XinDa ribbon cartridge sits in the supply drawer.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "The warehouse switched its label printer to the HTW-109 in August.",
+   "gold": {
+    "remember": [
+     "The warehouse switched its label printer to the HTW-109 in August."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which label printer does the warehouse use?",
+    "current_keywords": [
+     "HTW-109"
+    ],
+    "stale_keywords": [
+     "XinDa"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_11",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user studies Japanese with a paper textbook.",
+     "days_ago": 550
+    },
+    {
+     "id": 2,
+     "text": "The user watches Japanese dramas without subtitles sometimes.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The paper textbook still sits on the desk.",
+     "days_ago": 3
+    }
+   ],
+   "turn": "I switched to a spaced-repetition app for Japanese in April.",
+   "gold": {
+    "remember": [
+     "The user switched to a spaced-repetition app for Japanese in April."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "How does the user study Japanese these days?",
+    "current_keywords": [
+     "spaced-repetition app"
+    ],
+    "stale_keywords": [
+     "paper textbook"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_12",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user hosts their blog on a rented VPS.",
+     "days_ago": 480
+    },
+    {
+     "id": 2,
+     "text": "The user writes two posts per month.",
+     "days_ago": 220
+    },
+    {
+     "id": 3,
+     "text": "An old VPS backup archive still exists on their disk.",
+     "days_ago": 1
+    }
+   ],
+   "turn": "I migrated the blog to a static hosting platform in July.",
+   "gold": {
+    "remember": [
+     "The user migrated the blog to a static hosting platform in July."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Where is the user's blog hosted?",
+    "current_keywords": [
+     "static hosting"
+    ],
+    "stale_keywords": [
+     "VPS"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_13",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user prefers dark mode in every app.",
+     "days_ago": 600
+    },
+    {
+     "id": 2,
+     "text": "The user reads on a tablet in the evening.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "Their old screenshots all show dark mode themes.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "I switched to light mode after my eye surgery last month.",
+   "gold": {
+    "remember": [
+     "The user switched to light mode after eye surgery last month."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Does the user prefer dark mode or light mode?",
+    "current_keywords": [
+     "light mode"
+    ],
+    "stale_keywords": [
+     "dark mode"
+    ]
+   }
+  },
+  {
+   "case_id": "sup_14",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's team is called Team Falcon.",
+     "days_ago": 520
+    },
+    {
+     "id": 2,
+     "text": "The user designs circuit boards at work.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "A Falcon logo is still printed on their mug.",
+     "days_ago": 2
+    }
+   ],
+   "turn": "The team was renamed to Team Kestrel in September.",
+   "gold": {
+    "remember": [
+     "The team was renamed to Team Kestrel in September."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What is the user's team called?",
+    "current_keywords": [
+     "Team Kestrel"
+    ],
+    "stale_keywords": [
+     "Team Falcon"
+    ]
+   }
+  },
+  {
+   "case_id": "noop_01",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user switched their laptop to Fedora Linux last week.",
+     "days_ago": 5
+    },
+    {
+     "id": 2,
+     "text": "The user maintains an e-commerce logistics dashboard.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "I spent this morning fixing something on my old Windows VM in the cloud.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which operating system does the user run on their main laptop?",
+    "current_keywords": [
+     "Fedora"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_02",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user migrated their backend services to Rust in March.",
+     "days_ago": 10
+    },
+    {
+     "id": 2,
+     "text": "The user keeps an old Python 2 script archive around for reference.",
+     "days_ago": 1
+    }
+   ],
+   "turn": "Last night I wrote a quick Python script to rename a bunch of files.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What language does the user use for backend work?",
+    "current_keywords": [
+     "Rust"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_03",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user moved to Hangzhou for a new job two months ago.",
+     "days_ago": 60
+    },
+    {
+     "id": 2,
+     "text": "The user likes hiking on weekends.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "My old roommate from Shenzhen called me yesterday.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which city does the user live in?",
+    "current_keywords": [
+     "Hangzhou"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_04",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user updated their contact number to 139-9999-8888 in June.",
+     "days_ago": 90
+    },
+    {
+     "id": 2,
+     "text": "The user prefers email for formal communication.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "I found some old business cards with my 138 number while cleaning the desk.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What is the user's current phone number?",
+    "current_keywords": [
+     "139-9999-8888"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_05",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user moved all daily editing to Neovim recently.",
+     "days_ago": 7
+    },
+    {
+     "id": 2,
+     "text": "The user plays badminton twice a week.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I was reviewing some old project code in PyCharm this afternoon.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Which editor does the user mainly use for daily work?",
+    "current_keywords": [
+     "Neovim"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_06",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user sold the hatchback and bought an electric car in May.",
+     "days_ago": 120
+    },
+    {
+     "id": 2,
+     "text": "The user installs charging apps on their phone.",
+     "days_ago": 3
+    }
+   ],
+   "turn": "Petrol prices went up again, glad I don't need to care that much anymore.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What kind of car does the user drive?",
+    "current_keywords": [
+     "electric"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_07",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user switched to a spaced-repetition app for Japanese in April.",
+     "days_ago": 140
+    },
+    {
+     "id": 2,
+     "text": "The user watches Japanese dramas without subtitles sometimes.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "The paper textbook is still sitting on my desk, never got around to throwing it out.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "How does the user study Japanese these days?",
+    "current_keywords": [
+     "spaced-repetition"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_08",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user migrated the blog to a static hosting platform in July.",
+     "days_ago": 55
+    },
+    {
+     "id": 2,
+     "text": "The user writes two posts per month.",
+     "days_ago": 220
+    }
+   ],
+   "turn": "I still have the old VPS backup archive on my backup drive.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Where is the user's blog hosted?",
+    "current_keywords": [
+     "static hosting"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_09",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user switched to light mode after eye surgery last month.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user reads on a tablet in the evening.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "All my old screenshots from before are still in dark mode, looks funny now.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Does the user prefer dark mode or light mode?",
+    "current_keywords": [
+     "light mode"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "noop_10",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The team was renamed to Team Kestrel in September.",
+     "days_ago": 12
+    },
+    {
+     "id": 2,
+     "text": "The user designs circuit boards at work.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "I drank coffee from my old Falcon mug today.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What is the user's team called?",
+    "current_keywords": [
+     "Team Kestrel"
+    ],
+    "stale_keywords": []
+   }
+  },
+  {
+   "case_id": "cons_01",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user mainly runs a cross-border e-commerce business.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's main platform is SHEIN.",
+     "days_ago": 280
+    },
+    {
+     "id": 3,
+     "text": "The store started out focused on women's clothing.",
+     "days_ago": 260
+    },
+    {
+     "id": 4,
+     "text": "The user recently started testing home-goods categories.",
+     "days_ago": 30
+    }
+   ],
+   "turn": "Can you give me an overview of what my store looks like right now?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3,
+       4
+      ],
+      "conclusion_points": [
+       "cross-border e-commerce",
+       "SHEIN",
+       "started women's clothing",
+       "recently testing home goods"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_02",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's production server is at 192.168.1.50.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user's backup server runs at 192.168.1.51.",
+     "days_ago": 190
+    },
+    {
+     "id": 3,
+     "text": "The user ships weekly releases every Thursday.",
+     "days_ago": 150
+    },
+    {
+     "id": 4,
+     "text": "The user's cat is named Mochi.",
+     "days_ago": 100
+    }
+   ],
+   "turn": "Summarize what you know about my infrastructure setup.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "production at 192.168.1.50",
+       "backup at 192.168.1.51",
+       "weekly Thursday releases"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_03",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user studies Japanese for JLPT N3.",
+     "days_ago": 120
+    },
+    {
+     "id": 2,
+     "text": "The user uses a spaced-repetition app daily.",
+     "days_ago": 100
+    },
+    {
+     "id": 3,
+     "text": "The user watches Japanese dramas without subtitles on weekends.",
+     "days_ago": 60
+    }
+   ],
+   "turn": "How would you describe my Japanese learning routine overall?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "studying for JLPT N3",
+       "daily spaced-repetition app",
+       "weekend drama immersion"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_04",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user prints shipping labels daily.",
+     "days_ago": 180
+    },
+    {
+     "id": 2,
+     "text": "The label printer is the HTW-109 on the local network.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user's phone can print to it through a PC proxy on port 17777.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "Give me a quick picture of my printing setup.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "daily shipping labels",
+       "HTW-109 printer",
+       "phone prints via PC proxy port 17777"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_05",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user trains badminton twice a week.",
+     "days_ago": 150
+    },
+    {
+     "id": 2,
+     "text": "The user does a 20-minute stretching routine on off days.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The user's goal is to reach amateur competition level this year.",
+     "days_ago": 40
+    },
+    {
+     "id": 4,
+     "text": "The user prefers email summaries over meetings.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "Sum up my training situation.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "badminton twice a week",
+       "stretching on off days",
+       "goal: amateur competition this year"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_06",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user writes blog posts about electronics.",
+     "days_ago": 220
+    },
+    {
+     "id": 2,
+     "text": "The blog is on a static hosting platform.",
+     "days_ago": 55
+    },
+    {
+     "id": 3,
+     "text": "The user aims for two posts per month.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "What's the state of my blog, in your own words?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "electronics blog",
+       "static hosting",
+       "two posts per month target"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_07",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's main laptop runs Fedora Linux.",
+     "days_ago": 90
+    },
+    {
+     "id": 2,
+     "text": "An old cloud Windows VM is kept for legacy testing.",
+     "days_ago": 80
+    },
+    {
+     "id": 3,
+     "text": "The user edits everything in Neovim now.",
+     "days_ago": 70
+    },
+    {
+     "id": 4,
+     "text": "The user's backend language is Rust.",
+     "days_ago": 100
+    }
+   ],
+   "turn": "Describe my development environment as a whole.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3,
+       4
+      ],
+      "conclusion_points": [
+       "Fedora main laptop",
+       "Windows VM for legacy testing",
+       "Neovim editor",
+       "Rust backend"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons_08",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's warehouse team switched to the HTW-109 label printer in August.",
+     "days_ago": 35
+    },
+    {
+     "id": 2,
+     "text": "An old XinDa ribbon cartridge is still in the supply drawer.",
+     "days_ago": 2
+    },
+    {
+     "id": 3,
+     "text": "The user fixes shipping labels daily for the e-commerce store.",
+     "days_ago": 200
+    },
+    {
+     "id": 4,
+     "text": "The user's favorite programming language is Rust.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Give me an overview of my warehouse labeling situation.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       3
+      ],
+      "conclusion_points": [
+       "daily label fixing for e-commerce store",
+       "switched to HTW-109 in August"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "frt_01",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's production server is 192.168.1.50.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user's blog is on a static hosting platform.",
+     "days_ago": 55
+    }
+   ],
+   "turn": "Hey, small correction — my production server was never 192.168.1.50, that was a typo. Please drop that entry entirely.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   },
+   "e2e": {
+    "question": "What is the user's production server IP?",
+    "current_keywords": [],
+    "stale_keywords": [
+     "192.168.1.50"
+    ]
+   }
+  },
+  {
+   "case_id": "frt_02",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's phone number is 138-0000-1111.",
+     "days_ago": 450
+    },
+    {
+     "id": 2,
+     "text": "The user prefers email for formal communication.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "That 138 number you have stored is wrong, I never had it. Delete it from your memory.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   },
+   "e2e": {
+    "question": "What is the user's phone number?",
+    "current_keywords": [],
+    "stale_keywords": [
+     "138-0000-1111"
+    ]
+   }
+  },
+  {
+   "case_id": "frt_03",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's team is called Team Falcon.",
+     "days_ago": 520
+    },
+    {
+     "id": 2,
+     "text": "The user designs circuit boards at work.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "Actually the Team Falcon entry is just false, there was never a team with that name. Remove it.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   },
+   "e2e": {
+    "question": "What is the user's team called?",
+    "current_keywords": [],
+    "stale_keywords": [
+     "Team Falcon"
+    ]
+   }
+  },
+  {
+   "case_id": "frt_04",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's warehouse uses the XinDa label printer.",
+     "days_ago": 400
+    },
+    {
+     "id": 2,
+     "text": "The user fixes shipping labels daily.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "That XinDa printer record is incorrect, we never used that model. Please forget it.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   },
+   "e2e": {
+    "question": "Which label printer does the warehouse use?",
+    "current_keywords": [],
+    "stale_keywords": [
+     "XinDa"
+    ]
+   }
+  },
+  {
+   "case_id": "frt_05",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lives in Shenzhen.",
+     "days_ago": 600
+    },
+    {
+     "id": 2,
+     "text": "The user likes hiking on weekends.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "I moved to Hangzhou for a new job two months ago, by the way. You can get rid of the Shenzhen entry.",
+   "gold": {
+    "remember": [
+     "The user moved to Hangzhou for a new job two months ago."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "Where does the user live now?",
+    "current_keywords": [
+     "Hangzhou"
+    ],
+    "stale_keywords": [
+     "Shenzhen"
+    ]
+   }
+  },
+  {
+   "case_id": "frt_06",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user writes most backend code in Python.",
+     "days_ago": 500
+    },
+    {
+     "id": 2,
+     "text": "The user drinks too much coffee while coding.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "My backend work is all Rust now. The Python entry is outdated — don't delete it though, it's still true that I used to write Python.",
+   "gold": {
+    "remember": [
+     "The user migrated their backend services to Rust."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   },
+   "e2e": {
+    "question": "What does the user use for backend work?",
+    "current_keywords": [
+     "Rust"
+    ],
+    "stale_keywords": [
+     "Python"
+    ]
+   }
+  }
+ ]
 }

@@ -226,7 +226,9 @@ topic fragments), 6 forget (4 wrong-fact deletions + 2 traps where the right
 action is supersede, never forget).
 
 First results, 2026-09-23 (oracle = gold replay, harness sanity check, all
-1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0):
+1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0;
+supersede/forget scores are execution-aware — an operation that was decided
+but failed to execute leaves the state unchanged and cannot count as a hit):
 
 | metric | value |
 |---|---|
@@ -235,7 +237,7 @@ First results, 2026-09-23 (oracle = gold replay, harness sanity check, all
 | unnecessary mutation rate | **0/10** (all adversarial no-ops held) |
 | consolidation evidence exact-match | 6/8 |
 | unsupported inference rate | 0/8 (LLM judge) |
-| protocol failures | 1/38 |
+| protocol failures | 0/38 |
 
 Failure modes worth keeping: (1) one supersede was issued without the
 required `remember` entry holding the new state — the state transition was
@@ -250,12 +252,35 @@ selection — the target for the next iteration.
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the
 id flow itself (remember first, take the returned id, then supersede). Same
-model, same data: supersede 1.00/1.00, forget 1.00/1.00, unnecessary mutation
-0/10 — **decision quality transfers losslessly**; the cost is 3/38 execution
-hiccups, all id-flow mistakes (superseding with a wrong/returned id, two of
-them `old == new` after a dedup-strengthened remember), plus one missed
-consolidation trigger. The offline JSON numbers extrapolate to the real
-tool environment.
+model, same data, execution-aware scoring: supersede **1.00 / 0.81**,
+forget 1.00 / 1.00, unnecessary mutation 0/10. The recall gap is 3 cases
+where the model's `remember` of the new state was **merged into the old
+entry** (sim > 0.75, longer text wins: the entry text is rewritten to the
+new state in place) — the model then issued a redundant supersede
+(old == new) that was correctly rejected. Replaying all three shows the
+final store state is CORRECT in every case: the merge *was* the state
+transition. Strict P/R therefore undercounts; the honest statement is that
+2/16 supersedes needed the explicit supersede tool and 3/16 were absorbed by
+merge semantics, and the model cannot distinguish "stored as new #N" from
+"strengthened/merged into existing #N" from the tool's return text — the one
+genuine protocol gap found at this layer.
+
+**Phase 2 (end-to-end, `bench_e2e_answer.py`)**: the same 30 state cases,
+scored at the ANSWER level — apply a maintenance policy, production recall,
+`deepseek-chat` answers the question from the recalled entries, LLM judge
+classifies the answer.
+
+| arm | current | stale | unknown (correct "don't know") |
+|---|---|---|---|
+| none (naive RAG: store new, never maintain) | 25/30 = 83% | **5/30 = 17%** | 0 |
+| oracle (gold state ops) | 26/30 = 87% | **0%** | 4/30 = 13% |
+| autonomous (DeepSeek ops) | 26/30 = 87% | **0%** | 4/30 = 13% |
+
+The 5 naive-RAG stales are exactly the deleted-wrong-fact cases (frt_01–04):
+without `forget`, the assistant keeps confidently answering with facts the
+user explicitly retracted. Autonomous matches the oracle ceiling exactly —
+zero judgment gap end-to-end — and the stale contamination that motivates
+the state machine disappears entirely under it.
 
 ## Design positioning
 

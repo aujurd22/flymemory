@@ -73,8 +73,10 @@ message, decide which memory operations to perform.
 Rules:
 - remember: genuinely NEW facts worth keeping long-term.
 - supersede: an existing entry is OUTDATED because the message updates that
-  exact fact. Mentioning an old fact is NOT an update. point remember_index
-  at the remember array entry that holds the new state.
+  exact fact. Mentioning an old fact is NOT an update. A supersede REQUIRES
+  the new state to be stored: include the new fact in remember and point
+  remember_index at it -- a supersede without a matching remember entry is
+  invalid and will be rejected.
 - forget: an entry is factually WRONG (a mistake). Merely old-but-true facts
   are superseded, NEVER forgotten.
 - consolidate: several entries are fragments of one topic and a higher-level
@@ -289,14 +291,24 @@ def score_case(case, decision, executed, errors, client, use_judge):
     ctype = case["type"]
     sc = {"type": ctype}
 
-    pred_sup = {int(s.get("old_id", -1)) for s in decision.get("supersede", [])}
+    # execution-aware scoring: an operation that was DECIDED but failed to
+    # execute (bad remember_index, unknown id, cycle...) left the state
+    # unchanged, so it must not count as a hit -- end-to-end it is exactly
+    # as if the model had done nothing (measured via sup_04, 2026-09-23).
+    ok_sup = {int(s["old_id"]) for s in executed.get("supersede", []) if s.get("ok")}
+    ok_fgt = {int(f["memory_id"]) for f in executed.get("forget", []) if f.get("ok")}
+    failed_sup = {int(s["old_id"]) for s in executed.get("supersede", [])
+                  if not s.get("ok")}
+    failed_fgt = {int(f["memory_id"]) for f in executed.get("forget", [])
+                  if not f.get("ok")}
     gold_sup = {int(s["old_id"]) for s in gold.get("supersede", [])}
-    sc["supersede"] = prf(pred_sup, gold_sup)
+    sc["supersede"] = prf(ok_sup, gold_sup)
+    sc["supersede_failed_ops"] = sorted(failed_sup)
 
-    pred_fgt = {int(f.get("memory_id", -1)) for f in decision.get("forget", [])}
     gold_fgt = {int(f["memory_id"]) for f in gold.get("forget", [])}
-    sc["forget"] = prf(pred_fgt, gold_fgt)
+    sc["forget"] = prf(ok_fgt, gold_fgt)
     sc["forget_n_positive"] = len(gold_fgt)
+    sc["forget_failed_ops"] = sorted(failed_fgt)
 
     pred_cons = [sorted(int(i) for i in c.get("memory_ids", []))
                  for c in decision.get("consolidate", [])]

@@ -188,27 +188,32 @@ def run_tools_case(client, case, max_rounds=8):
                 args = {}
                 errors.append(f"{name}: bad JSON arguments")
             raw_log.append(f"{name}({tc.function.arguments})")
-            if name == "flymemory_remember":
+            result = apply_tool(mem, name, args)
+            if result.startswith("rejected"):
+                errors.append(f"{name}: {result}")
+            # execution-aware scoring: only SUCCESSFUL supersede/forget count
+            # as decisions (a failed one left the state unchanged)
+            if name == "flymemory_remember" and result.startswith("stored"):
                 d_like["remember"].append(str(args.get("text", "")))
-            elif name == "flymemory_supersede":
+            elif name == "flymemory_supersede" and result == "ok":
                 try:
-                    old_ds = inv_map[int(args.get("old_id", -1))]
-                    d_like["supersede"].append({"old_id": old_ds})
+                    d_like["supersede"].append(
+                        {"old_id": inv_map.get(int(args.get("old_id", -1)),
+                                               int(args.get("old_id", -1)))})
                 except (KeyError, ValueError):
-                    errors.append(f"supersede unknown old_id {args.get('old_id')}")
-            elif name == "flymemory_consolidate":
+                    errors.append(f"supersede unmappable old_id {args.get('old_id')}")
+            elif name == "flymemory_consolidate" and result.startswith("consolidated"):
                 ds_ids = sorted(inv_map.get(int(i), int(i))
                                 for i in args.get("memory_ids", []))
                 d_like["consolidate"].append({"memory_ids": ds_ids,
                                               "conclusion": str(args.get("conclusion", ""))})
-            elif name == "flymemory_forget":
+            elif name == "flymemory_forget" and result == "deleted":
                 try:
-                    d_like["forget"].append({"memory_id": inv_map[int(args.get("memory_id", -1))]})
+                    d_like["forget"].append(
+                        {"memory_id": inv_map.get(int(args.get("memory_id", -1)),
+                                                  int(args.get("memory_id", -1)))})
                 except (KeyError, ValueError):
-                    errors.append(f"forget unknown id {args.get('memory_id')}")
-            result = apply_tool(mem, name, args)
-            if result.startswith("rejected"):
-                errors.append(f"{name}: {result}")
+                    errors.append(f"forget unmappable id {args.get('memory_id')}")
             messages.append({"role": "tool", "tool_call_id": tc.id,
                              "content": result})
     return d_like, errors, raw_log
@@ -236,7 +241,15 @@ def main():
                        "mech_error_cases": 0}
     for ci, case in enumerate(cases):
         d_like, errors, raw_log = run_tools_case(client, case)
-        executed = {}  # tools mode executes inline; scoring is decision-level
+        # d_like is already execution-filtered (failed ops never recorded);
+        # rebuild the executed view score_case expects
+        executed = {"remember_ids": [f"#i{i}" for i in range(len(d_like["remember"]))],
+                    "supersede": [{"old_id": s["old_id"], "ok": True}
+                                  for s in d_like["supersede"]],
+                    "consolidate": [{"ids": c["memory_ids"], "ok": True,
+                                     "error": None} for c in d_like["consolidate"]],
+                    "forget": [{"memory_id": f["memory_id"], "ok": True}
+                               for f in d_like["forget"]]}
         sc = score_case(case, d_like, executed, errors, None, False)
         sc.update({"case_id": case["case_id"], "raw_output": raw_log,
                    "decision": d_like})
