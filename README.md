@@ -2,7 +2,7 @@
 
 *Last updated: 2026-09-23 · v3.4*
 
-**A long-term memory layer for personal AI agents: chunked semantic + lexical recall, time decay, semantic dedup, and model-driven supersede.**
+**A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
 
 FlyMemory gives a coding agent a persistent, self-managed memory: every user message is captured by a hook, stored as per-sentence chunks, deduplicated, and recalled into later conversations with age and provenance stamps. Stale facts are not deleted — the calling model marks them *superseded*, so history stays queryable while current state stays clean.
 
@@ -105,19 +105,32 @@ answer generation + LLM judging not included).
 
 | policy | evidence-hit@3 |
 |---|---|
-| **flymemory full** (semantic max-over-chunks + decay + lexical + source) | **303/500 = 61%** |
+| **RRF fusion — production recall** | **339/500 = 67.8%** |
+| **RRF + cross-encoder rerank (optional)** | **360/500 = 72.0%** |
 | BM25-only (IDF lexical) | 314/500 = 63% |
+| legacy full scoring (sim × decay × source *ordering* — retired, see below) | 303/500 = 61% |
 | recency-only (newest turns) | 1/500 = 0% (dates span 3 years — recency is uninformative here) |
 
-Per ability: knowledge-update **83%** (the supersede/lineage strong suit),
+The bold rows are the current production path (`recall()` = RRF fusion of the
+dense and lexical rankings; rerank is opt-in). The "legacy full" row is the
+original eff-ordering pipeline this benchmark first measured, kept for
+continuity — ordering by decay × source was later measured to *lose* to plain
+RRF (see "Where do decay and source weights act?" below), so it is no longer
+the shipped ranking.
+
+Per ability (legacy path, kept as the per-type breakdown): knowledge-update
+**83%** (the supersede/lineage strong suit),
 single-session-assistant 98%, multi-session 56%, single-session-user 54%,
 temporal-reasoning 44%, single-session-preference 40%.
 
-Honest reading: BM25-only statistically ties the full pipeline on this corpus
-— exact-token overlap carries most retrieval weight on chit-chat style
-sessions, and the multilingual embedder adds less on English casual text than
-on Chinese technical content. n=500, retrieval-only, no LLM layer: indicative,
-not comparable to published end-to-end LongMemEval scores (which include an
+Honest reading, updated: on the *retired* eff-ordering path BM25-only
+statistically tied the pipeline (63% vs 61%) — exact-token overlap carried
+most retrieval weight on chit-chat style sessions. The shipped RRF fusion
+fixes that: 67.8% vs BM25's 63% (+4.8pp), and cross-encoder rerank adds
+another +4.2pp on top. The multilingual embedder still earns less on English
+casual text than on Chinese technical content, but the hybrid no longer
+depends on that gap. n=500, retrieval-only, no LLM layer: indicative, not
+comparable to published end-to-end LongMemEval scores (which include an
 answering LLM).
 
 ## Cross-encoder rerank
