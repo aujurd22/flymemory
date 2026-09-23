@@ -314,7 +314,8 @@ under two ingestion policies:
 Replacing raw turns with summaries loses the concrete details most questions
 ask about (22% -- worse than baseline). Overlaying the consolidated entries
 on the untouched turns gains **+5.8pp strict at full scale** (verified on all
-500 questions, not just the 50-question sample): the summaries act as
+500 questions, not just the 50-question sample; per-question verdict flips:
+40 improved vs 11 regressed, net +29). The summaries act as
 retrieval entry points while the turns keep the details. This is the
 measurement behind the design rule "raw entries are never deleted --
 consolidation adds abstraction without loss".
