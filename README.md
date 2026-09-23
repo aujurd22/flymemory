@@ -285,7 +285,10 @@ The 5 naive-RAG stales are exactly the deleted-wrong-fact cases (frt_01–04):
 without `forget`, the assistant keeps confidently answering with facts the
 user explicitly retracted. Autonomous matches the oracle ceiling exactly —
 zero judgment gap end-to-end — and the stale contamination that motivates
-the state machine disappears entirely under it.
+the state machine disappears entirely under it. Judge calibration: the LLM
+verdicts agree with a mechanical keyword check on all 150 arm-answer pairs
+(150/150) -- the judge is neither stricter nor looser than the observable
+evidence.
 
 `bench_lme_e2e.py` extends the protocol to the public LongMemEval-oracle
 questions (all 500): recall top-5 → deepseek answers → judge vs gold.
