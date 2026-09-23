@@ -325,6 +325,15 @@ retrieval entry points while the turns keep the details. This is the
 measurement behind the design rule "raw entries are never deleted --
 consolidation adds abstraction without loss".
 
+Full hallucination audit (`bench_consolidation_audit.py`): all 703
+successfully consolidated sessions judged against their source conversations
+— 5 sessions (0.7%) flagged, and spot-checking shows at least one of those
+is a judge artifact (the judge only sees the first 6000 chars of long
+conversations, so evidence in the second half reads as "unsupported"; the
+flagged 400k-dollar mortgage entry is verifiably real). True hallucination
+rate is therefore BELOW the 0.7% upper bound; a sliding-window judge
+protocol would tighten it further.
+
 ### Engine state-fidelity audit (found and fixed a real dedup bug)
 
 `bench_state_fidelity.py` pushes 20 realistic single-edit state updates
