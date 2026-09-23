@@ -286,16 +286,18 @@ zero judgment gap end-to-end — and the stale contamination that motivates
 the state machine disappears entirely under it.
 
 `bench_lme_e2e.py` extends the protocol to the public LongMemEval-oracle
-questions (50 sampled, seed 7): recall top-5 → deepseek answers → judge vs
-gold. Strict correct 32% (score with partials 35%). Attribution: retrieval
-hit@5 = 64%; **answers are 50% correct when evidence was retrieved, 0% when
-it was not**; raising top-k to 10 changes nothing (16/50 either way). The
-50%-conversion losses concentrate on multi-turn aggregation questions
-(arithmetic over two turns, counting across sessions) — turn-granularity
-retrieval cannot answer them, which is the concrete argument for
-session-level consolidation in a future version. Not comparable to official
-LongMemEval end-to-end scores: they feed the full haystack (long-context
-setting), this is a memory-augmented top-k setting.
+questions (all 500): recall top-5 → deepseek answers → judge vs gold.
+**Strict correct 37.0% (185/500), weighted with partials 39.6%.** Full-scale
+attribution: retrieval hit@5 = 73.2%; answers are 43% correct when evidence
+was retrieved vs 22% when not (the 22% are questions answerable without the
+specific evidence -- generic or inferable). Raising top-k to 10 changed
+nothing on a 50-question sample. The conversion losses (43% not 100% after a
+hit) concentrate on multi-turn aggregation questions (arithmetic over two
+turns, counting across sessions) — turn-granularity retrieval cannot answer
+them, which is the concrete argument for session-level consolidation
+(below). Not comparable to official LongMemEval end-to-end scores: they feed
+the full haystack (long-context setting), this is a memory-augmented top-k
+setting.
 
 ### Granularity A/B: consolidation must OVERLAY, never replace
 
