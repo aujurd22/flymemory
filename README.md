@@ -28,10 +28,15 @@ model precision-store: the calling agent stores conclusions it judges
 important via flymemory_remember (source=model)
 
 recall (per query):
-   multilingual embedding cosine, max over query chunks   (vectorized matmul)
- + IDF lexical boost (part numbers, paths, IDs — invisible to embeddings)
- × power-law decay  R(t) = (1 + t/τ)^-0.5, rehearsal-resistant
+   dense ranking: multilingual embedding cosine, max over query chunks
+ + lexical ranking: IDF boost (part numbers, paths, IDs — invisible to embeddings)
+        ↓ RRF fusion (k=60, pool 200) → candidate ORDER
  - superseded entries excluded (include_superseded=True for history queries)
+ optional: cross-encoder rerank of the fused top-10 (enable_rerank=True)
+
+decay R(t) = (1 + t/τ)^-0.5 is a MAINTENANCE signal (drives cleanup and
+rehearsal), not a ranking feature — ordering by it was measured to lose to
+plain RRF (see the LongMemEval and state-aware sections below).
 ```
 
 **Decay is a power law, not an exponential half-life**: R(τ) ≈ 0.707 and the
