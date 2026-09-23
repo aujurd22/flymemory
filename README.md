@@ -345,9 +345,15 @@ cannot recover it because no lineage entry was created. Candidate v4 change
 (DESIGNED, NOT IMPLEMENTED): on a rewriting merge, park the old text as a
 superseded tombstone pointing at the updated entry, so history recovery
 works uniformly. Cost: +1 entry per rewriting merge. Also open from the
-end-to-end run: 180 of the 265 remaining wrong answers had the evidence in
-top-5 and still failed on multi-turn aggregation — the next lever is
-answer-side (session-level consolidation at answer time), not retrieval.
+end-to-end run: a full attribution of the 265 overlay-wrong answers —
+114 had the evidence turn in top-5 (no consolidated entry hit), 53 had
+BOTH the evidence turn and the consolidated entry and still failed
+(answer-side multi-turn aggregation), 13 hit only the consolidated entry
+(summary lacked the detail), 85 were full retrieval misses. By question
+type, temporal-reasoning dominates (106/265 wrongs; 80% of that type),
+followed by multi-session (92). The next lever is answer-side multi-turn
+aggregation for temporal/multi-session questions, and preference/user
+retrieval quality for the 32 missing ones.
 
 ## Design positioning
 
