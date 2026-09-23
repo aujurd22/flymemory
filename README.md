@@ -327,12 +327,10 @@ consolidation adds abstraction without loss".
 
 Full hallucination audit (`bench_consolidation_audit.py`): all 703
 successfully consolidated sessions judged against their source conversations
-— 5 sessions (0.7%) flagged, and spot-checking shows at least one of those
-is a judge artifact (the judge only sees the first 6000 chars of long
-conversations, so evidence in the second half reads as "unsupported"; the
-flagged 400k-dollar mortgage entry is verifiably real). True hallucination
-rate is therefore BELOW the 0.7% upper bound; a sliding-window judge
-protocol would tighten it further.
+— 5 flagged on first pass, 4 still flagged after a head+tail re-check
+(0.57--0.71% session-level, PENDING manual review; one first-pass flag was
+confirmed a truncation artifact on re-check). The flagged entries are kept
+in reports/consolidation_audit_*.json for manual review.
 
 ### Engine state-fidelity audit (found and fixed a real dedup bug)
 
