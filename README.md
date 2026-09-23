@@ -265,16 +265,19 @@ merge semantics, and the model cannot distinguish "stored as new #N" from
 "strengthened/merged into existing #N" from the tool's return text — the one
 genuine protocol gap found at this layer.
 
-**Phase 2 (end-to-end, `bench_e2e_answer.py`)**: the same 30 state cases,
-scored at the ANSWER level — apply a maintenance policy, production recall,
+**Phase 2 (end-to-end, five arms, `bench_e2e_answer.py`)**: the same 30 state
+cases, scored at the ANSWER level — apply a maintenance policy, retrieve,
 `deepseek-chat` answers the question from the recalled entries, LLM judge
-classifies the answer.
+classifies the answer. The arms separate retrieval quality from state
+maintenance:
 
-| arm | current | stale | unknown (correct "don't know") |
-|---|---|---|---|
-| none (naive RAG: store new, never maintain) | 25/30 = 83% | **5/30 = 17%** | 0 |
-| oracle (gold state ops) | 26/30 = 87% | **0%** | 4/30 = 13% |
-| autonomous (DeepSeek ops) | 26/30 = 87% | **0%** | 4/30 = 13% |
+| arm | retrieval | maintenance | current | stale | unknown (correct) |
+|---|---|---|---|---|---|
+| no memory | – | – | 0% | 0% | 28/30 (93%) |
+| dense naive RAG | cosine top-3 | store-only | 26/30 = 87% | **4/30 = 13%** | 0 |
+| RRF naive (store-only) | production RRF | store-only | 25/30 = 83% | **5/30 = 17%** | 0 |
+| FlyMemory + oracle state | production RRF | gold ops | 26/30 = 87% | **0%** | 4/30 = 13% |
+| FlyMemory + autonomous state | production RRF | DeepSeek ops | 26/30 = 87% | **0%** | 4/30 = 13% |
 
 The 5 naive-RAG stales are exactly the deleted-wrong-fact cases (frt_01–04):
 without `forget`, the assistant keeps confidently answering with facts the

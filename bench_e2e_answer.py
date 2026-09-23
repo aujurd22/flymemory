@@ -4,12 +4,12 @@ AGENT answer correctly?  End-to-end over the 30 state cases (sup/noop/frt):
   build store -> apply ONE of three maintenance policies -> production recall
   -> LLM answers the question from the recalled entries -> LLM judge.
 
-Arms:
-  none       : naive RAG -- new facts are stored, but no supersede/forget ever
-               happens (the "just a vector store" baseline)
-  oracle     : gold state operations (the mechanism's ceiling)
-  autonomous : DeepSeek decides the operations (offline JSON protocol, Phase 1
-               showed it transfers losslessly to real tools)
+Arms (five, separating retrieval quality from state maintenance):
+  no_mem      : no memory at all -- the LLM answers blind
+  dense_naive : naive vector RAG -- cosine top-3, store-new-never-maintain
+  none        : production RRF retrieval, store-new-never-maintain
+  oracle      : production RRF + gold state operations (mechanism ceiling)
+  autonomous  : production RRF + DeepSeek state operations
 
 Verdicts (LLM judge, one per arm x case):
   current  : answer states the CURRENT fact correctly
@@ -44,6 +44,7 @@ from bench_memory_judgment import (build_memory, gold_decision,  # noqa: E402
                                    deepseek_decide, parse_decision,
                                    execute, ds_client)
 import numpy as np  # noqa: E402
+from flymemory.v3 import _embed  # noqa: E402
 
 DAY = 86400.0
 ANSWER_MODEL = "deepseek-chat"
@@ -117,7 +118,7 @@ def maintenance_decision(arm, case, client):
         raw = deepseek_decide(client, case)
         d, err = parse_decision(raw)
         return d, err
-    if arm == "none":
+    if arm in ("none", "dense_naive"):
         g = gold_decision(case)
         return {"remember": g["remember"], "supersede": [], "consolidate": [],
                 "forget": [], "reason": "naive: store new, never maintain"}, None
@@ -126,7 +127,7 @@ def maintenance_decision(arm, case, client):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arms", default="none,oracle,autonomous")
+    ap.add_argument("--arms", default="no_mem,dense_naive,none,oracle,autonomous")
     ap.add_argument("--data", default=os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "data", "memory_judgment.json"))
     ap.add_argument("--limit", type=int, default=0)
@@ -149,13 +150,30 @@ def main():
     for ci, case in enumerate(cases):
         e2e = case["e2e"]
         for arm in arms:
-            mem, id_map = build_memory(case)
-            decision, perr = maintenance_decision(arm, case, client)
-            if perr:
-                decision = {}
-            executed, errors = execute(mem, case, decision, id_map)
-            hits = mem.recall(e2e["question"], top_k=3)
-            answer = answer_question(client, hits, e2e["question"], time.time())
+            decision, errors, hits = {}, [], []
+            if arm == "no_mem":
+                answer = answer_question(client, [], e2e["question"], time.time())
+            else:
+                mem, id_map = build_memory(case)
+                decision, perr = maintenance_decision(arm, case, client)
+                if perr:
+                    decision = {}
+                executed, errors = execute(mem, case, decision, id_map)
+                hits = mem.recall(e2e["question"], top_k=3)
+                if arm == "dense_naive":
+                    # pure cosine top-3 over the store (no RRF): isolates what
+                    # hybrid retrieval adds over naive vector RAG
+                    from flymemory.v3 import split_chunks
+                    En = mem._emb_matrix()
+                    En = En / (np.linalg.norm(En, axis=1, keepdims=True) + 1e-8)
+                    Q = np.stack([_embed(c) for c in
+                                  (split_chunks(e2e["question"]) or
+                                   [e2e["question"]])])
+                    Qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
+                    sims = (Qn @ En.T).max(axis=0)
+                    hits = [(mem.memories[int(i)], float(sims[i]), 0.0)
+                            for i in np.argsort(-sims)[:3]]
+                answer = answer_question(client, hits, e2e["question"], time.time())
             verdict = judge_answer(client, e2e["question"], answer,
                                    e2e["current_keywords"], e2e["stale_keywords"])
             tally[arm][verdict["verdict"]] = tally[arm].get(verdict["verdict"], 0) + 1
