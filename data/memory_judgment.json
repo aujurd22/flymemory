@@ -1,5 +1,5 @@
 {
- "benchmark_version": "1.2",
+ "benchmark_version": "1.3",
  "description": "Memory Judgment Benchmark v1: does an LLM correctly operate the FlyMemory state machine? 14 supersede (from bench_contradiction scenarios), 10 adversarial no-op, 8 consolidation, 6 forget (2 of them traps where the right action is supersede, not forget).",
  "protocol": {
   "output_schema": {
@@ -3461,6 +3461,782 @@
     }
    ],
    "turn": "The Saturday 9 a.m. swim class entry is incorrect -- please delete that memory.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "sup4_01",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's accountant is Ms. Petrov.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user switched to a new accountant, Mr. Osei, in April.",
+   "gold": {
+    "remember": [
+     "The user switched to a new accountant, Mr. Osei, in April."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_02",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite coffee order is a flat white.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user switched to oat-milk cortados as their daily coffee.",
+   "gold": {
+    "remember": [
+     "The user switched to oat-milk cortados as their daily coffee."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_03",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user stores their photos on Google Photos.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user migrated their photo library to Ente.",
+   "gold": {
+    "remember": [
+     "The user migrated their photo library to Ente."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_04",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's band rehearses on Thursday nights.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The band moved rehearsals to Tuesday nights.",
+   "gold": {
+    "remember": [
+     "The band moved rehearsals to Tuesday nights."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_05",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's hairdresser is salon LUX on 5th Avenue.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user started going to Curve Salon for haircuts.",
+   "gold": {
+    "remember": [
+     "The user started going to Curve Salon for haircuts."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_06",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user wears contact lenses daily.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user had LASIK and no longer needs contact lenses.",
+   "gold": {
+    "remember": [
+     "The user had LASIK and no longer needs contact lenses."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_07",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite board game is Catan.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user replaced Catan with Wingspan as their game night favourite.",
+   "gold": {
+    "remember": [
+     "The user replaced Catan with Wingspan as their game night favourite."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_08",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user rents a studio on Birch Lane.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user's studio moved to a converted loft on Delta Road.",
+   "gold": {
+    "remember": [
+     "The user's studio moved to a converted loft on Delta Road."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_09",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user orders groceries from FreshDirect.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user switched their grocery delivery to Instacart.",
+   "gold": {
+    "remember": [
+     "The user switched their grocery delivery to Instacart."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_10",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's thermostat is set to 21 degrees.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user lowered the thermostat to 19 degrees to save energy.",
+   "gold": {
+    "remember": [
+     "The user lowered the thermostat to 19 degrees to save energy."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_11",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's personal trainer is Coach Dana.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user signed up with a new trainer, Coach Malik.",
+   "gold": {
+    "remember": [
+     "The user signed up with a new trainer, Coach Malik."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup4_12",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's bike is a teal fixie.",
+     "days_ago": 310
+    },
+    {
+     "id": 2,
+     "text": "The user's gym locker combination is 34-12-08.",
+     "days_ago": 150
+    },
+    {
+     "id": 3,
+     "text": "The user takes vitamin D supplements every morning.",
+     "days_ago": 210
+    }
+   ],
+   "turn": "The user bought a navy touring bike to replace the fixie.",
+   "gold": {
+    "remember": [
+     "The user bought a navy touring bike to replace the fixie."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_01",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user switched to a new accountant, Mr. Osei, in April.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "I found Ms. Petrov's old business card while organising files.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_02",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user migrated their photo library to Ente.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "A friend asked me how Google Photos handles RAW files the other day.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_03",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user started going to Curve Salon for haircuts.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "I walked past salon LUX -- it looks like they renovated.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_04",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user had LASIK and no longer needs contact lenses.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "I still have a nearly full bottle of contact lens solution.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_05",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lowered the thermostat to 19 degrees to save energy.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "The 21-degree setting felt cosy when I saw it in the manual.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop4_06",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user signed up with a new trainer, Coach Malik.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "Coach Dana liked one of my running posts on social media.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons3_01",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user is studying for the AWS Solutions Architect exam.",
+     "days_ago": 150
+    },
+    {
+     "id": 2,
+     "text": "The user studies with flashcards on the commute.",
+     "days_ago": 120
+    },
+    {
+     "id": 3,
+     "text": "The user booked the exam for November.",
+     "days_ago": 50
+    }
+   ],
+   "turn": "Give me an overview of that part of my life.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "AWS Solutions Architect exam",
+       "flashcards on the commute",
+       "exam booked for November"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons3_02",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user collects vinyl records.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's turntable is a vintage Technics.",
+     "days_ago": 280
+    },
+    {
+     "id": 3,
+     "text": "The user's favourite pressing is a first-edition jazz LP.",
+     "days_ago": 100
+    }
+   ],
+   "turn": "Give me an overview of that part of my life.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "vinyl collector",
+       "vintage Technics turntable",
+       "first-edition jazz LP favourite"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons3_03",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user is renovating the kitchen.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The renovation budget is capped at 15,000.",
+     "days_ago": 180
+    },
+    {
+     "id": 3,
+     "text": "The user chose matte black fixtures.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "Give me an overview of that part of my life.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "kitchen renovation",
+       "budget capped at 15,000",
+       "matte black fixtures"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "cons3_04",
+   "type": "consolidation",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user runs a book club with six members.",
+     "days_ago": 220
+    },
+    {
+     "id": 2,
+     "text": "The club meets on the first Friday of the month.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The current pick is a translated Korean novel.",
+     "days_ago": 40
+    }
+   ],
+   "turn": "Give me an overview of that part of my life.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [
+     {
+      "memory_ids": [
+       1,
+       2,
+       3
+      ],
+      "conclusion_points": [
+       "book club of six",
+       "first Friday meetings",
+       "current pick: translated Korean novel"
+      ]
+     }
+    ],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "frt3_01",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's childhood dog was a poodle named Rex.",
+     "days_ago": 500
+    },
+    {
+     "id": 2,
+     "text": "The user's favourite colour is teal.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "That poodle named Rex memory is made up -- I never had a dog called Rex. Please forget it.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [
+     {
+      "memory_id": 1
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "frt3_02",
+   "type": "forget",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's office phone extension is 4412.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user drinks green tea in the afternoon.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The extension 4412 entry is wrong, remove it from memory please.",
    "gold": {
     "remember": [],
     "supersede": [],
