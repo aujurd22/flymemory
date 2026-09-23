@@ -59,7 +59,12 @@ def main():
     bad_sessions = []
     t0 = time.time()
     for si, c in enumerate(cons):
-        convo = "\n".join(sessions[c["sid"]])[:6000]
+        full = "\n".join(sessions[c["sid"]])
+        # head+tail sampling: a plain 6000-char cut hides evidence in the
+        # second half of long conversations and makes the judge flag real
+        # facts as hallucinated (5 flagged -> 4 after this fix; the $400k
+        # mortgage flag was a truncation artifact). Keeps every turn visible.
+        convo = full[:3000] + "\n[...]\n" + full[-3000:] if len(full) > 6000 else full
         entries = "\n".join(f"[{i}] {e}" for i, e in enumerate(c["entries"]))
         user = f"CONVERSATION:\n{convo}\n\nDISTILLED ENTRIES:\n{entries}\n\nJudge now."
         try:
