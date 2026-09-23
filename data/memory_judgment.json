@@ -1,5 +1,5 @@
 {
- "benchmark_version": "1.0",
+ "benchmark_version": "1.1",
  "description": "Memory Judgment Benchmark v1: does an LLM correctly operate the FlyMemory state machine? 14 supersede (from bench_contradiction scenarios), 10 adversarial no-op, 8 consolidation, 6 forget (2 of them traps where the right action is supersede, not forget).",
  "protocol": {
   "output_schema": {
@@ -1511,6 +1511,936 @@
     "stale_keywords": [
      "Python"
     ]
+   }
+  },
+  {
+   "case_id": "sup2_01",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's phone number is 138-0000-1111.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    },
+    {
+     "id": 3,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "The user's phone number is 139-9999-8888.",
+   "gold": {
+    "remember": [
+     "The user's phone number is 139-9999-8888."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_02",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's production server is 192.168.1.50.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "The user's production server is 192.168.1.99.",
+   "gold": {
+    "remember": [
+     "The user's production server is 192.168.1.99."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_03",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lives at Oak Street 5.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "The user lives at Oak Street 8.",
+   "gold": {
+    "remember": [
+     "The user lives at Oak Street 8."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_04",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's team is called Team Falcon.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    },
+    {
+     "id": 3,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "The user's team is called Team Kestrel.",
+   "gold": {
+    "remember": [
+     "The user's team is called Team Kestrel."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_05",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user drives a gasoline hatchback.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "The user drives an electric car.",
+   "gold": {
+    "remember": [
+     "The user drives an electric car."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_06",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user studies Japanese with a paper textbook.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    },
+    {
+     "id": 3,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "The user studies Japanese with a spaced-repetition app.",
+   "gold": {
+    "remember": [
+     "The user studies Japanese with a spaced-repetition app."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_07",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's warehouse uses the XinDa label printer.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "The user's warehouse uses the HTW-109 label printer.",
+   "gold": {
+    "remember": [
+     "The user's warehouse uses the HTW-109 label printer."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_08",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user writes most backend code in Python.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "The user writes most backend code in Rust.",
+   "gold": {
+    "remember": [
+     "The user writes most backend code in Rust."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_09",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user hosts their blog on a rented VPS.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    },
+    {
+     "id": 3,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "The user hosts their blog on a static hosting platform.",
+   "gold": {
+    "remember": [
+     "The user hosts their blog on a static hosting platform."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_10",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user reports to Manager Zhang.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "The user reports to Manager Liu.",
+   "gold": {
+    "remember": [
+     "The user reports to Manager Liu."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_11",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user prefers dark mode in every app.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    },
+    {
+     "id": 3,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "The user prefers light mode in every app.",
+   "gold": {
+    "remember": [
+     "The user prefers light mode in every app."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_12",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's primary editor is PyCharm.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "The user's primary editor is Neovim.",
+   "gold": {
+    "remember": [
+     "The user's primary editor is Neovim."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_13",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lives in Shenzhen.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "The user lives in Hangzhou.",
+   "gold": {
+    "remember": [
+     "The user lives in Hangzhou."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_14",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user subscribes to the Pro tier.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    },
+    {
+     "id": 3,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "The user is on the free tier.",
+   "gold": {
+    "remember": [
+     "The user is on the free tier."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_15",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's laptop runs Windows 11.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "The user's laptop runs Fedora Linux.",
+   "gold": {
+    "remember": [
+     "The user's laptop runs Fedora Linux."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_16",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's meeting is scheduled for 15:00.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    },
+    {
+     "id": 3,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "The user's meeting is scheduled for 16:00.",
+   "gold": {
+    "remember": [
+     "The user's meeting is scheduled for 16:00."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_17",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user works from the downtown office.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    },
+    {
+     "id": 3,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "The user works from the riverside office.",
+   "gold": {
+    "remember": [
+     "The user works from the riverside office."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_18",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user deploys on AWS.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    },
+    {
+     "id": 3,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "The user deploys on Hetzner.",
+   "gold": {
+    "remember": [
+     "The user deploys on Hetzner."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_19",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's cat is called Mochi.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    },
+    {
+     "id": 3,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "The user's cat is called Daifuku.",
+   "gold": {
+    "remember": [
+     "The user's cat is called Daifuku."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "sup2_20",
+   "type": "supersede",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's admin password hint is 'old one'.",
+     "days_ago": 300
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    },
+    {
+     "id": 3,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "The user's admin password hint is 'blue fish'.",
+   "gold": {
+    "remember": [
+     "The user's admin password hint is 'blue fish'."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_01",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's phone number is 139-9999-8888.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "I still keep the old 138-0000-1111 around, just in case.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_02",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's production server is 192.168.1.99.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "Someone asked me about the 192.168.1.50 the other day.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_03",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user lives at Oak Street 8.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "I was cleaning up and found notes about the 5.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_04",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's team is called Team Kestrel.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "My friend's setup still uses something like the Falcon.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_05",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user drives an electric car.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "Thinking back, the hatchback served me well for a while.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_06",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user studies Japanese with a spaced-repetition app.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user takes a walk after lunch most days.",
+     "days_ago": 90
+    }
+   ],
+   "turn": "I still keep the old textbook around, just in case.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_07",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's warehouse uses the HTW-109 label printer.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user's favorite programming podcast is weekly.",
+     "days_ago": 200
+    }
+   ],
+   "turn": "Someone asked me about the printer the other day.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_08",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user writes most backend code in Rust.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user keeps a small herb garden on the balcony.",
+     "days_ago": 300
+    }
+   ],
+   "turn": "I was cleaning up and found notes about the Python.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_09",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user hosts their blog on a static hosting platform.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user prefers window seats on flights.",
+     "days_ago": 250
+    }
+   ],
+   "turn": "My friend's setup still uses something like the VPS.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
+   }
+  },
+  {
+   "case_id": "noop2_10",
+   "type": "noop",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user reports to Manager Liu.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user drinks two liters of water every day.",
+     "days_ago": 120
+    }
+   ],
+   "turn": "Thinking back, the Zhang served me well for a while.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": []
    }
   }
  ]
