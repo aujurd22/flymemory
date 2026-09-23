@@ -247,6 +247,16 @@ Oracle vs autonomous shows **zero judgment gap on supersede and forget** at
 this scale; the gap concentrates in consolidation timing and evidence
 selection — the target for the next iteration.
 
+**Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
+the same 38 cases through the actual tool surface — the model must handle the
+id flow itself (remember first, take the returned id, then supersede). Same
+model, same data: supersede 1.00/1.00, forget 1.00/1.00, unnecessary mutation
+0/10 — **decision quality transfers losslessly**; the cost is 3/38 execution
+hiccups, all id-flow mistakes (superseding with a wrong/returned id, two of
+them `old == new` after a dedup-strengthened remember), plus one missed
+consolidation trigger. The offline JSON numbers extrapolate to the real
+tool environment.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
