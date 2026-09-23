@@ -10,3 +10,12 @@ learned_projection_attic.npz
 *.npz
 data_longmemeval/
 *.log
+reports/
+mj_deepseek*.log
+rerank*.log
+lex_ab.log
+diag*.log
+lme_*.log
+connectome_params_result.log
+scale_v*.log
+qa_sample.log

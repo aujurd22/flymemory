@@ -206,6 +206,45 @@ loses to plain RRF by ~12pp at S scale. Production recall therefore keeps
 RRF order, and `bench_rerank_full.py` carries the state10/state20 arms as a
 standing regression guard for this decision.
 
+## Memory Judgment Benchmark (Phase 1)
+
+Retrieval metrics answer "can the evidence be found"; they say nothing about
+whether an LLM placed in front of the state machine will *operate* it
+correctly. `bench_memory_judgment.py` measures exactly that, with an offline
+JSON protocol (the actor sees the memory snapshot + the new user message and
+emits strict JSON; the harness executes and validates). The engine is frozen
+while this benchmark exists. Mechanical validity (id existence, active
+supersede target) is checked in code; unsupported inference in consolidation
+conclusions goes to an LLM judge.
+
+Dataset v1 (38 cases): 14 supersede (adapted from the contradiction
+scenarios), 10 adversarial no-ops ("I fixed something on my old Windows VM"
+must NOT supersede the Fedora entry), 8 consolidation (summary requests over
+topic fragments), 6 forget (4 wrong-fact deletions + 2 traps where the right
+action is supersede, never forget).
+
+First results, 2026-09-23 (oracle = gold replay, harness sanity check, all
+1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0):
+
+| metric | value |
+|---|---|
+| supersede precision / recall | **1.00 / 1.00** (n=16) |
+| forget precision / recall | **1.00 / 1.00** (n=4, small n) |
+| unnecessary mutation rate | **0/10** (all adversarial no-ops held) |
+| consolidation evidence exact-match | 6/8 |
+| unsupported inference rate | 0/8 (LLM judge) |
+| protocol failures | 1/38 |
+
+Failure modes worth keeping: (1) one supersede was issued without the
+required `remember` entry holding the new state — the state transition was
+understood but the protocol contract was missed; (2) one consolidation
+included an already-superseded detail (the old printer cartridge) — faithful
+to the evidence, but stale leakage into a "current state" summary; the
+unsupported-inference judge does not catch this, it is a separate axis.
+Oracle vs autonomous shows **zero judgment gap on supersede and forget** at
+this scale; the gap concentrates in consolidation timing and evidence
+selection — the target for the next iteration.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
