@@ -369,7 +369,13 @@ BOTH the evidence turn and the consolidated entry and still failed
 type, temporal-reasoning dominates (106/265 wrongs; 80% of that type),
 followed by multi-session (92). The next lever is answer-side multi-turn
 aggregation for temporal/multi-session questions, and preference/user
-retrieval quality for the 32 missing ones.
+retrieval quality for the 32 missing ones. Manual review of 8 sampled
+wrongs confirms the mechanism: 6 of 8 require cross-turn arithmetic
+(subtracting membership durations, summing trip mileage, counting flights)
+with the evidence turns ALL present in top-5; the model answers "I don't
+know" because no single entry states the derived number. The concrete v4
+lever is structured timelines (entity+date tables) produced at consolidation
+time, or a calculation tool at answer time.
 
 ## Design positioning
 
