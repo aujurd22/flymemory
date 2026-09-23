@@ -377,6 +377,25 @@ know" because no single entry states the derived number. The concrete v4
 lever is structured timelines (entity+date tables) produced at consolidation
 time, or a calculation tool at answer time.
 
+### Timeline overlay: the structured form wins (v4 lever validated)
+
+`bench_timeline.py` re-runs the granularity A/B with TIMELINE-form
+consolidated entries ("YYYY-MM: plain fact with numbers/names",
+chronological) instead of prose summaries -- same 50 questions (seed 7):
+
+| store | strict correct | weighted score |
+|---|---|---|
+| turn entries only | 16/50 = 32% | 0.350 |
+| prose-summary overlay | 19/50 = 38% | 0.400 |
+| **timeline overlay** | **22/50 = 44%** | **0.440** |
+
+The structured form beats prose overlay by +6pp strict and turn-only by
++12pp, directly targeting the temporal-reasoning failure mode that dominates
+the residual wrongs. Timelines for all 940 sessions are cached in
+reports/timeline_entries.json. This validates the v4 direction:
+consolidation should produce dated, structured entries -- the memory
+format itself is an answer-quality lever.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
