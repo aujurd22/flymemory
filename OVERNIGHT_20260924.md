@@ -38,7 +38,8 @@
 1. **judge 无 stale 维度**:cons_08 把已取代的旧耗材写进"当前状态"总结,judge 判 supported(字面忠实≠当前正确)。修法:data/memory_judgment.json 的 consolidation 场景加 stale_evidence 标注,judge prompt 加维度。
 2. **flymemory_remember 工具回喂不区分 new/merged**:Phase 1.5 的模型困惑源(mcp_v3 已区分 action,但 merged 返回的 id 是已有条目)。修 mcp_v3.py 回喂文本。
 3. **merge_inplace 的历史丢失**(粒度 A/B 与 dedup 修复的副产品,6/20):旧文本被原地改写,include_superseded 救不回。设计权衡:可给 merge 加 supersede lineage(旧文本存 tombstone)。
-4. **judgment 数据集扩到 100+**(当前 38,n 小置信区间宽)。
+4. **judgment 数据集扩到 100+** → **已完成(v1.2,100 场景 = 48 sup/30 noop/14 cons/8 frt,ed9a763)**:DeepSeek supersede P/R 1.00/1.00(n=50)、forget 1.00/1.00、mutation 0/30;consolidation evidence 8/14(57%,仍是改进目标)。
+4b. **merge lineage tombstone 已实现**(ad54abe,从 RFC 转正):rewriting merge 保留旧文本为 superseded tombstone,include_superseded 可恢复历史;52 测试 + fidelity/contradiction/QA 回归全绿,服务已重启生效。
 5. **Phase 4 长期运行验证**(评审定调的最终 thesis 检验)。
 
 ## 运维状态
