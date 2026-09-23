@@ -167,6 +167,27 @@ no change. Thread-cap note: on a host running a full-core training job,
 torch's default thread count livelocks the CE forward (220s+ vs 0.3s
 capped to 1-4 threads); benches and the reranker itself cap threads.
 
+### Where do decay and source weights act? Not after fusion.
+
+`recall()` ranks by RRF over the raw dense and lexical channels; the decay ×
+source × eff score is an auxiliary column, not the ordering key. Reranking
+the fused pool by eff makes things *worse* — `bench_state_oracle.py`
+(oracle edition, 500 questions):
+
+| policy | evidence-hit@3 |
+|---|---|
+| RRF top-3 (production order) | 339/500 = 67.8% |
+| RRF top-10 reranked by eff | 335/500 = 67.0% |
+| RRF top-20 reranked by eff | 329/500 = 65.8% |
+
+The eff score is a *maintenance* signal (what survives decay cleanup, what
+the rehearsal refresh touches), not a ranking signal: applying it to an
+already-fused candidate pool trades retrieval quality for recency bias. The
+same eff ordering run over the WHOLE library is the "full" arm above — and it
+loses to plain RRF by ~12pp at S scale. Production recall therefore keeps
+RRF order, and `bench_rerank_full.py` carries the state10/state20 arms as a
+standing regression guard for this decision.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
