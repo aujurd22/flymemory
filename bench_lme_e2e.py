@@ -52,6 +52,9 @@ def main():
     ap.add_argument("--sample", type=int, default=50)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--topk", type=int, default=5)
+    ap.add_argument("--sort-by-time", action="store_true",
+                    help="present the recalled entries to the answer model in "
+                         "chronological order (temporal-reasoning aid)")
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -72,6 +75,8 @@ def main():
     for qi, i in enumerate(idx):
         q = data[i]
         hits = mem.recall(q["question"], top_k=args.topk)
+        if args.sort_by_time:
+            hits = sorted(hits, key=lambda h: h[0].timestamp or 0)
         lines = [f"- {m.text}" for m, _s, _e in hits]
         user = (f"REMEMBERED FACTS:\n" + "\n".join(lines)
                 + f"\n\nQUESTION: {q['question']}\n\nAnswer now.")
