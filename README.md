@@ -375,7 +375,12 @@ wrongs confirms the mechanism: 6 of 8 require cross-turn arithmetic
 with the evidence turns ALL present in top-5; the model answers "I don't
 know" because no single entry states the derived number. The concrete v4
 lever is structured timelines (entity+date tables) produced at consolidation
-time, or a calculation tool at answer time.
+time, or a calculation tool at answer time. A 6-sample review of the 85
+full-miss wrongs shows their best evidence sits at rank 1708--11867 with
+sim 0.18--0.64: aggregation/statistics questions ("how many doctors",
+"total gift spend", "what did I do with Rachel two months ago") whose
+answers span many turns -- structurally out of reach for top-k semantic
+retrieval, confirming they need aggregated entities or answer-side tools.
 
 ### Timeline overlay: the structured form wins (v4 lever validated)
 
