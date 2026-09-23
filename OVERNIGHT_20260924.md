@@ -22,6 +22,7 @@
 - 判断层(38 场景):DeepSeek supersede P/R **1.00/1.00**(执行感知)、forget 1.00/1.00、**unnecessary mutation 0/10**
 - 端到端(30 状态场景):naive RAG **13-17% stale 答案**;FlyMemory(oracle 与 autonomous)**均 0% stale、87% current**;no-memory 93% 只会答"不知道"
 - 粒度 A/B(50 题):turn-only 32% / **替换式整合 22%(负结果)** / **叠加式 38%(+6pp)**
+- **粒度 overlay 全量 500 题验证:42.8% strict / 44.9% 加权,对 turn-only 37.0%/39.6% = +5.8pp strict,全量保持**(9d75eb7)
 - LME e2e 全量 500 题:strict 37.0%(185/500)、加权 39.6%;归因 hit@5=73.2%,命中后 43% vs 未命中 22%
 - LME e2e 归因:hit@5=64% × 回答转化 50% = 32% strict;top-k 10 无增益
 - 状态保真审计:修复前 5/20 真实状态更新被 dedup 静默丢弃;修复后 20/20 正确
