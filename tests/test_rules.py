@@ -330,8 +330,10 @@ def test_recent_trail_limit_keeps_newest(mem, warm_model):
     for i in range(8):
         mem.remember(f"轨迹条目{i}", timestamp=now - (8 - i) * 60)
     trail = mem.recent(minutes=120, limit=3)
-    assert [m.memory_id for m in trail] == mem.memories[-3:].__class__(
-        [m.memory_id for m in sorted(mem.memories, key=lambda x: x.timestamp)[-3:]])
+    # tombstones (merge lineage, superseded) must not enter the trail
+    alive = sorted((m for m in mem.memories if m.superseded_by is None),
+                   key=lambda x: x.timestamp)
+    assert [m.memory_id for m in trail] == [m.memory_id for m in alive[-3:]]
 
 
 def test_session_pack_contains_trail_and_conclusions(mem, warm_model):
@@ -570,3 +572,23 @@ def test_forget_removes_evidence_reference(mem, warm_model):
     entry.evidence_ids = [i1, i2]
     mem.forget(i1)
     assert entry.evidence_ids == [i2]
+
+
+# --------------------------------------------------- merge lineage (v4 RFC)
+def test_merge_tombstone_keeps_history(mem, warm_model):
+    """A rewriting merge parks the old text as a SUPERSEDED tombstone: the
+    state is correct by default AND history stays recoverable (the old
+    include_superseded contract now also covers merges)."""
+    old = "The user's phone number is 138-0000-1111."
+    mem.remember(old, source="import")
+    mem.remember("The user's phone number is 139-9999-8888.", source="model")
+    # default recall: current state only
+    hits = mem.recall("What is the user's phone number?", top_k=3)
+    assert any("139-9999-8888" in m.text for m, _, _ in hits)
+    assert not any("138-0000-1111" in m.text for m, _, _ in hits)
+    # history: the old number is still recoverable
+    hist = mem.recall("What was the user's old phone number?",
+                      top_k=3, include_superseded=True)
+    assert any("138-0000-1111" in m.text for m, _, _ in hist)
+    tomb = [m for m in mem.memories if m.superseded_by is not None]
+    assert len(tomb) == 1 and "138-0000-1111" in tomb[0].text

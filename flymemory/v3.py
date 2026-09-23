@@ -540,6 +540,22 @@ class SmartMemory:
             # tokens because _tokenize drops 1-char words). Verbatim
             # duplicates never reach this branch (sim > dup_t).
             if text != best_match.text:
+                # v4 lineage: the old text survives as a SUPERSEDED tombstone
+                # pointing at the updated entry, so include_superseded=True
+                # can recover the previous state (a rewriting merge used to
+                # destroy history -- RFC implemented 2026-09-24)
+                tombstone = MemoryEntry(
+                    text=best_match.text, response=best_match.response,
+                    embedding=best_match.embedding,
+                    timestamp=best_match.timestamp,
+                    last_accessed=best_match.last_accessed,
+                    access_count=0, tags=list(best_match.tags),
+                    memory_id=self._next_id, source=best_match.source,
+                    superseded_by=best_match.memory_id,
+                )
+                self.memories.append(tombstone)
+                self._index_entry(tombstone)
+                self._next_id += 1
                 self._unindex(best_match.memory_id)
                 best_match.text = text
                 best_match.embedding = emb
