@@ -307,14 +307,15 @@ under two ingestion policies:
 
 | store | strict correct | weighted score |
 |---|---|---|
-| turn entries only (baseline) | 16/50 = 32% | 0.350 |
-| consolidated entries only (replace) | 11/50 = 22% | 0.270 |
-| **turn + consolidated (overlay)** | **19/50 = 38%** | **0.400** |
+| turn entries only (baseline, n=500) | 185/500 = 37.0% | 0.396 |
+| consolidated entries only (replace, n=50) | 11/50 = 22% | 0.270 |
+| **turn + consolidated (overlay, n=500)** | **214/500 = 42.8%** | **0.449** |
 
 Replacing raw turns with summaries loses the concrete details most questions
 ask about (22% -- worse than baseline). Overlaying the consolidated entries
-on the untouched turns gains +6pp strict / +5pp weighted: the summaries act
-as retrieval entry points while the turns keep the details. This is the
+on the untouched turns gains **+5.8pp strict at full scale** (verified on all
+500 questions, not just the 50-question sample): the summaries act as
+retrieval entry points while the turns keep the details. This is the
 measurement behind the design rule "raw entries are never deleted --
 consolidation adds abstraction without loss".
 
