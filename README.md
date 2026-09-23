@@ -337,6 +337,16 @@ benchmark (stale top-1 still 0/14) and the QA benchmark (17/20 before AND
 after — the three misses are its pre-existing baseline) confirm no
 regression.
 
+Known trade-off: 6/20 of those updates rewrite the entry in place (merge),
+which fixes the state but loses the old text — `include_superseded=True`
+cannot recover it because no lineage entry was created. Candidate v4 change
+(DESIGNED, NOT IMPLEMENTED): on a rewriting merge, park the old text as a
+superseded tombstone pointing at the updated entry, so history recovery
+works uniformly. Cost: +1 entry per rewriting merge. Also open from the
+end-to-end run: 180 of the 265 remaining wrong answers had the evidence in
+top-5 and still failed on multi-turn aggregation — the next lever is
+answer-side (session-level consolidation at answer time), not retrieval.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a
