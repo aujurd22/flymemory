@@ -120,6 +120,53 @@ on Chinese technical content. n=500, retrieval-only, no LLM layer: indicative,
 not comparable to published end-to-end LongMemEval scores (which include an
 answering LLM).
 
+## Cross-encoder rerank
+
+`bench_rerank.py` scores the fused RRF top-10 with a cross-encoder
+(`ms-marco-MiniLM-L-6-v2`) and returns the top-3 after reranking. On the
+oracle edition above (500 questions, 9,729 entries):
+
+| policy | evidence-hit@3 |
+|---|---|
+| RRF fusion top-3 (no rerank) | 338/500 = 67.6% |
+| **cross-encoder rerank of RRF top-10** | **360/500 = 72.0%** |
+| oracle: answer anywhere in RRF top-10 | 397/500 = 79.4% |
+
+Rerank converts about a third of the top-10 ceiling into top-3 hits (+4.4pp);
+it can also drop an answer that raw RRF had surfaced — the oracle row shows
+what a perfect pool-level fix would be worth. Enable per library:
+
+```python
+mem = SmartMemory(enable_rerank=True, rerank_pool=10)
+```
+
+Off by default: one CE pass costs ~0.3 s CPU per recall at pool 10. The
+reranker loads lazily and is never persisted. Superseded entries are excluded
+*before* pooling so a dead entry cannot burn a rerank slot.
+
+The gain transfers to production scale. `bench_rerank_full.py` on the
+S-edition library (500 questions, **199,509 turn-granularity entries**):
+
+| policy | evidence-hit@3 |
+|---|---|
+| dense (max-over-chunks cosine) | 137/500 = 27.4% |
+| full production scoring (sims × decay × source) | 145/500 = 29.0% |
+| BM25-only (IDF lexical) | 168/500 = 33.6% |
+| RRF fusion top-3 | 204/500 = 40.8% |
+| **cross-encoder rerank of RRF top-10** | **229/500 = 45.8%** |
+| oracle: answer anywhere in RRF top-10 | 277/500 = 55.4% |
+
+Same +5.0pp from rerank, same ~1/3 ceiling capture — the effect is stable
+across a 20× library-size change. Two forensics notes from this run: an
+earlier "production scoring = 0/500" row was a **bench artifact** (the
+S-edition date parser silently returned None for every session, NaN-ing all
+decay weights; fixed in `parse_lme_date` + `repair_lme_s_timestamps.py`), and
+`bench_lex_ab.py` shows the lexical channel's ratio normalization vs
+cumulative IDF is a **wash inside RRF** (339 = 339/500) — `_lex_scores` needs
+no change. Thread-cap note: on a host running a full-core training job,
+torch's default thread count livelocks the CE forward (220s+ vs 0.3s
+capped to 1-4 threads); benches and the reranker itself cap threads.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a

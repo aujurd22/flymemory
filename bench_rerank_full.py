@@ -8,11 +8,12 @@ Arms (evidence-session hit@3):
   rerank     : cross-encoder rerank of rrf top-10 -> top-3
   oracle10   : answer present anywhere in rrf top-10 (rerank ceiling)
 
-Run: python bench_rerank_full.py
+Run: python bench_rerank_full.py [--max-n 500]
 Use CPU (CUDA_VISIBLE_DEVICES= python ...) when a training job holds the GPU:
 encoder/CE default to CUDA and stall on first inference under VRAM contention
 (2026-09-23, _XL24 training made the first run hang after model load).
 """
+import argparse
 import json
 import os
 import sys
@@ -25,7 +26,10 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "4")
 
 try:
     import torch
-    torch.set_num_threads(4)
+    # saturated host (concurrent training): >1 thread only adds OpenMP
+    # barrier waits per op -- single-thread CE forward is FASTER here
+    # (py-spy: forward at 14s/question with 4 threads, ~1s with 1)
+    torch.set_num_threads(1)
 except ImportError:
     pass
 
@@ -40,16 +44,16 @@ from flymemory.v3 import load, split_chunks, _embed, _tokenize  # noqa: E402
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--max-n", type=int, default=500)
+    args = ap.parse_args()
     mem = load(os.path.join(_HERE, "longmemeval_s_bench.pkl"), enable_hopfield=False)
     N = mem.size
     E = mem._emb_matrix()
     En = E / (np.linalg.norm(E, axis=1, keepdims=True) + 1e-8)
-    entry_tokens = [set(_tokenize(m.text)) for m in mem.memories]
-    df = {}
-    for toks in entry_tokens:
-        for t in toks:
-            df[t] = df.get(t, 0) + 1
-    n_docs = len(entry_tokens)
+    df = mem._df
+    n_docs = len(mem.memories)
+    mid_to_idx = {m.memory_id: i for i, m in enumerate(mem.memories)}
     print(f"library: {N} entries, df tokens: {len(df)}", flush=True)
 
     now = time.time()
@@ -64,7 +68,7 @@ def main():
 
     with open(os.path.join(_HERE, "data_longmemeval", "longmemeval_s_cleaned.json"),
               encoding="utf-8") as f:
-        data = json.load(f)
+        data = json.load(f)[:args.max_n]
 
     from sentence_transformers import CrossEncoder
     reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", max_length=256)
@@ -91,10 +95,11 @@ def main():
                 d = df.get(tok, 0)
                 idf = np.log(1.0 + n_docs / d) if d else np.log(1.0 + n_docs)
                 if d:
-                    for i, toks in enumerate(entry_tokens):
-                        if tok in toks:
-                            scored[i] = scored.get(i, 0.0) + idf
-        bm_order = sorted(scored, key=lambda i: -scored[i])[:POOL]
+                    # inverted index (identical math to the double scan, but the
+                    # O(N) scan took >24s/question at N=199,509)
+                    for mid in mem._lex_index.get(tok, ()):
+                        scored[mid] = scored.get(mid, 0.0) + idf
+        bm_order = [mid_to_idx[m] for m in sorted(scored, key=lambda m: -scored[m])[:POOL]]
 
         fused = {}
         for rank, idx in enumerate(dense_order):
