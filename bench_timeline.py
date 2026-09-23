@@ -55,6 +55,8 @@ def main():
     ap.add_argument("--sample", type=int, default=50)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--topk", type=int, default=5)
+    ap.add_argument("--no-overlay", action="store_true",
+                    help="evaluate the timeline-only store (skip turn overlay)")
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -108,7 +110,11 @@ def main():
         print(f"timelines: {len(cons)} sessions cached", flush=True)
 
     # ---- overlay: turn store + timelines ----
-    mem = load(os.path.join(here, "longmemeval_bench.pkl"), enable_hopfield=False)
+    if args.no_overlay:
+        mem = SmartMemory(n_bits=4096)
+    else:
+        mem = load(os.path.join(here, "longmemeval_bench.pkl"),
+                   enable_hopfield=False)
     for c in cons:
         for text in c["entries"]:
             mem.remember_text(text, tags=["lme", c["sid"], "timeline"],
