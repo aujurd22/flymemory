@@ -219,12 +219,12 @@ while this benchmark exists. Mechanical validity (id existence, active
 supersede target) is checked in code; unsupported inference in consolidation
 conclusions goes to an LLM judge.
 
-Dataset v1.1 (68 cases): 34 supersede (14 from the contradiction scenarios
-+ 20 generated from the state-fidelity pairs), 20 adversarial no-ops
+Dataset v1.2 (100 cases): 48 supersede (14 from the contradiction scenarios
++ 20 from the state-fidelity pairs + 14 fresh themes), 30 adversarial no-ops
 ("I fixed something on my old Windows VM" must NOT supersede the Fedora
-entry), 8 consolidation (summary requests over topic fragments), 6 forget
-(4 wrong-fact deletions + 2 traps where the right action is supersede,
-never forget).
+entry), 14 consolidation (summary requests over topic fragments; 2 with an
+outdated-distractor to test stale leakage), 8 forget (6 wrong-fact
+deletions + 2 traps where the right action is supersede, never forget).
 
 First results, 2026-09-24 (oracle = gold replay, harness sanity check, all
 1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0;
@@ -233,11 +233,13 @@ but failed to execute leaves the state unchanged and cannot count as a hit):
 
 | metric | value |
 |---|---|
-| supersede precision / recall | **1.00 / 1.00** (n=36) |
-| forget precision / recall | **1.00 / 1.00** (n=4, small n) |
-| unnecessary mutation rate | **0/20** (all adversarial no-ops held) |
-| consolidation evidence exact-match | 6/8 |
-| unsupported inference rate | 0/8; stale leakage 1/8 (LLM judge) |
+| supersede precision / recall | **1.00 / 1.00** (n=50) |
+| forget precision / recall | **1.00 / 1.00** (n=6) |
+| unnecessary mutation rate | **0/30** (all adversarial no-ops held) |
+| consolidation evidence exact-match | 8/14 |
+| unsupported inference 0/14; stale leakage 1/14 (LLM judge, the known
+  cons_08 case -- judge calibration: 2 distilled sessions manually verified
+  faithful) |
 
 Failure modes worth keeping: (1) one supersede was issued without the
 required `remember` entry holding the new state — the state transition was
