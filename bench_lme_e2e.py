@@ -55,6 +55,10 @@ def main():
     ap.add_argument("--sort-by-time", action="store_true",
                     help="present the recalled entries to the answer model in "
                          "chronological order (temporal-reasoning aid)")
+    ap.add_argument("--calc-prompt", action="store_true",
+                    help="v4 lever: instruct the answer model to extract "
+                         "numbers/dates and compute step by step (cross-turn "
+                         "arithmetic aid)")
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -80,12 +84,18 @@ def main():
         lines = [f"- {m.text}" for m, _s, _e in hits]
         user = (f"REMEMBERED FACTS:\n" + "\n".join(lines)
                 + f"\n\nQUESTION: {q['question']}\n\nAnswer now.")
+        system = ANSWER_SYSTEM
+        if args.calc_prompt:
+            system = (ANSWER_SYSTEM + "\n\nIf answering requires arithmetic "
+                      "(durations, totals, differences), first extract the "
+                      "relevant numbers with their dates from the facts, then "
+                      "compute the result step by step before stating it.")
         try:
             r = client.chat.completions.create(
                 model=MODEL,
-                messages=[{"role": "system", "content": ANSWER_SYSTEM},
+                messages=[{"role": "system", "content": system},
                           {"role": "user", "content": user}],
-                temperature=0, max_tokens=300)
+                temperature=0, max_tokens=400)
             answer = (r.choices[0].message.content or "").strip()
         except Exception as e:
             answer = f"[api error: {e}]"
