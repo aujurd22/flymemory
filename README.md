@@ -297,6 +297,25 @@ session-level consolidation in a future version. Not comparable to official
 LongMemEval end-to-end scores: they feed the full haystack (long-context
 setting), this is a memory-augmented top-k setting.
 
+### Granularity A/B: consolidation must OVERLAY, never replace
+
+`bench_granularity.py` distills each of the 940 evidence sessions into 1-3
+DeepSeek-consolidated durable-fact entries and reruns the same 50 questions
+under two ingestion policies:
+
+| store | strict correct | weighted score |
+|---|---|---|
+| turn entries only (baseline) | 16/50 = 32% | 0.350 |
+| consolidated entries only (replace) | 11/50 = 22% | 0.270 |
+| **turn + consolidated (overlay)** | **19/50 = 38%** | **0.400** |
+
+Replacing raw turns with summaries loses the concrete details most questions
+ask about (22% -- worse than baseline). Overlaying the consolidated entries
+on the untouched turns gains +6pp strict / +5pp weighted: the summaries act
+as retrieval entry points while the turns keep the details. This is the
+measurement behind the design rule "raw entries are never deleted --
+consolidation adds abstraction without loss".
+
 ### Engine state-fidelity audit (found and fixed a real dedup bug)
 
 `bench_state_fidelity.py` pushes 20 realistic single-edit state updates
