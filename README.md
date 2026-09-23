@@ -204,7 +204,9 @@ already-fused candidate pool trades retrieval quality for recency bias. The
 same eff ordering run over the WHOLE library is the "full" arm above — and it
 loses to plain RRF by ~12pp at S scale. Production recall therefore keeps
 RRF order, and `bench_rerank_full.py` carries the state10/state20 arms as a
-standing regression guard for this decision.
+standing regression guard for this decision. S-edition spot check (first
+150 questions, run under a saturated host): rrf 21.3%, state10 22.0%,
+state20 20.7% — within noise of plain RRF, same ordering by pool size.
 
 ## Memory Judgment Benchmark (Phase 1)
 
