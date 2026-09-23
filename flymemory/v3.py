@@ -515,18 +515,34 @@ class SmartMemory:
         else:
             dup_t, merge_t = 0.92, 0.75
 
-        if best_sim > dup_t:
+        # A restatement that carries tokens the stored entry does NOT have
+        # (a changed number, name, city, time...) is a STATE UPDATE: rewrite
+        # the entry text in place no matter the length. The old rule (only
+        # longer restatements rewrite) silently dropped 5/20 realistic state
+        # updates -- a "my number is now 139..." against the "138..." entry
+        # strengthened at sim 0.90 and the new number was never stored
+        # (bench_state_fidelity.py, 2026-09-24). Pure restatements without
+        # any new token keep the old behavior (access refresh only).
+        new_tokens = (_tokenize(text) - _tokenize(best_match.text)
+                      ) if best_match is not None else set()
+
+        if best_sim > dup_t and not new_tokens:
             best_match.access_count += 1
             best_match.last_accessed = time.time()
             return {"stored": True, "action": "strengthened",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
         if best_sim > merge_t:
-            if len(text) > len(best_match.text):
-                new_binary, new_emb = self._encode(text)
+            # merge zone (merge_t < sim <= dup_t): ANY differing text is
+            # treated as the newer statement and rewrites the entry in
+            # place -- token-level newness is not enough here (single-digit
+            # changes like "Oak Street 5" -> "Oak Street 8" produce no new
+            # tokens because _tokenize drops 1-char words). Verbatim
+            # duplicates never reach this branch (sim > dup_t).
+            if text != best_match.text:
                 self._unindex(best_match.memory_id)
                 best_match.text = text
-                best_match.embedding = new_emb
+                best_match.embedding = emb
                 self._index_entry(best_match)
                 self._mat_dirty = True
                 self._codes_dirty = True

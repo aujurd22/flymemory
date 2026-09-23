@@ -282,6 +282,23 @@ user explicitly retracted. Autonomous matches the oracle ceiling exactly —
 zero judgment gap end-to-end — and the stale contamination that motivates
 the state machine disappears entirely under it.
 
+### Engine state-fidelity audit (found and fixed a real dedup bug)
+
+`bench_state_fidelity.py` pushes 20 realistic single-edit state updates
+("server is 192.168.1.50" → "…1.99", "meeting at 15:00" → "…16:00") through
+the dedup ladder and checks whether the store ends up holding the NEW state.
+Pre-fix: **5/20 updates were silently dropped** — two strengthened at
+sim > 0.92 (text untouched, only the access time refreshed) and three merged
+without rewrite because the new text was not longer than the stored one. The
+affected updates are exactly the most common kind: changed numbers, times,
+names. Fix (in `remember()`): a restatement carrying tokens the stored entry
+lacks, and any differing text in the merge zone, now rewrites the entry in
+place — pure restatements keep the old behavior. Post-fix: 20/20 updates
+end with the correct state; all 51 behavior tests, the contradiction
+benchmark (stale top-1 still 0/14) and the QA benchmark (17/20 before AND
+after — the three misses are its pre-existing baseline) confirm no
+regression.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a

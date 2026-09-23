@@ -5,6 +5,8 @@ Arms (evidence-session hit@3):
   full       : production scoring, sims * decay_w * source_w (post timestamp repair)
   bm25       : IDF lexical
   rrf        : reciprocal rank fusion (rrf_k=60, pool=200) -- reproduces bench_rrf.py
+  state10/20 : decay*source*eff RERANK of the RRF top-10/20 (post-fusion
+               state-aware scoring -- the "where should decay live" question)
   rerank     : cross-encoder rerank of rrf top-10 -> top-3
   oracle10   : answer present anywhere in rrf top-10 (rerank ceiling)
 
@@ -40,7 +42,7 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, "flymemory"))
 
-from flymemory.v3 import load, split_chunks, _embed, _tokenize  # noqa: E402
+from flymemory.v3 import load, split_chunks, _embed, _tokenize, LEX_WEIGHT  # noqa: E402
 
 
 def main():
@@ -77,7 +79,8 @@ def main():
     RRF_K = 60
     K = 3
     RERANK_POOL = 10
-    hit = {"dense": 0, "full": 0, "bm25": 0, "rrf": 0, "rerank": 0, "oracle10": 0}
+    hit = {"dense": 0, "full": 0, "bm25": 0, "rrf": 0, "state10": 0,
+           "state20": 0, "rerank": 0, "oracle10": 0}
     t0 = time.time()
     for qi, q in enumerate(data):
         q_text = q["question"]
@@ -120,6 +123,12 @@ def main():
         hit["full"] += tags_hit(full_order, K)
         hit["bm25"] += tags_hit(bm_order, K)
         hit["rrf"] += tags_hit(rrf_order, K)
+        lex_vec = mem._lex_scores(chunks)
+        eff_vec = dw * src_w * (sims + LEX_WEIGHT * lex_vec)
+        for pool_n, arm in ((10, "state10"), (20, "state20")):
+            pool = [int(i) for i in rrf_order[:pool_n]]
+            state_order = sorted(pool, key=lambda i: -eff_vec[i])
+            hit[arm] += tags_hit(state_order, K)
         hit["rerank"] += tags_hit(rerank_order, K)
         hit["oracle10"] += tags_hit(rrf_order, RERANK_POOL)
 
@@ -130,7 +139,8 @@ def main():
 
     n = len(data)
     print(f"\n=== evidence-hit@{K} (N={n}, {N} entries, {time.time()-t0:.0f}s) ===")
-    for arm in ("dense", "full", "bm25", "rrf", "rerank", "oracle10"):
+    for arm in ("dense", "full", "bm25", "rrf", "state10", "state20",
+                "rerank", "oracle10"):
         print(f"  {arm:9s} {hit[arm]:4d}/{n} = {hit[arm]/n*100:.1f}%")
 
 
