@@ -1265,7 +1265,8 @@
     {
      "id": 2,
      "text": "An old XinDa ribbon cartridge is still in the supply drawer.",
-     "days_ago": 2
+     "days_ago": 2,
+     "outdated": true
     },
     {
      "id": 3,
@@ -1291,7 +1292,8 @@
       "conclusion_points": [
        "daily label fixing for e-commerce store",
        "switched to HTW-109 in August"
-      ]
+      ],
+      "stale_hint": "the XinDa cartridge entry is outdated (printer was switched to HTW-109 in August) -- a current-state summary must not include it"
      }
     ],
     "forget": []

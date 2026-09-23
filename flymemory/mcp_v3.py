@@ -115,6 +115,10 @@ def flymemory_remember(text: str, tags: str = "") -> str:
         return f"[REJECTED] too similar (novelty={result.get('novelty', 0):.2f})"
     kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
     label = " ".join(f"{k.upper()}x{counts[k]}" if counts[k] > 1 else k.upper() for k in kinds) or action.upper()
+    # merged/strengthened return the EXISTING entry's id -- make that explicit,
+    # models otherwise treat it as a fresh node (Phase 1.5 finding, 2026-09-23)
+    if "merged" in counts or "strengthened" in counts:
+        id_str += " (existing entry updated in place)"
     return f"[{label} {id_str}] {text[:80]}"
 
 @mcp.tool()

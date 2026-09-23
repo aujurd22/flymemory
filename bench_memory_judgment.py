@@ -94,9 +94,14 @@ Respond with ONLY this JSON (no markdown fence, no extra text):
  "forget": [{"memory_id": 5}], "reason": "one short sentence"}"""
 
 JUDGE_SYSTEM = """You are a strict factuality judge. Given EVIDENCE entries
-and a CONCLUSION drawn from them, decide whether the conclusion contains
-information NOT supported by the evidence. Reply with ONLY:
-{"supported": true/false, "unsupported_claims": ["..."]}"""
+and a CONCLUSION drawn from them, decide whether the conclusion is safe to
+keep as a CURRENT-state summary:
+- unsupported: claims NOT present in the evidence (fabrication)
+- stale leakage: presents an entry that is marked OUTDATED as if it were
+  still current (fabrication check alone misses this)
+Reply with ONLY:
+{"supported": true/false, "unsupported_claims": ["..."],
+ "stale_leakage": true/false}"""
 
 
 def ds_client():
@@ -267,8 +272,9 @@ def prf(pred_ids, gold_ids):
     return p, r, f1
 
 
-def judge_conclusion(client, evidence_texts, conclusion):
+def judge_conclusion(client, evidence_texts, conclusion, stale_texts=()):
     user = ("EVIDENCE:\n" + "\n".join(f"- {t}" for t in evidence_texts)
+            + "\n" + "\n".join(f"- [OUTDATED] {t}" for t in stale_texts)
             + f"\n\nCONCLUSION:\n{conclusion}\n\nJudge now.")
     try:
         raw = ds_chat(client, JUDGE_SYSTEM, user)
@@ -276,7 +282,8 @@ def judge_conclusion(client, evidence_texts, conclusion):
         if err:
             return {"judge_error": err}
         return {"supported": bool(d.get("supported")),
-                "unsupported_claims": list(d.get("unsupported_claims", []))}
+                "unsupported_claims": list(d.get("unsupported_claims", [])),
+                "stale_leakage": bool(d.get("stale_leakage"))}
     except Exception as e:  # API failures must not kill the run
         return {"judge_error": str(e)[:120]}
 
@@ -323,13 +330,13 @@ def score_case(case, decision, executed, errors, client, use_judge):
             "evidence_recall": tp / len(gold_set) if gold_set else None,
             "n_gold": len(gold_cons)}
         if use_judge and client and pred_cons:
-            ev = next((m["text"] for m in case["memories"]
-                       if sorted([m["id"]]) == pred_cons[0]), None)
             ev_texts = [m["text"] for m in case["memories"]
                         if m["id"] in pred_cons[0]]
+            stale_texts = [m["text"] for m in case["memories"]
+                           if m["id"] in pred_cons[0] and m.get("outdated")]
             sc["consolidation"]["judge"] = judge_conclusion(
                 client, ev_texts, decision.get("consolidate", [{}])[0]
-                .get("conclusion", ""))
+                .get("conclusion", ""), stale_texts)
     elif pred_cons:
         sc["consolidation"] = {"evidence_precision": 0.0, "spurious": pred_cons}
 
