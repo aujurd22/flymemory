@@ -285,6 +285,18 @@ user explicitly retracted. Autonomous matches the oracle ceiling exactly —
 zero judgment gap end-to-end — and the stale contamination that motivates
 the state machine disappears entirely under it.
 
+`bench_lme_e2e.py` extends the protocol to the public LongMemEval-oracle
+questions (50 sampled, seed 7): recall top-5 → deepseek answers → judge vs
+gold. Strict correct 32% (score with partials 35%). Attribution: retrieval
+hit@5 = 64%; **answers are 50% correct when evidence was retrieved, 0% when
+it was not**; raising top-k to 10 changes nothing (16/50 either way). The
+50%-conversion losses concentrate on multi-turn aggregation questions
+(arithmetic over two turns, counting across sessions) — turn-granularity
+retrieval cannot answer them, which is the concrete argument for
+session-level consolidation in a future version. Not comparable to official
+LongMemEval end-to-end scores: they feed the full haystack (long-context
+setting), this is a memory-augmented top-k setting.
+
 ### Engine state-fidelity audit (found and fixed a real dedup bug)
 
 `bench_state_fidelity.py` pushes 20 realistic single-edit state updates
