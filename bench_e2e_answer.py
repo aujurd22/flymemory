@@ -73,7 +73,19 @@ Mentioning the old fact as history ("previously X, now Y") is still
 Reply with ONLY: {"verdict": "current|stale|unknown|wrong", "note": "..."}"""
 
 
-def answer_question(client, hits, question, now):
+def answer_question(client, hits, question, now, blind=False):
+    if blind:
+        # TRUE no-memory baseline: the LLM answers from its own knowledge.
+        # (The earlier hardcoded "I don't know" measured abstention, not
+        # capability -- external review finding, fixed 2026-09-24.)
+        r = client.chat.completions.create(
+            model=ANSWER_MODEL,
+            messages=[{"role": "system", "content":
+                       "You are a personal assistant. Answer the user's "
+                       "question in one short sentence."},
+                      {"role": "user", "content": question}],
+            temperature=0, max_tokens=200)
+        return (r.choices[0].message.content or "").strip()
     if not hits:
         return "I don't have any information about that."
     lines = []
@@ -152,7 +164,9 @@ def main():
         for arm in arms:
             decision, errors, hits = {}, [], []
             if arm == "no_mem":
-                answer = answer_question(client, [], e2e["question"], time.time())
+                # TRUE baseline: blind answer from the model's own knowledge
+                answer = answer_question(client, [], e2e["question"],
+                                         time.time(), blind=True)
             else:
                 mem, id_map = build_memory(case)
                 decision, perr = maintenance_decision(arm, case, client)

@@ -678,6 +678,12 @@ class SmartMemory:
             ham = self._hamming(q_packed)
             c = min(self.hamming_candidates, len(self.memories))
             cand = np.argsort(ham, kind="stable")[:c]
+            # candidate eligibility (unified with the main path, 2026-09-24):
+            # superseded entries must not consume the candidate budget
+            if not include_superseded:
+                cand = np.array([i for i in cand
+                                 if self.memories[int(i)].superseded_by is None],
+                                dtype=int)
             # stage 2: dense rerank on candidates only
             Mc = self._emb_matrix()[cand]
             mnc = Mc / (np.linalg.norm(Mc, axis=1, keepdims=True) + 1e-8)
@@ -685,7 +691,10 @@ class SmartMemory:
             mems = [self.memories[int(i)] for i in cand]
             last = np.array([m.last_accessed for m in mems], dtype=np.float64)
             acc = np.array([m.access_count for m in mems], dtype=np.float64)
-            dw_c = np.minimum(((1.0 + (now - last) / self.decay_tau) ** -0.5)
+            # decay semantics unified with the main path: DA-gated per-entry tau
+            taus_c = np.array([self._decay_tau_for(m) for m in mems],
+                              dtype=np.float64)
+            dw_c = np.minimum(((1.0 + (now - last) / taus_c) ** -0.5)
                               * (1.0 + 0.5 * np.log2(1.0 + acc)), 1.0)
             lex_cand = self._lex_scores(q_texts)[cand]
             sw_c = np.array([SOURCE_WEIGHT.get(m.source, 1.0) for m in mems],
@@ -695,8 +704,6 @@ class SmartMemory:
             results = []
             for idx in order:
                 m = self.memories[int(idx)]
-                if m.superseded_by is not None and not include_superseded:
-                    continue
                 pos = int(np.where(cand == idx)[0][0])
                 results.append((m, float(sim_cand[pos]), float(eff_c[pos])))
                 if len(results) >= top_k:
@@ -731,8 +738,13 @@ class SmartMemory:
         eff = dw * src_w * (sim_vec + LEX_WEIGHT * lex_vec)
 
         # lexical channel as a separate ranked list for RRF fusion with the
-        # semantic ranking (each channel covers what the other misses)
-        lex_order = np.argsort(-lex_vec)[:200]
+        # semantic ranking (each channel covers what the other misses).
+        # Zero-score entries must NOT fill the lexical pool: a query with no
+        # lexical overlap would otherwise hand arbitrary entries an RRF vote
+        # (external review finding, fixed 2026-09-24).
+        lex_sorted = np.argsort(-lex_vec)
+        lex_order = np.array([int(i) for i in lex_sorted if lex_vec[i] > 0][:200],
+                             dtype=int)
         dense_order = np.argsort(-sim_vec)[:200]
         fused = {}
         for rank, idx in enumerate(dense_order):
@@ -834,6 +846,7 @@ class SmartMemory:
         pruned at the full threshold.
         """
         removed = 0
+        removed_ids = set()
         surviving = []
         for mem in self.memories:
             dw = self._decay_weight(mem)
@@ -844,10 +857,17 @@ class SmartMemory:
                 surviving.append(mem)
             else:
                 removed += 1
+                removed_ids.add(mem.memory_id)
                 self._unindex(mem.memory_id)
         if removed:
             self.memories = surviving
             self._mat_dirty = True
+            # evidence-graph hygiene, same policy as forget(): pruning must
+            # not leave dangling evidence_ids on surviving consolidation nodes
+            for m in self.memories:
+                if m.evidence_ids and (removed_ids & set(m.evidence_ids)):
+                    m.evidence_ids = [x for x in m.evidence_ids
+                                      if x not in removed_ids]
         self._codes_dirty = True
         return removed
 

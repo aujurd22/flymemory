@@ -123,8 +123,8 @@ def flymemory_remember(text: str, tags: str = "") -> str:
 
 @mcp.tool()
 def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = False) -> str:
-    """Hybrid recall: semantic similarity + IDF lexical boost (exact identifiers),
-    ranked by similarity × time decay. Superseded (outdated) entries are excluded
+    """Hybrid recall: dense (semantic) ranking and IDF lexical ranking fused
+    with reciprocal-rank fusion; superseded (outdated) entries are excluded
     unless include_superseded=True — use it for history questions like
     "did I ever use X?".
 
@@ -133,7 +133,7 @@ def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = Fals
         top_k: Number of memories to return
         include_superseded: include entries marked as superseded
     Returns:
-        Relevant memories with scores, age and provenance stamps
+        Relevant memories with ids, scores, age and provenance stamps
     """
     with _mem_lock:
         mem = get_memory()
@@ -143,8 +143,9 @@ def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = Fals
         output = []
         for entry, sim, eff in results:
             decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
-            output.append(f"[sim={sim:.2f} | {_age_str(entry.timestamp)} | "
-                          f"src={entry.source} | {decay_pct}] {entry.text[:80]}")
+            output.append(f"[#{entry.memory_id} | sim={sim:.2f} | "
+                          f"{_age_str(entry.timestamp)} | src={entry.source} | "
+                          f"{decay_pct}] {entry.text[:80]}")
         return "\n".join(output)
 
 def mem_decay_pct(entry, mem):
@@ -326,7 +327,8 @@ def flymemory_auto(context: str, response: str = "") -> str:
                 for entry, sim, eff in results:
                     if sim > 0.4:  # only report meaningful matches
                         recalled_ids.add(entry.memory_id)
-                        recall_parts.append(f"  [{sim:.2f} | {_age_str(entry.timestamp)}] {entry.text[:80]}")
+                        recall_parts.append(f"  [#{entry.memory_id} | {sim:.2f} | "
+                                            f"{_age_str(entry.timestamp)}] {entry.text[:80]}")
                 if recall_parts:
                     output_parts.append("RECALLED MEMORIES:")
                     output_parts.extend(recall_parts)
@@ -344,8 +346,8 @@ def flymemory_auto(context: str, response: str = "") -> str:
                   if m.memory_id not in recalled_ids]
         if recent:
             output_parts.append("RECENT CONTEXT (last ~90 min):")
-            output_parts.extend(f"  [{_age_str(m.timestamp)}] {m.text[:70]}"
-                                for m in recent)
+            output_parts.extend(f"  [#{m.memory_id} | {_age_str(m.timestamp)}] "
+                                f"{m.text[:70]}" for m in recent)
 
         # ===== STORE: store this interaction if novel =====
         combined_text = context
