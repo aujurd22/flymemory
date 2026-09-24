@@ -439,6 +439,12 @@ chronological) instead of prose summaries -- same 50 questions (seed 7):
 | turn entries only | 16/50 = 32% | 0.350 |
 | prose-summary overlay | 19/50 = 38% | 0.400 |
 | timeline overlay (50-question sample) | 22/50 = 44% | 0.440 |
+| turn + entity-state overlay (same-source records) | 18/50 = 36% | 0.390 |
+
+(Entity-state records -- "entity.attribute = current value (changed from
+old)" -- generated from the same 940 sessions: above turn-only, below
+timeline. Measured spectrum: narrative (turns) -> prose summary -> timeline
+(optimum) -> key-value records.)
 
 At FULL SCALE (n=500) the timeline overlay scores **41.6% strict / 43.9%
 weighted** vs the prose overlay's 42.8% / 44.9% -- statistically a wash.
