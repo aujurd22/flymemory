@@ -88,3 +88,21 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 
 ### topoteretes/cognee (★31k, 图派) —— 待读
 ### Tanvrit/smritidb —— "biology-inspired associative memory standard, remembers by partial cue" —— 待读
+
+### topoteretes/cognee (★31k, 图+向量混合) —— 图谱派代表
+- **混合存储**:图谱(实体-关系)+ 向量块 + 会话存储,检索自动路由;可全跑单一 Postgres。
+- **四操作生命周期**:remember/recall/improve(session distillation——把会话中被采纳的经验教训提炼进持久图谱)/forget。
+- **无 LLM 也能工作**:本地 GLiNER 抽取+本地嵌入;崩溃后管线可恢复;数据集绑定嵌入模型防不匹配。
+- **COGX 交换格式**:支持从 Mem0/Letta/Zep/Graphiti 导入既有记忆——**行业已在标准化记忆互导**(我们若做导出格式可参考)。
+- 学术背书:arXiv 2505.24478 + BEAM 评测(100K token 0.79 / 10M 探索性 0.67)。
+- 对比:图派重"关系结构",flymemory 重"状态机+不变量"——不同哲学,但 cognee 的 session distillation 与我们的 consolidation 同构。
+
+### memvid (★16.5k, Rust) —— 单文件记忆
+- 记忆编码进单个视频文件(二维码帧),无服务器无数据库,即时检索。工程奇观,机制参考价值低;但"记忆=可携带单文件"的定位与 flymemory 单文件 pkl 哲学同向。
+
+### MemoriLabs/Memori (★16.9k) / EverMind-AI/EverOS (★13.1k) —— 简记
+- Memori:agent-native 结构化持久状态(与我们的 entity-state 方向同行),LLM-agnostic。
+- EverOS:本地优先、Markdown-native、用户自有、自我演化——**与 flymemory "本地+可审计"定位最接近的叙事**;Markdown-native(人类可读)是我们 pkl 之外的另一个取舍点。
+
+### 调研阶段小结(12 仓精读 + 4577 索引)
+四象限定位:检索智能(mem0)/记忆OS(MemOS)/自编辑(letta)/hook自动化(claude-mem、flymemory)/图谱(cognee、Zep)/生物机制(flypoet、MHN、果蝇学术)。flymemory 独占的组合:**写入侧状态机(机械不变量)+ 果蝇机制实验源头 + 预注册 benchmark + 负结果文化**。行业可借鉴 top3:①YantrikDB 主动洞察触发器+矛盾 ask_user;②TencentDB L1抽取节奏控制;③claude-mem 三层渐进披露注入。
