@@ -56,6 +56,21 @@
     散文的 74.8%——输出格式越严格,整合覆盖率越低,是工程成本维度
   - trace:reports/structured_50_1790233989.json
 
+**P-2026-09-24-AGG1 · 聚合型条目 overlay**
+- 注册:2026-09-24(先于实验)
+- 干预:在 consolidated 之外新增聚合统计条目(清单/汇总式:"TOPIC: item1;
+  item2 (total: N)")——直接对应 85 个 full-miss 中的聚合统计类(数医生/
+  累加花费/特定人物活动),这类问题 best evidence rank 1708-11867、结构性
+  超出 top-k 单条语义检索
+- **P1(方向)**:turn+cons+agg 三层 overlay 的总体 strict ≥ turn+cons 双层
+  (38.0%,50 题 seed 7)
+- **P2(定向)**:multi-session / temporal-reasoning / knowledge-update 类
+  错误数下降
+- **P3(安全)**:细节类(single-session-*)不降(L1 叠加原则)
+- 证伪条件:三层 ≤ 双层,则聚合条目在当前生成质量下无增益(可能因
+  session 内聚合≠跨 session 聚合,后者才是 85 miss 的真实需求)
+- 状态:**PENDING**
+
 ## Reproduction
 
 全部基准脚本在仓库根,固定 seed,数据集版本化(`data/memory_judgment.json` v1.3)。
