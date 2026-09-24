@@ -116,7 +116,15 @@
 - **P2(安全)**:总体 strict 不低于 TOOL1(46.0%)
 - 证伪条件:temporal 不降,则"时间结构检索"假设出清,v4 RFC 检索侧核心
   收缩为纯 agentic(无 time_range)
-- 状态:**PENDING**
+- 状态:**判定完毕——P1 成立(大幅),P2 成立**
+  - 结果:**56.0% strict / 63.0% weighted**(n=50, seed 7),vs TOOL1
+    46.0%/51.0% → +10pp strict / +12pp weighted
+  - P1 大幅成立:temporal-reasoning wrong 6→2(−67%),correct 8→11(79%)
+  - P2 成立:其余类型无退化(multi-session wrong 7→6)
+  - 平均 search 4.4 次/题(模型主动用了 scoping)
+  - **程序首个前瞻命中**:注册预测(e040885 链)→ 验证 → 大幅成立。
+    结论:time-scoped retrieval 是一阶杠杆,纳入 agentic 工具默认形态
+  - trace:reports/toolanswer_50_1790274503.json
 
 ## Reproduction
 
