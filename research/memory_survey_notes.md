@@ -115,3 +115,11 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 
 ### NirDiamant/Agent_Memory_Techniques (★1.1k) —— 行业教学分类学(30 notebook)
 覆盖:conversation buffer、summary memory、vector RAG memory、entity memory、knowledge-graph memory、episodic memory 等的行业标准做法。用途:作为"行业怎么做"的对照系;flymemory 的差异化(写入侧状态机+不变量+预注册)对照这份清单更清晰。
+
+### MemoriLabs/Memori (★16.9k) —— 八类结构化记忆 + 执行轨迹记忆
+- **三追踪层级**(entity/process/session)× **八类结构化记忆**:attributes/events/facts/people/preferences/relationships/rules/skills——不只对话文本,还从 **agent 执行轨迹**(tool calls/decisions/outcomes)提取记忆("做了什么"而非只"说了什么")。
+- **框架观察**:记忆"类型"(what)与"更新维度"(how it changes:multi-update/reversal/temporary/partial-correction,我们 v1.4 的轴)是两个正交轴——行业分类学+我们的维度轴可组成完整矩阵。
+- **token 效率卖点**:LoCoMo 87%,每查询 721 tokens(全量上下文的 2.8%)——结构化记忆替代长上下文的成本论证值得引用。
+
+### EverMind-AI/EverOS (★13.1k) —— 本地 Markdown-native 叙事同类
+本地优先、Markdown-native、用户自有、自我演化——与 flymemory"本地+可审计"定位最接近的叙事;Markdown-native(人类可读)vs 我们的 pkl 是另一个取舍轴。
