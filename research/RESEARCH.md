@@ -104,6 +104,9 @@
     分散于多条 turn,单次 top-k 检索结构性不足;agentic 多轮检索
     (自主改写查询)可将 strict 从 40% 提升至 46%——检索形态必须匹配
     问题类型(lookup 用 top-k,aggregation 用多轮工具化检索)
+    TOOL3 补充:calculator 工具在 time-scoped 之上无额外增益
+    (54.0% vs 56.0%,噪声内)——残余瓶颈是证据收集(跨多 turn 阅读)
+    而非算术,calculator 不保留
   - 注:answer/judge 同模型(DeepSeek),交叉 judge 校准待补
   - trace:reports/toolanswer_50_1790263915.json
 
