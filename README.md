@@ -308,11 +308,17 @@ at the 87% ceiling.
 gains a `time_range` parameter ("YYYY-MM..YYYY-MM") and the system prompt
 instructs scoping for time-bounded questions. Same 50 questions:
 
-| answer mode | strict | weighted | temporal wrongs (of 14) |
-|---|---|---|---|
-| single-round top-5 | 40.0% | 40.0% | 9 |
-| TOOL1 agentic (free-form search) | 46.0% | 51.0% | 6 |
-| **TOOL2 agentic + time_range** | **56.0%** | **63.0%** | **2** |
+| answer mode | strict (n=50 / n=500) | weighted |
+|---|---|---|
+| single-round top-5 (three-layer) | 40.0% / 40.0% | 40.0% |
+| TOOL1 agentic (free-form search) | 46.0% / 43.2%* | 48.6%* |
+| **TOOL2 agentic + time_range** | **56.0% / 44.6%** | **63.0% / 50.0%** |
+
+(*TOOL1 was only run at n=50; at n=500 TOOL2 scores 44.6% strict / 50.0%
+weighted vs turn-only 37.0% / 39.6% and prose overlay 42.8% / 44.9% --
+agentic time-scoped retrieval is the best configuration at both scales.
+By type at n=500: temporal-reasoning remains the weakest slice at 50/133
+correct; multi-session 56/133 correct.)
 
 The registered prediction (research/RESEARCH.md, TOOL2) confirmed with a
 large margin: temporal-reasoning wrongs dropped 67% and no other type
