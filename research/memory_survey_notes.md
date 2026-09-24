@@ -106,3 +106,12 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 
 ### 调研阶段小结(12 仓精读 + 4577 索引)
 四象限定位:检索智能(mem0)/记忆OS(MemOS)/自编辑(letta)/hook自动化(claude-mem、flymemory)/图谱(cognee、Zep)/生物机制(flypoet、MHN、果蝇学术)。flymemory 独占的组合:**写入侧状态机(机械不变量)+ 果蝇机制实验源头 + 预注册 benchmark + 负结果文化**。行业可借鉴 top3:①YantrikDB 主动洞察触发器+矛盾 ask_user;②TencentDB L1抽取节奏控制;③claude-mem 三层渐进披露注入。
+
+### Tanvrit/smritidb —— Kanerva SDM/超维计算的标准化工尝试
+- **机制**:二元超维计算(Kanerva 1988)——数据编码为 10000 维二进制向量,**内容即地址**;查询用 partial cue 编码按余弦 top-K 召回,无需精确匹配。
+- **独特性质**:①全息退化——记录分散在大量存储单元,丢部分基底=整体变模糊而非条目丢失(向量库按分片丢数据是真丢);②Hebbian 自组织——频繁共访项自动绑定,冷数据摘要压缩(类比海马体→皮层固化);③跨语言字节级一致(KMF 线格式+一致性语料+BLAKE3 决胜)。
+- **制度设计**:Apache-2.0 + 不可撤销专利授权——"开放标准的价值在于透明,黑盒化会让标准崩塌"。
+- **与 flymemory**:SDM 是我们 .bio 方向的理论源头(flymemory 的 dense matrix + cosine 检索就是简化版 SDM);flypoet 的 address book(Hamming hit@10)与 smritidb 同理论家族。全息退化是我们没有的性质。
+
+### NirDiamant/Agent_Memory_Techniques (★1.1k) —— 行业教学分类学(30 notebook)
+覆盖:conversation buffer、summary memory、vector RAG memory、entity memory、knowledge-graph memory、episodic memory 等的行业标准做法。用途:作为"行业怎么做"的对照系;flymemory 的差异化(写入侧状态机+不变量+预注册)对照这份清单更清晰。
