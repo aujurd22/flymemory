@@ -291,6 +291,12 @@ verdicts agree with a mechanical keyword check on all 150 arm-answer pairs
 (150/150) -- the judge is neither stricter nor looser than the observable
 evidence.
 
+Note on the no-memory arm: the blind model is 3% current with a 10% stale
+answer rate and 20% outright wrong -- it confabulates where it should
+abstain. With a naive store it reaches 83-87% current but still leaks
+17% stale; only the state-maintenance arms reach 0% stale while staying
+at the 87% ceiling.
+
 `bench_lme_e2e.py` extends the protocol to the public LongMemEval-oracle
 questions (all 500): recall top-5 → deepseek answers → judge vs gold.
 **Strict correct 37.0% (185/500), weighted with partials 39.6%.** Full-scale
