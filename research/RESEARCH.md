@@ -100,6 +100,10 @@
   - **结论:agentic retrieval(多轮自主检索)打破单次 top-5 的结构限制**
     ——与 85 miss 归因预测一致("聚合统计题需要多角度多轮检索")。完整
     提升链(同 50 题):turn-only 32% → 双层 38% → 三层 40% → agentic 46%
+  - **L5 · 聚合定律(新)**:聚合统计类问题("数 X""累加 Y")的答案
+    分散于多条 turn,单次 top-k 检索结构性不足;agentic 多轮检索
+    (自主改写查询)可将 strict 从 40% 提升至 46%——检索形态必须匹配
+    问题类型(lookup 用 top-k,aggregation 用多轮工具化检索)
   - 注:answer/judge 同模型(DeepSeek),交叉 judge 校准待补
   - trace:reports/toolanswer_50_1790263915.json
 
