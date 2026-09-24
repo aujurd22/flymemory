@@ -302,6 +302,23 @@ abstain. With a naive store it reaches 83-87% current but still leaks
 17% stale; only the state-maintenance arms reach 0% stale while staying
 at the 87% ceiling.
 
+### TOOL2: time-scoped agentic search (56% strict)
+
+`bench_toolanswer.py --tool2` (TOOL2): the answer model's search_memory
+gains a `time_range` parameter ("YYYY-MM..YYYY-MM") and the system prompt
+instructs scoping for time-bounded questions. Same 50 questions:
+
+| answer mode | strict | weighted | temporal wrongs (of 14) |
+|---|---|---|---|
+| single-round top-5 | 40.0% | 40.0% | 9 |
+| TOOL1 agentic (free-form search) | 46.0% | 51.0% | 6 |
+| **TOOL2 agentic + time_range** | **56.0%** | **63.0%** | **2** |
+
+The registered prediction (research/RESEARCH.md, TOOL2) confirmed with a
+large margin: temporal-reasoning wrongs dropped 67% and no other type
+regressed (+10pp strict overall). Time-scoped retrieval is a first-order
+lever and ships as the default tool shape.
+
 Cross-model check (external-review suggestion): the same 50 questions
 answered by a second model (GLM, via interactive session) score 30% strict
 / 31% weighted vs DeepSeek's 32% / 35% -- the ~50% answer-conversion
