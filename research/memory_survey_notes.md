@@ -127,3 +127,14 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 ### NirDiamant/Agent_Memory_Techniques (★1.1k) —— 30-notebook 行业分类学(细目)
 六大家族:①短期(buffer/window/summary/token)②长期(vector/entity/KG/episodic/semantic/procedural)③认知架构(working/hierarchical/consolidation/compaction/self-reflection/**routing**/temporal/**forgetting-decay**)④检索与路由(patterns/cross-session/multi-agent-shared/memory-as-tool)⑤框架(Mem0/Letta/Zep/Graphiti)⑥评估与生产(evaluation/LoCoMo/production-patterns)。
 **flymemory 对照**:家族①②③④⑥全覆盖;缺口=Memory Routing(notebook 17,查询类型路由——与第五轮 query planner 建议重合)与 Multi-Agent Shared Memory(22,超出个人定位,非目标)。另有 notebook 28/29 的评估与 LoCoMo 基准实践可对照我们 judgment/e2e 体系。
+
+### Agent_Memory_Techniques #17 Memory Routing —— 行业实现细节
+- **Memory Router 模式**:所有记忆读写先经分类器(LLM 调用/关键词规则/小模型)决定路由到专门 store(episodic=事件 / semantic=事实 / procedural=流程);每 store 独立结构。
+- **flymemory 对应路径**:我们已有雏形(tags: entity_state/lme 分库逻辑),缺的是①写入分类器(turn 进来判类型)②查询侧路由(lookup→top-k / temporal→timeline / aggregation→entity 清单 / history→include_superseded)。第五轮 query planner 建议的行业实现即此。
+- 教学实现的粒度是"每类型一个独立 store";flymemory 可用 tag+state_key 字段实现同效(单库内逻辑分区),避免多文件管理成本。
+
+### HippoRAG 2 (NeurIPS'24 系) —— PPR 多跳检索机制
+- 离线:OpenIE 三元组建 KG + 实体/事实/段落三嵌入。
+- 在线:查询实体锚点 → KG 上 Personalized PageRank 多跳传播 → 与嵌入检索融合 → rerank → 段落交 LLM。
+- HippoRAG 2 结论:多跳/关联性任务优势明显,单跳事实类不劣于标准 RAG;离线资源消耗低于 GraphRAG/RAPTOR/LightRAG。
+- **对 flymemory 的映射**:整合条目带 entity tags ≈ 我们的 KG 节点;查询实体锚点 → 沿 evidence_ids/tag 传播 ≈ 轻量 PPR。V4 若做 query planner,aggregation 类查询可走"实体锚点+传播"路线。
