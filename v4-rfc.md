@@ -167,3 +167,15 @@ two new optional fields:
 
 No knowledge graph, no graph database, no server-side LLM, no distributed
 storage, no FAISS/HNSW until N > 1e5 in production.
+
+## 9. Consolidation trigger timing (supplement, 2026-09-25)
+
+v3 consolidates at write time (hook ingest / explicit consolidate calls).
+Missing: an IDLE-TIME consolidation pass ("dreaming", per Letta's sleep-time
+compute; their paper reports ~5x test-time compute reduction at equal
+accuracy). FlyMemory implementation path: a scheduled maintenance script
+(Windows scheduled task precedent exists) that, during idle hours, re-runs
+overlay consolidation over the RECENT-channel window (last ~90 min of
+conversation) and overlays the distilled entries. Engine untouched;
+pure post-processing. Sanity gate: consolidation faithfulness audit
+(bench_consolidation_audit.py protocol) must gate every dreaming pass.

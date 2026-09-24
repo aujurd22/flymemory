@@ -138,3 +138,8 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - 在线:查询实体锚点 → KG 上 Personalized PageRank 多跳传播 → 与嵌入检索融合 → rerank → 段落交 LLM。
 - HippoRAG 2 结论:多跳/关联性任务优势明显,单跳事实类不劣于标准 RAG;离线资源消耗低于 GraphRAG/RAPTOR/LightRAG。
 - **对 flymemory 的映射**:整合条目带 entity tags ≈ 我们的 KG 节点;查询实体锚点 → 沿 evidence_ids/tag 传播 ≈ 轻量 PPR。V4 若做 query planner,aggregation 类查询可走"实体锚点+传播"路线。
+
+### letta sleep-time compute / "dreaming" —— consolidation 的触发时机
+- 论文:Sleep-time Compute: Beyond Inference Scaling at Test-time(arXiv 2504.13171, Letta+UCB+Stanford)——agent 在空闲时对 memory/context 做"思考",同准确率下 test-time compute 降 ~5×(Stateful GSM-Symbolic)。
+- 实现:background subagents 审查近期对话→提炼教训→重写 memory blocks(不中断活跃 agent)。docs 称 "dreaming"。
+- **flymemory 映射**:我们的整合发生在写入时(hook/consolidate);缺独立 idle-time 整理。可实现路径:Windows 计划任务(FlyMemoryGuard 先例)在空闲时段跑 "dreaming" 整理——对 RECENT 通道近 90 分钟对话做二次 consolidation(overlay 式),不改 engine 主路径,纯 bench 式后处理脚本即可。
