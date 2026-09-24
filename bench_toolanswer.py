@@ -111,17 +111,16 @@ def main():
     t0 = time.time()
 
     def safe_calc(expression):
-    expr = str(expression).strip()
-    if not expr or any(ch not in "0123456789+-*/(). " for ch in expr):
-        return "rejected: only numbers and + - * / ( ) are allowed"
-    try:
-        val = eval(expr, {"__builtins__": {}}, {})
-        return f"= {val}"
-    except Exception as e:
-        return f"error: {e}"
+        expr = str(expression).strip()
+        if not expr or any(ch not in "0123456789+-*/(). " for ch in expr):
+            return "rejected: only numbers and + - * / ( ) are allowed"
+        try:
+            val = eval(expr, {"__builtins__": {}}, {})
+            return f"= {val}"
+        except Exception as e:
+            return f"error: {e}"
 
-
-def search_mem(query, k, time_range=None):
+    def search_mem(query, k, time_range=None):
         hits = mem.recall(query, top_k=k * 4 if time_range else k)
         if time_range and ".." in str(time_range):
             start_s, end_s = str(time_range).split("..", 1)

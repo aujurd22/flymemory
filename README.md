@@ -313,6 +313,7 @@ instructs scoping for time-bounded questions. Same 50 questions:
 | single-round top-5 (three-layer) | 40.0% / 40.0% | 40.0% |
 | TOOL1 agentic (free-form search) | 46.0% / 43.2%* | 48.6%* |
 | **TOOL2 agentic + time_range** | **56.0% / 44.6%** | **63.0% / 50.0%** |
+| TOOL3 + calculator (n=50) | 54.0% | 58.0% -- no gain, dropped |
 
 (*TOOL1 was only run at n=50; at n=500 TOOL2 scores 44.6% strict / 50.0%
 weighted vs turn-only 37.0% / 39.6% and prose overlay 42.8% / 44.9% --
@@ -323,7 +324,10 @@ correct; multi-session 56/133 correct.)
 The registered prediction (research/RESEARCH.md, TOOL2) confirmed with a
 large margin: temporal-reasoning wrongs dropped 67% and no other type
 regressed (+10pp strict overall). Time-scoped retrieval is a first-order
-lever and ships as the default tool shape.
+lever and ships as the default tool shape. TOOL3 probe: adding a
+calculator tool on top gave no further gain (54.0%, within noise) --
+with time-scoped search the residual bottleneck is evidence collection
+(reading across many turns), not arithmetic.
 
 Cross-model check (external-review suggestion): the same 50 questions
 answered by a second model (GLM, via interactive session) score 30% strict
