@@ -44,7 +44,17 @@
 - **P2(幅度)**:temporal-reasoning 类错误率相对下降 > 非 temporal 类
 - **P3(安全)**:总体 strict 不低于 turn-only 基线(32%)
 - 证伪条件:structured ≤ prose timeline,则 L2 修订为"任何整合形态均为二阶,仅叠加有效"
-- 状态:**PENDING** → 结果回填至 `research/results.md`
+- 状态:**判定完毕(2026-09-24 15:20)——P1 证伪,P3 成立,L2 修订**
+  - 结果:structured overlay 38.0% strict / 40.0% weighted(n=50, seed 7)
+  - 对比:turn-only 32.0% | prose overlay 38.0% | timeline overlay 44.0%
+  - P1 证伪:structured(38.0%)≤ prose(38.0%),未超 timeline(44.0%)
+  - P3 成立:38.0% > 32%(overlay 一阶效应第三次确认,+6pp)
+  - **L2 修订(触发注册的证伪条件)**:三种整合形态(散文/时间线/结构化)
+    互比无稳定差异——形态整体为二阶,仅叠加有效。timeline 的 50 题 44%
+    为小样本乐观(全量 41.6%,与 prose 持平)。
+  - 附加数据点:结构化 JSON 生成的 session 成功率 52%(488/940)显著低于
+    散文的 74.8%——输出格式越严格,整合覆盖率越低,是工程成本维度
+  - trace:reports/structured_50_1790233989.json
 
 ## Reproduction
 
