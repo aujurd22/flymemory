@@ -69,7 +69,17 @@
 - **P3(安全)**:细节类(single-session-*)不降(L1 叠加原则)
 - 证伪条件:三层 ≤ 双层,则聚合条目在当前生成质量下无增益(可能因
   session 内聚合≠跨 session 聚合,后者才是 85 miss 的真实需求)
-- 状态:**PENDING**
+- 状态:**判定完毕(2026-09-24 16:58)——P1 弱确认,P3 成立**
+  - 结果:三层(turns+cons+agg)40.0% strict(n=50, seed 7)
+  - 对比:双层(turns+cons)38.0% | turn-only 32.0% | timeline 44.0%
+  - P1 弱确认:+2pp(2 题,n=50 噪声边缘,方向符合预测但幅度小)
+  - P3 成立:single-session 类无退化(assistant 4/5、user 6/9)
+  - 关键洞察:聚合条目只覆盖 session 内聚合(20% sessions 有可数主题),
+    而 85 miss 的真实需求是 **跨 session 聚合**(evidence rank 1708-11867
+    分散在千名开外)——session 内清单救不了它。**确认 README 判断:
+    residual 的下一个杠杆在 answer 侧(查询时聚合计算/工具),不在
+    ingest 侧的更多整合形态**(第 4 个探针的 4th 负结果+1 弱正)
+  - trace:reports/aggregate_50_1790240186.json
 
 ## Reproduction
 
