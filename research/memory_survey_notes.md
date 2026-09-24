@@ -123,3 +123,7 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 
 ### EverMind-AI/EverOS (★13.1k) —— 本地 Markdown-native 叙事同类
 本地优先、Markdown-native、用户自有、自我演化——与 flymemory"本地+可审计"定位最接近的叙事;Markdown-native(人类可读)vs 我们的 pkl 是另一个取舍轴。
+
+### NirDiamant/Agent_Memory_Techniques (★1.1k) —— 30-notebook 行业分类学(细目)
+六大家族:①短期(buffer/window/summary/token)②长期(vector/entity/KG/episodic/semantic/procedural)③认知架构(working/hierarchical/consolidation/compaction/self-reflection/**routing**/temporal/**forgetting-decay**)④检索与路由(patterns/cross-session/multi-agent-shared/memory-as-tool)⑤框架(Mem0/Letta/Zep/Graphiti)⑥评估与生产(evaluation/LoCoMo/production-patterns)。
+**flymemory 对照**:家族①②③④⑥全覆盖;缺口=Memory Routing(notebook 17,查询类型路由——与第五轮 query planner 建议重合)与 Multi-Agent Shared Memory(22,超出个人定位,非目标)。另有 notebook 28/29 的评估与 LoCoMo 基准实践可对照我们 judgment/e2e 体系。
