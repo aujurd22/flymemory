@@ -1,6 +1,6 @@
 # FlyMemory
 
-*Last updated: 2026-09-23 · v3.4*
+*Last updated: 2026-09-25 · v3.5*
 
 **A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
 
