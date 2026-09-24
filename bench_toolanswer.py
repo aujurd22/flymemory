@@ -45,6 +45,16 @@ evidence, write the final answer as plain text (no tool call) in one or two
 short sentences, using ONLY gathered evidence. If the evidence does not
 contain the answer, say you don't know."""
 
+CALC_TOOL = {
+    "type": "function", "function": {
+        "name": "calculator",
+        "description": "Evaluate an arithmetic expression (numbers, + - * / "
+                       "and parentheses only). Use it to combine quantities "
+                       "from memory instead of guessing.",
+        "parameters": {"type": "object", "properties": {
+            "expression": {"type": "string"}},
+            "required": ["expression"]}}}
+
 SEARCH_TOOL = {
     "type": "function", "function": {
         "name": "search_memory",
@@ -67,6 +77,9 @@ def main():
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--topk", type=int, default=5)
     ap.add_argument("--max-rounds", type=int, default=6)
+    ap.add_argument("--calculator", action="store_true",
+                    help="TOOL3 probe: also expose a safe calculator tool "
+                         "(L5 aggregation-law lever: cross-turn arithmetic)")
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +110,18 @@ def main():
     traces = []
     t0 = time.time()
 
-    def search_mem(query, k, time_range=None):
+    def safe_calc(expression):
+    expr = str(expression).strip()
+    if not expr or any(ch not in "0123456789+-*/(). " for ch in expr):
+        return "rejected: only numbers and + - * / ( ) are allowed"
+    try:
+        val = eval(expr, {"__builtins__": {}}, {})
+        return f"= {val}"
+    except Exception as e:
+        return f"error: {e}"
+
+
+def search_mem(query, k, time_range=None):
         hits = mem.recall(query, top_k=k * 4 if time_range else k)
         if time_range and ".." in str(time_range):
             start_s, end_s = str(time_range).split("..", 1)
@@ -127,8 +151,9 @@ def main():
         tool_log = []
         for _round in range(args.max_rounds):
             try:
+                tools = [SEARCH_TOOL] + ([CALC_TOOL] if args.calculator else [])
                 r = client.chat.completions.create(
-                    model=MODEL, messages=messages, tools=[SEARCH_TOOL],
+                    model=MODEL, messages=messages, tools=tools,
                     tool_choice="auto", temperature=0, max_tokens=400)
                 msg = r.choices[0].message
             except Exception as e:
@@ -150,6 +175,10 @@ def main():
                                         qargs.get("time_range"))
                     tool_log.append(f"search({str(qargs.get('query',''))[:40]}"
                                     f" range={qargs.get('time_range')})")
+                elif tc.function.name == "calculator":
+                    result = safe_calc(tc.function.arguments and
+                                       json.loads(tc.function.arguments or "{}").get("expression", ""))
+                    tool_log.append(f"calc({str(tc.function.arguments)[:40]})")
                 else:
                     result = "unknown tool"
                 messages.append({"role": "tool", "tool_call_id": tc.id,
