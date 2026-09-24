@@ -219,13 +219,18 @@ while this benchmark exists. Mechanical validity (id existence, active
 supersede target) is checked in code; unsupported inference in consolidation
 conclusions goes to an LLM judge.
 
-Dataset v1.3 (124 cases, three batches): 62 supersede (14 from the
+Dataset v1.4 (144 cases, four batches): 62 supersede (14 from the
 contradiction scenarios + 20 from the state-fidelity pairs + 28 fresh
 themes), 30 adversarial no-ops ("I fixed something on my old Windows VM"
 must NOT supersede the Fedora entry), 14 consolidation (summary requests
 over topic fragments; 2 with an outdated-distractor to test stale leakage),
 8 forget (6 wrong-fact deletions + 2 traps where the right action is
-supersede, never forget). Generators: gen_dataset_batch2.py / batch3.py.
+supersede, never forget), and batch 4 adding four NEW capability dimensions
+(5 each): multi-update (two prior states both need superseding), reversal
+(value reverts -- must create a new entry, never resurrect the superseded
+one), temporary state (a time-boxed fact is new info, not an update), and
+partial correction (one field of a compound entry changes). Generators:
+gen_dataset_batch2.py / batch3.py / batch4.py.
 
 First results, 2026-09-24 (oracle = gold replay, harness sanity check, all
 1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0;
@@ -234,7 +239,7 @@ but failed to execute leaves the state unchanged and cannot count as a hit):
 
 | metric | value |
 |---|---|
-| supersede precision / recall | **1.00 / 1.00** (n=62) |
+| supersede precision / recall | **1.00 / 1.00** (n=77, incl. multi-update/reversal/partial-correction dimensions) |
 | forget precision / recall | **1.00 / 1.00** (n=8) |
 | unnecessary mutation rate | **0/36** (all adversarial no-ops held) |
 | consolidation evidence exact-match | 8/14 |
