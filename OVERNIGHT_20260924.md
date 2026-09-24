@@ -40,6 +40,7 @@
 3. **merge_inplace 的历史丢失**(粒度 A/B 与 dedup 修复的副产品,6/20):旧文本被原地改写,include_superseded 救不回。设计权衡:可给 merge 加 supersede lineage(旧文本存 tombstone)。
 4. **judgment 数据集扩到 100+** → **已完成(v1.2,100 场景 = 48 sup/30 noop/14 cons/8 frt,ed9a763)**:DeepSeek supersede P/R 1.00/1.00(n=50)、forget 1.00/1.00、mutation 0/30;consolidation evidence 8/14(57%,仍是改进目标)。
 4b. **merge lineage tombstone 已实现**(ad54abe,从 RFC 转正):rewriting merge 保留旧文本为 superseded tombstone,include_superseded 可恢复历史;52 测试 + fidelity/contradiction/QA 回归全绿,服务已重启生效。
+4c. **dream.py 已实现并真实验证**(09-25 凌晨):idle-time consolidation(rfc §9)——读 RECENT 90 分钟窗口 → DeepSeek 蒸馏 → 逐条幻觉审计门禁 → 经 MCP flymemory_remember 写入(生产正确路径,直写 pkl 会与服务内存副本冲突)。实测 8 条整合条目入库(NEW/MERGED 正确)。部署建议:Windows 计划任务每小时跑一次(空闲时段),或手动。**注意**:90 分钟窗口可能混入其他并行会话的记忆(flymemory 是跨会话共享库)——dreaming 整理的是"全部最近记忆"而非单会话。
 5. **Phase 4 长期运行验证**(评审定调的最终 thesis 检验)。
 
 ## 运维状态
