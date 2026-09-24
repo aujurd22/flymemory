@@ -150,6 +150,19 @@ two new optional fields:
   capability taxonomy for the benchmark dimension matrix first; dataset
   integration after the V4 schema lands.
 
+  Integration assessment (2026-09-25 repo survey): the harness ships a
+  memory_modules backend interface (no_retrieval / rag_query_to_slice /
+  agentrunbook_r / codex / agentrunbook_c baselines) -- a FlyMemory backend
+  consumes trajectory history and returns compact evidence for QA, which is
+  exactly our recall->evidence pipeline shape. Main engineering risk: the
+  largest haystacks reach 115M tokens (~M-scale turns), beyond numpy dense
+  comfort. Mitigation already validated in-repo: flypoet's 96-byte packed
+  binary codes + Hamming prefilter -> dense rerank (quality lossless,
+  1/32 storage; hit@10 holds at 40k stores). Estimate: backend ~200 LOC
+  reusing v3; encoding the largest haystack is a batch-encode job
+  (hours-class on CPU, GPU-class if free). Worth doing AFTER the V4 schema
+  lands so the backend speaks the entity-state model natively.
+
 ## 8. Non-goals (unchanged)
 
 No knowledge graph, no graph database, no server-side LLM, no distributed
