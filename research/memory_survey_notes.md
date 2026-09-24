@@ -80,3 +80,11 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - **场景分类学**(重要坐标系):flypoet 的 4 域顺序微调 = domain-incremental;该场景下论文结论"正则化退化、回放类最好"——与 fly 臂(参数分区+门控)仍胜形成张力:小模型+门控在大模型正则化失效处仍有效,或因 92.6M 参数量下分区足够粗粒度。
 - **总体定律**:跨场景最稳健 = 回放+正则化组合。flypoet 睡眠循环三 seed 无差异(+0.003)与"回放有效"主流相反——我们的淋浴剂量(375 步,~+3% 算力)可能低于有效剂量,这是未解差异。
 - XdG 与果蝇的对应:蘑菇体小室 = 硬件化的 XdG(域→小室分配在连接组里固定),FlyPoet 用随机 mask 模拟——差异是果蝇的小室有气味→小室的映射结构,非随机。
+
+### NawrotLab/KC_KC_lateral_interactions (学术, Current Biology 2026) —— flypoet 未测变量
+- KC-KC **侧向交互**(KC 间的直接局部连接,区别于 APL 全局抑制)对嗅觉学习效率与特异性的作用;速率模型拟合 Manoim et al. 2022 钙成像。论文: doi.org/10.1016/j.cub.2026.01.014
+- 研究维度:侧向交互对稀疏性/气味表征去相关/模式分离/记忆特异性的贡献。
+- **flypoet 下一个实验设计**:k-WTA 是全局竞争(所有 KC 一起排名);果蝇另有 KC-KC 局部侧向抑制。可测:在 k-WTA 之外加"局部侧向抑制层"(仅相似 KC 间互抑)是否比全局竞争产生更好的模式分离——特别是相似气味(高重叠 odor 对)的分辨。这是把"全局 vs 局部抑制"变成受控实验。
+
+### topoteretes/cognee (★31k, 图派) —— 待读
+### Tanvrit/smritidb —— "biology-inspired associative memory standard, remembers by partial cue" —— 待读
