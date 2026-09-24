@@ -58,3 +58,18 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 
 ### NirDiamant/Agent_Memory_Techniques (★1.1k) —— 行业分类学参照
 30 个可运行 notebook:conversation buffer / vector RAG memory / summary memory / entity memory / knowledge-graph memory / 等等。作为"行业怎么做"的分类学索引,与我们"研究怎么做"互补。
+
+### thedotmack/claude-mem (★94.6k, TypeScript) —— 与 flymemory 高度同构
+- hook 驱动(SessionStart/UserPromptSubmit/PostToolUse/Stop/SessionEnd——比我们多 PostToolUse/Stop 的工具使用观察);SQLite+FTS5+Chroma 混合检索;语义摘要压缩。
+- **三层渐进披露**:search(索引 ~50-100 tok/条)→ timeline(时间线)→ get_observations(全文 ~500-1000 tok/条),自报省 10× token——两阶段注入(先索引后详情)是我们没有的"注入预算分层"。
+- 多语言模式、本地 SQLite、可选云同步。对我们的启示:recall 注入可先给一句话索引,模型感兴趣再拉全文(需要交互循环,MCP 下可行)。
+
+### letta-ai/letta (★24.9k, MemGPT 后继) —— 模型自编辑记忆的鼻祖产品化
+- **三层记忆**:core(常驻上下文,persona+human 两块)/ recall(全对话史)/ archival(外部知识库)。
+- **记忆自编辑**:模型通过工具调用(core_memory_append/replace、archival_memory_insert)自主决定记什么——与我们"模型判断 supersede"哲学同源;差异是他们连"记"也交给模型,我们是 hook 机械捕获+模型只做修正。
+- **sleep-time compute**:空闲时后台整理巩固记忆(类睡眠固化)——与我们粒度 A/B 的 consolidation 同向,他们有 idle-time agent 实现可参照。
+- 常驻 persona/human core 块我们没有——我们的等价物是 recalled+RECENT 注入,无常驻身份块。v4 可考虑固定 persona 条目常驻注入。
+
+### 行业格局速写(基于本批+此前)
+- 大厂/平台:mem0(检索智能派)、MemOS(OS 派)、letta(自编辑派)、claude-mem(hook 派——与我们同类)、cognee(图派)、m_flow(图评分派)
+- flymemory 差异化坐标:**本地单文件+机械不变量+预注册 benchmark+果蝇机制源头**。行业在"检索智能/分层/工具化"上卷,flymemory 的不可替代性在"写入侧状态机+可证明不变量+负结果文化"。
