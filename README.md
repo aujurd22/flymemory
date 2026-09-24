@@ -423,6 +423,16 @@ shapes answer quality, but format choice between prose and timeline is
 second-order; the first-order lever was overlaying consolidation on top of
 turns at all.
 
+Format matrix completion (same 50 questions, seed 7): a fourth form --
+ENTITY-STATE records ("entity.attribute = current value (changed from ...)")
+generated from the same 940 sessions -- scores **36% strict / 39% weighted**,
+statistically indistinguishable from turn-only. Reading: structured timeline
+lines keep a date plus a narrative fact (retrievable), while heavily
+compressed key-value records lose the contextual surface the embedder needs,
+so they neither retrieve nor answer better. Consolidation formats are now a
+measured spectrum: narrative (turns) -> prose summary -> timeline -> key-value
+(entity-state), with the optimum at timeline.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a

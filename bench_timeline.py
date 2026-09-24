@@ -37,11 +37,21 @@ from bench_memory_judgment import ds_client, parse_decision  # noqa: E402
 from bench_lme_e2e import ANSWER_SYSTEM, JUDGE_SYSTEM  # noqa: E402
 
 MODEL = "deepseek-chat"
-TIMELINE_SYSTEM = """Extract a CHRONOLOGICAL TIMELINE of durable facts from
+CONS_SYSTEM = """Extract a CHRONOLOGICAL TIMELINE of durable facts from
 this conversation. One line per fact, format:
 "YYYY-MM (approx ok): <plain fact with numbers/names>"
 Include preferences, plans, outcomes, quantities. Only facts present in the
 conversation. Reply with ONLY a JSON array of timeline lines."""
+ENTITY_SYSTEM = """Extract durable ENTITY-STATE records from this conversation.
+One record per line, format:
+"<entity>.<attribute> = <current value> (changed from <old value> if it changed)"
+Cover preferences, quantities, names, dates, plans, outcomes. Only facts
+present in the conversation. Reply with ONLY a JSON array of record lines."""
+
+FORMATS = {
+    "timeline": (CONS_SYSTEM, "timeline_entries.json"),
+    "entity-state": (ENTITY_SYSTEM, "entitystate_entries.json"),
+}
 
 ANSWER_SYSTEM = ("You are a personal assistant answering questions from your "
                  "long-term memory. Use ONLY the remembered entries below "
@@ -56,8 +66,10 @@ def main():
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--topk", type=int, default=5)
     ap.add_argument("--no-overlay", action="store_true",
-                    help="evaluate the timeline-only store (skip turn overlay)")
+                    help="evaluate the consolidated-only store (skip turn overlay)")
+    ap.add_argument("--format", choices=list(FORMATS), default="timeline")
     args = ap.parse_args()
+    CONS_SYSTEM, CACHE_NAME = FORMATS[args.format]
 
     here = os.path.dirname(os.path.abspath(__file__))
     client = ds_client()
@@ -78,7 +90,7 @@ def main():
     print(f"sessions: {len(order)}", flush=True)
 
     # ---- generate timelines (cached) ----
-    cache_p = os.path.join(here, "reports", "timeline_entries.json")
+    cache_p = os.path.join(here, "reports", CACHE_NAME)
     if os.path.exists(cache_p):
         cons = json.load(open(cache_p, encoding="utf-8"))
         print(f"timelines loaded from cache: {len(cons)}", flush=True)
@@ -91,7 +103,7 @@ def main():
             try:
                 r = client.chat.completions.create(
                     model=MODEL,
-                    messages=[{"role": "system", "content": TIMELINE_SYSTEM},
+                    messages=[{"role": "system", "content": CONS_SYSTEM},
                               {"role": "user", "content":
                                    f"Session date approx {base}.\n{convo}"}],
                     temperature=0, max_tokens=500)
@@ -176,7 +188,7 @@ def main():
 
     os.makedirs(os.path.join(here, "reports"), exist_ok=True)
     out = os.path.join(here, "reports",
-                       f"timeline_{args.sample}_{int(time.time())}.json")
+                       f"{args.format}_{args.sample}_{int(time.time())}.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"seed": args.seed, "topk": args.topk, "model": MODEL,
                    "tally": tally, "traces": traces},
