@@ -73,3 +73,10 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 ### 行业格局速写(基于本批+此前)
 - 大厂/平台:mem0(检索智能派)、MemOS(OS 派)、letta(自编辑派)、claude-mem(hook 派——与我们同类)、cognee(图派)、m_flow(图评分派)
 - flymemory 差异化坐标:**本地单文件+机械不变量+预注册 benchmark+果蝇机制源头**。行业在"检索智能/分层/工具化"上卷,flymemory 的不可替代性在"写入侧状态机+可证明不变量+负结果文化"。
+
+### GMvandeVen/continual-learning (★1.9k, NMI 2022 官方实现) —— 与 flypoet comp 臂同构
+- 实现 12 种持续学习方法(EWC/SI/LwF/DGR/BI-R/ER/A-GEM/iCaRL/生成分类器/**XdG** 等)× 三场景(task/domain/class-incremental)。
+- **XdG = 上下文相关门控**(每任务掩蔽不同神经元子集,训练测试都只激活该子集)——与 flypoet comp 臂(每域随机 30% 权重)同思想;论文结论:XdG 只适用 task-incremental(需知任务身份),与 SI/EWC 组合更好。
+- **场景分类学**(重要坐标系):flypoet 的 4 域顺序微调 = domain-incremental;该场景下论文结论"正则化退化、回放类最好"——与 fly 臂(参数分区+门控)仍胜形成张力:小模型+门控在大模型正则化失效处仍有效,或因 92.6M 参数量下分区足够粗粒度。
+- **总体定律**:跨场景最稳健 = 回放+正则化组合。flypoet 睡眠循环三 seed 无差异(+0.003)与"回放有效"主流相反——我们的淋浴剂量(375 步,~+3% 算力)可能低于有效剂量,这是未解差异。
+- XdG 与果蝇的对应:蘑菇体小室 = 硬件化的 XdG(域→小室分配在连接组里固定),FlyPoet 用随机 mask 模拟——差异是果蝇的小室有气味→小室的映射结构,非随机。
