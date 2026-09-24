@@ -81,6 +81,18 @@
     ingest 侧的更多整合形态**(第 4 个探针的 4th 负结果+1 弱正)
   - trace:reports/aggregate_50_1790240186.json
 
+**P-2026-09-24-TOOL1 · Agentic answer(检索工具化)**
+- 注册:2026-09-24(先于实验)
+- 干预:answer LLM 带 `search_memory(query)` 工具(function calling 循环),
+  可自主多轮、多措辞检索,收集证据后作答——针对"聚合统计题需要多角度
+  多轮检索而单次 top-5 装不下"的瓶颈(85 miss 归因 + AGG1 判定共同指向)
+- 库:三层(turns+cons+agg,与 AGG1 同)
+- **P1(方向)**:agentic answer 的 strict ≥ 单轮三层(40.0%,50 题 seed 7)
+- **P2(定向)**:multi-session / temporal-reasoning 错误数下降
+- 证伪条件:≤ 40.0%,则确认瓶颈在 answer 模型聚合能力本身而非检索形态
+  ——路线转向"换更强 answer 模型"或接受边界
+- 状态:**PENDING**
+
 ## Reproduction
 
 全部基准脚本在仓库根,固定 seed,数据集版本化(`data/memory_judgment.json` v1.3)。
