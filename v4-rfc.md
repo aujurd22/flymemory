@@ -140,8 +140,15 @@ two new optional fields:
   / Answer — each reported separately.
 - Judge: sliding-window protocol (shipped in the audit); cross-model judge
   agreement to be measured once a second API key is available.
-- LongMemEval-V2: cited by the review (arXiv 2605.12493) — VERIFY EXISTENCE
-  before planning; earlier reviews fabricated citations.
+- LongMemEval-V2: VERIFIED REAL (arXiv 2605.12493, ICML 2026; 451 curated
+  questions; GitHub xiaowu0162/LongMemEval-V2 + HuggingFace dataset). Scope
+  note: it evaluates web/ENTERPRISE agents accumulating environment-specific
+  experience (state tracking, workflow memory, gotchas, premise awareness),
+  not chat-history recall -- a good fit for the V4 state-tracking direction,
+  but the ingestion pipeline (interactive environment traces, up to 115M
+  tokens) differs from LongMemEval-v1's chat sessions. Plan: adopt its
+  capability taxonomy for the benchmark dimension matrix first; dataset
+  integration after the V4 schema lands.
 
 ## 8. Non-goals (unchanged)
 
