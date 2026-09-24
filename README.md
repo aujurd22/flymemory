@@ -297,6 +297,13 @@ abstain. With a naive store it reaches 83-87% current but still leaks
 17% stale; only the state-maintenance arms reach 0% stale while staying
 at the 87% ceiling.
 
+Cross-model check (external-review suggestion): the same 50 questions
+answered by a second model (GLM, via interactive session) score 30% strict
+/ 31% weighted vs DeepSeek's 32% / 35% -- the ~50% answer-conversion
+ceiling over retrieved evidence is model-agnostic, confirming it is a
+task-structure limit (multi-turn aggregation), not a DeepSeek quirk.
+Grading script: bench_glm_answers.py.
+
 `bench_lme_e2e.py` extends the protocol to the public LongMemEval-oracle
 questions (all 500): recall top-5 → deepseek answers → judge vs gold.
 **Strict correct 37.0% (185/500), weighted with partials 39.6%.** Full-scale
