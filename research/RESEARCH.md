@@ -107,6 +107,17 @@
   - 注:answer/judge 同模型(DeepSeek),交叉 judge 校准待补
   - trace:reports/toolanswer_50_1790263915.json
 
+**P-2026-09-24-TOOL2 · time-scoped search**
+- 注册:2026-09-24(先于实验)
+- 干预:search_memory 工具加 time_range 参数("YYYY-MM..YYYY-MM" 过滤),
+  system prompt 指示对时间限定问题使用 scoping;对照 TOOL1(46.0% strict,
+  temporal 切片 8/14 correct)
+- **P1(定向)**:temporal-reasoning wrong 数下降(TOOL1: 6/14)
+- **P2(安全)**:总体 strict 不低于 TOOL1(46.0%)
+- 证伪条件:temporal 不降,则"时间结构检索"假设出清,v4 RFC 检索侧核心
+  收缩为纯 agentic(无 time_range)
+- 状态:**PENDING**
+
 ## Reproduction
 
 全部基准脚本在仓库根,固定 seed,数据集版本化(`data/memory_judgment.json` v1.3)。

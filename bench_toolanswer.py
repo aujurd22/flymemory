@@ -38,19 +38,26 @@ MODEL = "deepseek-chat"
 ANSWER_SYSTEM = """You are a personal assistant answering questions from your
 owner's long-term memory store. You have a search_memory tool: call it with
 different phrasings as many times as needed to gather the evidence relevant
-to the question. Entries carry their age. When you have enough evidence,
-write the final answer as plain text (no tool call) in one or two short
-sentences, using ONLY gathered evidence. If the evidence does not contain
-the answer, say you don't know."""
+to the question. Entries carry their age. For time-bounded questions
+("what did I do in March", "which phone last year"), pass a time_range to
+scope the search instead of relying on one query. When you have enough
+evidence, write the final answer as plain text (no tool call) in one or two
+short sentences, using ONLY gathered evidence. If the evidence does not
+contain the answer, say you don't know."""
 
 SEARCH_TOOL = {
     "type": "function", "function": {
         "name": "search_memory",
         "description": "Search the long-term memory store. Returns the top-5 "
-                       "matching entries with ages.",
+                       "matching entries with ages. Entries carry dates; use "
+                       "time_range to scope searches when the question is "
+                       "time-bounded (e.g. 'which OS in March 2025?').",
         "parameters": {"type": "object", "properties": {
             "query": {"type": "string",
-                      "description": "keyword query, rephrase as needed"}},
+                      "description": "keyword query, rephrase as needed"},
+            "time_range": {"type": "string",
+                           "description": "optional 'YYYY-MM..YYYY-MM' filter "
+                                          "on entry dates"}},
             "required": ["query"]}}}
 
 
@@ -90,13 +97,25 @@ def main():
     traces = []
     t0 = time.time()
 
-    def search_mem(query, k):
-        hits = mem.recall(query, top_k=k)
+    def search_mem(query, k, time_range=None):
+        hits = mem.recall(query, top_k=k * 4 if time_range else k)
+        if time_range and ".." in str(time_range):
+            start_s, end_s = str(time_range).split("..", 1)
+            try:
+                start = time.mktime(time.strptime(start_s + "-01", "%Y-%m-%d"))
+                end = time.mktime(time.strptime(end_s + "-01",
+                                                "%Y-%m-%d")) + 86400 * 31
+                hits = [h for h in hits
+                        if (h[0].timestamp or 0) >= start
+                        and (h[0].timestamp or 0) < end]
+            except ValueError:
+                pass
+        hits = hits[:k]
         out = []
         for m, s, _e in hits:
             age = max(0, int((time.time() - m.last_accessed) / 86400))
             out.append(f"#-{m.text[:200]} ({age}d ago)")
-        return "\n".join(out) if out else "(no matches)"
+        return "\n".join(out) if out else "(no matches in that time range)"
 
     for qi, i in enumerate(idx):
         q = data[i]
@@ -127,8 +146,10 @@ def main():
                         qargs = json.loads(tc.function.arguments or "{}")
                     except json.JSONDecodeError:
                         qargs = {}
-                    result = search_mem(str(qargs.get("query", "")), args.topk)
-                    tool_log.append(f"search({str(qargs.get('query',''))[:40]})")
+                    result = search_mem(str(qargs.get("query", "")), args.topk,
+                                        qargs.get("time_range"))
+                    tool_log.append(f"search({str(qargs.get('query',''))[:40]}"
+                                    f" range={qargs.get('time_range')})")
                 else:
                     result = "unknown tool"
                 messages.append({"role": "tool", "tool_call_id": tc.id,
