@@ -91,7 +91,17 @@
 - **P2(定向)**:multi-session / temporal-reasoning 错误数下降
 - 证伪条件:≤ 40.0%,则确认瓶颈在 answer 模型聚合能力本身而非检索形态
   ——路线转向"换更强 answer 模型"或接受边界
-- 状态:**PENDING**
+- 状态:**判定完毕(2026-09-24)——P1 成立,P2 成立**
+  - 结果:agentic answer **46.0% strict / 51.0% weighted**(n=50, seed 7,
+    平均 3.7 次 search/题)
+  - 对比:单轮三层 40.0% strict / 40.0% weighted → **+6pp strict / +11pp weighted**
+  - P2 成立:temporal-reasoning 8/14 correct(57%,vs structured 版 36%);
+    multi-session wrong 9→7
+  - **结论:agentic retrieval(多轮自主检索)打破单次 top-5 的结构限制**
+    ——与 85 miss 归因预测一致("聚合统计题需要多角度多轮检索")。完整
+    提升链(同 50 题):turn-only 32% → 双层 38% → 三层 40% → agentic 46%
+  - 注:answer/judge 同模型(DeepSeek),交叉 judge 校准待补
+  - trace:reports/toolanswer_50_1790263915.json
 
 ## Reproduction
 
