@@ -417,7 +417,8 @@ class SmartMemory:
     def remember_text(self, text: str, response: str = "",
                       tags: Optional[list] = None, source: str = "hook",
                       timestamp: Optional[float] = None,
-                      force_new: bool = False) -> Dict:
+                      force_new: bool = False,
+                      compartment: Optional[str] = None) -> Dict:
         """Chunked store entry point: long text is split per sentence and each chunk
         goes through dedup/merge; short messages fall back to a single chunk via
         split_chunks' fragment merging.
@@ -428,6 +429,7 @@ class SmartMemory:
         force_new: bypass dedup — every stored chunk becomes a NEW entry
         (consolidation nodes must be new entities, never rewrites of existing
         memories into a different node type).
+        compartment: semantic-domain partition, stored as "comp:<name>" tag.
 
         Returns dict with:
           action: "new" / "merged" / "strengthened" / "rejected" / "mixed"
@@ -446,7 +448,8 @@ class SmartMemory:
         last = None
         for c in chunks:
             r = self.remember(c, response=response, tags=tags, source=source,
-                              timestamp=timestamp, force_new=force_new)
+                              timestamp=timestamp, force_new=force_new,
+                              compartment=compartment)
             counts[r["action"]] = counts.get(r["action"], 0) + 1
             if r.get("memory_id") is not None:
                 ids.append(r["memory_id"])
@@ -469,13 +472,18 @@ class SmartMemory:
     def remember(self, text: str, response: str = "",
                  tags: Optional[list] = None, source: str = "hook",
                  timestamp: Optional[float] = None,
-                 force_new: bool = False) -> Dict:
+                 force_new: bool = False,
+                 compartment: Optional[str] = None) -> Dict:
         """Store one chunk with auto-dedup via semantic similarity.
 
         timestamp: optional backdated creation time (epoch seconds).
         Junk chunks (symbol/table-border debris) are rejected.
         force_new: bypass the dedup/merge branches — always create a new entry
         (used by consolidation; a node must not be retyped by similarity).
+        compartment: semantic-domain partition ("flypoet", "erp", ...) —
+        stored as a "comp:<name>" tag; recall(compartment=...) filters on it.
+        Inspired by the mushroom-body compartment layout: write is domain-
+        partitioned, recall is global by default (NawrotLab KC-KC review).
 
         Returns dict with: stored, action ("new"/"merged"/"strengthened"/"rejected"),
         novelty, memory_id.
@@ -577,10 +585,13 @@ class SmartMemory:
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
         now = timestamp if timestamp is not None else time.time()
+        all_tags = list(tags or [])
+        if compartment:
+            all_tags.append(f"comp:{compartment}")
         entry = MemoryEntry(
             text=text, response=response,
             embedding=emb, timestamp=now, last_accessed=now,
-            access_count=0, tags=tags or [], memory_id=self._next_id,
+            access_count=0, tags=all_tags, memory_id=self._next_id,
             source=source,
         )
         self.memories.append(entry)
@@ -643,10 +654,15 @@ class SmartMemory:
 
     def recall(self, query: str, top_k: int = 5,
                include_superseded: bool = False,
-               two_stage: Optional[bool] = None) -> List[Tuple[MemoryEntry, float, float]]:
+               two_stage: Optional[bool] = None,
+               compartment: Optional[str] = None) -> List[Tuple[MemoryEntry, float, float]]:
         """Hybrid recall: vectorized semantic similarity (max over query chunks)
         × power-law decay + IDF lexical boost (exact identifiers), superseded
         entries excluded unless include_superseded=True.
+
+        compartment: restrict to entries tagged "comp:<name>" (semantic-domain
+        partition, mushroom-body compartment style: write partitioned, read
+        global by default). None = all compartments.
 
         Ranking semantics (be precise): candidate ORDER on the main path comes
         from reciprocal-rank fusion of the dense ranking and the lexical
@@ -665,6 +681,9 @@ class SmartMemory:
         """
         if not self.memories:
             return []
+        comp_tag = f"comp:{compartment}" if compartment else None
+        if comp_tag and not any(comp_tag in m.tags for m in self.memories):
+            return []  # unknown compartment: empty, not a silent global search
         q_texts = split_chunks(query) or [query]
         Q = np.stack([_embed(qt) for qt in q_texts])
         qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
@@ -683,6 +702,10 @@ class SmartMemory:
             if not include_superseded:
                 cand = np.array([i for i in cand
                                  if self.memories[int(i)].superseded_by is None],
+                                dtype=int)
+            if comp_tag:
+                cand = np.array([i for i in cand
+                                 if f"comp:{compartment}" in self.memories[int(i)].tags],
                                 dtype=int)
             # stage 2: dense rerank on candidates only
             Mc = self._emb_matrix()[cand]
@@ -769,6 +792,8 @@ class SmartMemory:
         for idx in order:
             m = self.memories[int(idx)]
             if m.superseded_by is not None and not include_superseded:
+                continue
+            if comp_tag and f"comp:{compartment}" not in m.tags:
                 continue
             results.append((m, float(sim_vec[idx]), float(eff[idx])))
             if len(results) >= top_k:

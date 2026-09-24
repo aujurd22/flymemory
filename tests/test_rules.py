@@ -592,3 +592,31 @@ def test_merge_tombstone_keeps_history(mem, warm_model):
     assert any("138-0000-1111" in m.text for m, _, _ in hist)
     tomb = [m for m in mem.memories if m.superseded_by is not None]
     assert len(tomb) == 1 and "138-0000-1111" in tomb[0].text
+
+
+# ---------------------------------------------------- compartment (v3.5)
+def test_compartment_partition_and_global_default(mem, warm_model):
+    """Write partitioned by domain, recall global by default: entries from
+    other compartments are visible unless compartment= is specified."""
+    mem.remember("flypoet 的稀疏激活实验结论", compartment="flypoet")
+    mem.remember("flymemory 的 tombstone 机制结论", compartment="flymemory")
+    # global recall sees both
+    hits = mem.recall("稀疏激活", top_k=5)
+    assert any("flypoet" in m.text for m, _, _ in hits)
+    # compartment-scoped recall excludes the other domain
+    hits_fly = mem.recall("稀疏激活实验", top_k=5, compartment="flymemory")
+    assert hits_fly and all("comp:flymemory" in m.tags for m, _, _ in hits_fly)
+    assert not any("flypoet" in m.text for m, _, _ in hits_fly)
+
+
+def test_compartment_unknown_returns_empty(mem, warm_model):
+    """An unknown compartment is EMPTY, never a silent fallback to global."""
+    mem.remember("某个一般性记忆条目")
+    assert mem.recall("一般性记忆", compartment="不存在的小室") == []
+
+
+def test_remember_compartment_tagged(mem, warm_model):
+    r = mem.remember("ERP 系统的出库规则更新", compartment="erp")
+    assert r["stored"]
+    entry = next(m for m in mem.memories if m.memory_id == r["memory_id"])
+    assert "comp:erp" in entry.tags

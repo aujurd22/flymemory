@@ -143,7 +143,8 @@ def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = Fals
         output = []
         for entry, sim, eff in results:
             decay_pct = f"decay={mem_decay_pct(entry, mem):.0f}%"
-            output.append(f"[#{entry.memory_id} | sim={sim:.2f} | "
+            state = "superseded" if entry.superseded_by else "active"
+            output.append(f"[#{entry.memory_id} | {state} | sim={sim:.2f} | "
                           f"{_age_str(entry.timestamp)} | src={entry.source} | "
                           f"{decay_pct}] {entry.text[:80]}")
         return "\n".join(output)
