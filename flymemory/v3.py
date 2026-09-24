@@ -809,6 +809,56 @@ class SmartMemory:
             m.access_count += 1
         return results
 
+    def find_contradiction_candidates(self, min_sim: float = 0.92,
+                                       limit: int = 20) -> List[Dict]:
+        """Candidate contradictions: entry pairs whose similarity exceeds the
+        dedup threshold but whose TEXTS DIFFER -- same slot, conflicting
+        values. ask_user protocol: this returns candidates only; the calling
+        model decides supersede (real contradiction) vs merge (duplicate).
+        Mechanical layer only -- no LLM here (yantrikdb-style honest boundary).
+        """
+        if len(self.memories) < 2:
+            return []
+        M = self._emb_matrix()
+        Mn = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
+        sims = Mn @ Mn.T
+        out = []
+        n = len(self.memories)
+        for i in range(n):
+            for j in range(i + 1, n):
+                s = float(sims[i, j])
+                if s < min_sim:
+                    continue
+                a, b = self.memories[i], self.memories[j]
+                if a.text == b.text:
+                    continue  # exact duplicate, not a contradiction
+                if a.superseded_by or b.superseded_by:
+                    continue  # already resolved via lineage
+                out.append({"a_id": a.memory_id, "b_id": b.memory_id,
+                            "sim": round(s, 3),
+                            "a_text": a.text[:120], "b_text": b.text[:120]})
+                if len(out) >= limit:
+                    return out
+        return out
+
+    def fading_valuable(self, decay_threshold: float = 0.5,
+                        limit: int = 10) -> List[MemoryEntry]:
+        """High-value (model/import-judged) entries whose decay weight has
+        fallen below decay_threshold -- the "will fade soon unless rehearsed"
+        list used by insight triggers."""
+        now = time.time()
+        out = []
+        for m in self.memories:
+            if m.source not in ("model", "import"):
+                continue
+            if m.superseded_by is not None:
+                continue
+            dw = self._decay_weight(m)
+            if dw < decay_threshold:
+                out.append(m)
+        out.sort(key=lambda m: self._decay_weight(m))
+        return out[:limit]
+
     def recent(self, minutes: float = 90, limit: int = 12) -> List[MemoryEntry]:
         """Working-memory trail: entries captured within the last `minutes`,
         chronological, superseded excluded. This is the compression-protection

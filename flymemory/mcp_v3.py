@@ -298,6 +298,46 @@ def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
                 f"evidence: {evidence} | {conclusion[:80]}")
 
 @mcp.tool()
+def flymemory_find_conflicts(min_sim: float = 0.92, limit: int = 20) -> str:
+    """Candidate contradictions: memory pairs with near-identical semantics
+    but DIFFERENT text -- same slot, possibly conflicting values. Returns
+    candidates only; YOU decide per pair: supersede (real contradiction) or
+    merge (duplicate). Mechanical candidates, no LLM on this server."""
+    with _mem_lock:
+        mem = get_memory()
+        pairs = mem.find_contradiction_candidates(min_sim=min_sim, limit=limit)
+    if not pairs:
+        return "No contradiction candidates found."
+    out = [f"CONFLICT CANDIDATES: {len(pairs)} (you decide: supersede or merge)"]
+    for p in pairs:
+        out.append(f"  #{p['a_id']} <-> #{p['b_id']} (sim={p['sim']}): "
+                   f"{p['a_text'][:70]} <-> {p['b_text'][:70]}")
+    return "\n".join(out)
+
+
+@mcp.tool()
+def flymemory_insights(decay_threshold: float = 0.5, limit: int = 10) -> str:
+    """Proactive insight triggers: candidate contradictions + high-value
+    (model/import) entries whose decay weight is falling below the threshold
+    ("will fade soon unless rehearsed"). Call periodically or when the user
+    asks what needs attention."""
+    with _mem_lock:
+        mem = get_memory()
+        parts = []
+        conflicts = mem.find_contradiction_candidates(limit=limit)
+        parts.append(f"CONTRADICTION CANDIDATES: {len(conflicts)}")
+        for p in conflicts:
+            parts.append(f"  #{p['a_id']} <-> #{p['b_id']} (sim={p['sim']}): "
+                         f"{p['a_text'][:60]} <-> {p['b_text'][:60]}")
+        fading = mem.fading_valuable(decay_threshold=decay_threshold, limit=limit)
+        parts.append(f"HIGH-VALUE ENTRIES FADING (dw < {decay_threshold}): "
+                     f"{len(fading)}")
+        for m in fading:
+            parts.append(f"  [dw={mem_decay_pct(m, mem):.0f}%] {m.text[:70]}")
+        return "\n".join(parts)
+
+
+@mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:
     """Automatic memory management — call this every conversation turn.
 
