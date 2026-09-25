@@ -705,3 +705,28 @@ def test_classify_query_types(mem):
     assert SmartMemory.classify_query("When did the user book the flight?") == "temporal"
     assert SmartMemory.classify_query("How many restaurants in total?") == "aggregation"
     assert SmartMemory.classify_query("Recommend a hotel") == "lookup"
+
+
+# ------------------------------------------------- V4 atomicity (round-7)
+def test_v4_state_key_requires_atomic_text(mem, warm_model):
+    """A multi-chunk text with one state_key must be REJECTED, not stored
+    with cascading self-supersession (different facts would be marked dead
+    by the I1 rule). Callers store one remember() per state."""
+    r = mem.remember_text(
+        "用户的手机号是 139xxxx。用户居住地是杭州。用户喜欢猫。",
+        state_key="user.profile", state_value="multi", force_new=True)
+    assert r["stored"] is False
+    assert "remember()" in r["reason"]
+
+
+def test_v4_state_lookup_supersedes_all_older_same_key(mem, warm_model):
+    """I1 must supersede ALL older active entries with the same key (three
+    writes in a row leave exactly one active + two lineage entries)."""
+    for v in ("138", "139", "140"):
+        mem.remember(f"电话号码是 {v}。", state_key="user.phone",
+                     state_value=v)
+    cur = mem.state_lookup("user.phone")
+    assert cur is not None and "140" in cur.text
+    hist = mem.state_history("user.phone")
+    assert len(hist) == 3
+    assert sum(1 for m in hist if m.superseded_by is None) == 1

@@ -451,6 +451,19 @@ class SmartMemory:
             return {"stored": False, "action": "rejected", "novelty": 0.0,
                     "memory_id": None, "reason": "credential-like content"}
         chunks = [c for c in split_chunks(text) if not _is_junk_chunk(c)]
+        # v4 atomicity constraint: state_key is only valid for ATOMIC storage.
+        # A multi-chunk text with one state_key would let the I1 active-unique
+        # rule cascade-supersede its own earlier chunks (different facts!),
+        # measured 2026-09-25 -- so multi-chunk + state_key is rejected outright
+        # (caller should store one remember() per state, or drop the key).
+        if state_key and len(chunks) > 1:
+            return {"stored": False, "action": "rejected", "novelty": 0.0,
+                    "memory_id": None,
+                    "reason": ("state_key requires atomic single-fact text; "
+                               f"{len(chunks)} chunks produced -- call "
+                               "remember() per state instead"),
+                    "counts": {"rejected": len(chunks)},
+                    "memory_ids": [], "chunks": len(chunks)}
         counts = {"new": 0, "merged": 0, "strengthened": 0, "rejected": 0}
         ids = []
         last = None
@@ -623,7 +636,7 @@ class SmartMemory:
         )
         self.memories.append(entry)
         # I1 active-unique (v4-rfc): for a given state_key at most one ACTIVE
-        # entry -- an older active entry with the same key is superseded
+        # entry -- ALL older active entries with the same key are superseded
         # mechanically (the temporal-state core of V4)
         if state_key:
             for older in self.memories:
@@ -633,7 +646,6 @@ class SmartMemory:
                     older.superseded_by = entry.memory_id
                     older.valid_to = now
                     self._unindex(older.memory_id)
-                    break
         self._index_entry(entry)
         self._mat_dirty = True
         self._codes_dirty = True

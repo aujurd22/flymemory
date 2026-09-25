@@ -96,7 +96,14 @@ two new optional fields:
 ## 4. Mechanical invariants (enforced in code, verified by tests)
 
 - **I1 active-unique**: for each `state_key`, at most one entry has
-  `valid_to is None` and `superseded_by is None`.
+  `valid_to is None` and `superseded_by is None`. Enforcement supersedes ALL
+  older active same-key entries on a new write (round-7 review: the first
+  version only superseded one, leaving stale siblings).
+- **I8 state atomicity**: a `state_key` is only valid for ATOMIC single-fact
+  text. `remember_text` with multiple chunks + a state_key is rejected
+  outright (round-7: the I1 rule would cascade-supersede the call's own
+  earlier chunks -- different facts marked dead). Callers store one
+  `remember()` per state.
 - **I2 no-dangling-evidence**: every id in `evidence_ids` exists in the store.
   Enforced by `forget()` (shipped) and `decay_cleanup()` (shipped 2026-09-25).
 - **I3 lineage-acyclicity**: `superseded_by` chains never cycle; edges only
@@ -131,6 +138,10 @@ two new optional fields:
 - Answer layer (out of engine scope, benchmark lever): calculator tool
   ([E: A1 probe — DeepSeek barely used it; GLM interactive arm pending]) and
   structured-timeline presentation.
+- Known limitation (round-7): classify_query is keyword-heuristic -- "What
+  is the user's phone number?" (no "current") routes to lookup, not state;
+  state_lookup still requires the caller to know the key. Semantic key
+  matching / LLM-assisted classification is a V4.1 item.
 
 ## 7. Benchmark plan (per external review rounds 4-5)
 
