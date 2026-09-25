@@ -68,6 +68,8 @@ def main():
     ap.add_argument("--no-overlay", action="store_true",
                     help="evaluate the consolidated-only store (skip turn overlay)")
     ap.add_argument("--format", choices=list(FORMATS), default="timeline")
+    ap.add_argument("--also-prose", action="store_true",
+                    help="stack prose-summary entries on top (dual overlay)")
     args = ap.parse_args()
     CONS_SYSTEM, CACHE_NAME = FORMATS[args.format]
 
@@ -131,6 +133,16 @@ def main():
         for text in c["entries"]:
             mem.remember_text(text, tags=["lme", c["sid"], "timeline"],
                               source="model", timestamp=c["ts"], force_new=True)
+    if args.also_prose:
+        # dual overlay: prose summaries stacked on top of timelines
+        prose_p = os.path.join(here, "reports", "consolidated_entries.json")
+        prose = json.load(open(prose_p, encoding="utf-8"))
+        for c in prose:
+            for text in c["entries"]:
+                mem.remember_text(text, tags=["lme", c["sid"], "cons_prose"],
+                                  source="model", timestamp=c["ts"],
+                                  force_new=True)
+        print(f"  + prose entries stacked ({mem.size} total)", flush=True)
     print(f"overlay library: {mem.size} entries", flush=True)
 
     # ---- same 50 questions ----
