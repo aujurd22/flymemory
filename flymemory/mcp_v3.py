@@ -93,7 +93,8 @@ Use flymemory_cleanup to remove fully decayed memories.
 
 @mcp.tool()
 def flymemory_remember(text: str, tags: str = "",
-                       compartment: str = "") -> str:
+                       compartment: str = "", state_key: str = "",
+                       state_value: str = "") -> str:
     """Store an important finding or decision.
 
     Auto-dedup: if semantically similar to an existing memory,
@@ -103,12 +104,17 @@ def flymemory_remember(text: str, tags: str = "",
         tags: Optional comma-separated tags
         compartment: Optional semantic-domain partition (stored as
             "comp:<name>" tag); recall with the same compartment to scope
+        state_key: Optional entity-state key (e.g. 'user.phone'); remembering
+            with the same key mechanically supersedes the older active entry
+        state_value: The current value for state_key
     """
     with _mem_lock:
         mem = get_memory()
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
         result = mem.remember_text(text, tags=tag_list, source="model",
-                                   compartment=compartment or None)
+                                   compartment=compartment or None,
+                                   state_key=state_key or None,
+                                   state_value=state_value or None)
         save_memory()
     action = result["action"]
     counts = result.get("counts") or {}
