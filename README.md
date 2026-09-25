@@ -404,7 +404,15 @@ regression.
 Known trade-off, CLOSED in V4: 6/20 of those updates rewrite the entry in
 place (merge) -- the V4 rewriting merge parks the old text as a superseded
 tombstone with valid_from/valid_to, and `include_superseded=True` recovers
-history uniformly (verified 6/6 pairs). Cost: +1 entry per rewriting merge. Also open from the
+history uniformly (verified 6/6 pairs). Cost: +1 entry per rewriting merge.
+
+Query routing (V4): `recall` classifies each question (state / history /
+temporal / aggregation / lookup, mechanical heuristics) and routes
+accordingly -- history questions automatically include superseded entries;
+state questions are answerable via `state_lookup(key)` without competing in
+top-k.
+
+Also open from the
 end-to-end run: a full attribution of the 265 overlay-wrong answers —
 114 had the evidence turn in top-5 (no consolidated entry hit), 53 had
 BOTH the evidence turn and the consolidated entry and still failed
