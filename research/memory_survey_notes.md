@@ -165,3 +165,15 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - **定位**:瓶颈是记忆维护而非理解;不能靠更强模型或更大记忆,需要专门训练信号。
 - **对我们的直接意义(最重要的发现)**:他们的 RL 环境 + 我们的 v1.4 判断基准(144 场景)+ V4 机械 I1(active-unique 自动 supersede)= **自然组合的下一段实验**:用 GRPO 训练小模型的 memory-judgment 能力,我们的引擎已把机械可判定部分(I1 自动取代)拿走,模型只需学语义判断(该不该 supersede)——比 Supersede 论文的全上下文设定更接近生产,且我们的 144 场景可直接改造成 GRPO 训练环境。技术上:verifiers/prime-rl 栈与 vLLM 兼容,本地 4090 可跑 3B 级。
 - 论文边界:全上下文 vs 记忆式对比在 LME knowledge-update 子集;未测 engine 级机械不变量(I1);未与外部记忆系统(如 Mem0)对比——**这两个空格正是 FlyMemory 的位置**。
+
+### TEPA: Revoking Stale Memories for Conflict-Robust Agents (arXiv 2608.07429) —— **与 V4 I1 完全同构**
+- **机制**:带键先例(keyed precedents)+ **机械键匹配撤销**(deterministic key matching,非模型判断)——与我们 V4 的 I1(state_key 相同自动 supersede)**独立同构**。检索只从当前证据出发,撤销历史保留供审计,可再提升(re-promote)。
+- **关键发现**:反转场景中 append-only 与 last-write-wins **低于完全不用记忆**(0.21 vs 0.31)——过时记忆比没记忆更糟("memory pollution");TEPA 机械撤销达 **0.95**。
+- **对 flymemory 的互证**:我们五臂端到端的真 blind 3%/naive 17% stale 与其结论完全一致;我们 V4 的 I1 就是 TEPA 式机械撤销。**差异**:TEPA 的键是调用方给的结构化键,我们 V4 的 state_key 同——两者都已越过"模型自觉"阶段。
+- 干净 MemoryAgentBench SH-6k 上 TEPA 与强 LWW 持平——**撤销的收益只在污染后显现**,干净库无增益(诚实边界)。
+
+### When Memory Updates but Behavior Does Not (arXiv 2608.01619) —— IPA gap 的机制与解法
+- **IPA gap**(Implicit Policy Adaptation):记忆更新了但行为没更新——agent 知道旧状态过时,仍围绕旧值规划。结构性成因:过时依赖通常"没被说出来"(unsaid),检查"回答说了什么"的常规校验无法捕获。
+- **StateAuditor 方法**:方向反转(存储状态→草稿,而非草稿→存储状态);LLM 提候选旧→新转移 + 确定性验证(钉到唯一记忆条目/核实新证据确实更新/只有验证通过的转移触发修复)。验证的是出处与时间顺序,非语义取代。
+- **数字**:STALE 全协议 **+5.0 点**(CI [+2.9,+7.2]),第三方 judge 复现 0.738 vs 0.680;匹配对照(同证据同预算)仅 +0.6 不显著——增益来自转移机制本身。边界:authored lifecycle 集无增益。
+- **与我们 V4 的映射**:StateAuditor ≈ 我们 dream.py 的蒸馏+审计门禁(方向相反:他们 state→draft 审计回答,我们 draft→state 审计记忆)。**互补**:两方向都需要——他们的发现(IPA 失效)正是我们 v1.4 需要补的第五类测试维度(回答中隐式依赖旧状态,检查"没说什么")。
