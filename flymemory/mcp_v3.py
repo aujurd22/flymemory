@@ -92,7 +92,8 @@ Use flymemory_cleanup to remove fully decayed memories.
 """)
 
 @mcp.tool()
-def flymemory_remember(text: str, tags: str = "") -> str:
+def flymemory_remember(text: str, tags: str = "",
+                       compartment: str = "") -> str:
     """Store an important finding or decision.
 
     Auto-dedup: if semantically similar to an existing memory,
@@ -100,11 +101,14 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     Args:
         text: The text to remember
         tags: Optional comma-separated tags
+        compartment: Optional semantic-domain partition (stored as
+            "comp:<name>" tag); recall with the same compartment to scope
     """
     with _mem_lock:
         mem = get_memory()
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-        result = mem.remember_text(text, tags=tag_list, source="model")
+        result = mem.remember_text(text, tags=tag_list, source="model",
+                                   compartment=compartment or None)
         save_memory()
     action = result["action"]
     counts = result.get("counts") or {}
@@ -122,7 +126,9 @@ def flymemory_remember(text: str, tags: str = "") -> str:
     return f"[{label} {id_str}] {text[:80]}"
 
 @mcp.tool()
-def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = False) -> str:
+def flymemory_recall(query: str, top_k: int = 5,
+                     include_superseded: bool = False,
+                     compartment: str = "") -> str:
     """Hybrid recall: dense (semantic) ranking and IDF lexical ranking fused
     with reciprocal-rank fusion; superseded (outdated) entries are excluded
     unless include_superseded=True — use it for history questions like
@@ -132,12 +138,15 @@ def flymemory_recall(query: str, top_k: int = 5, include_superseded: bool = Fals
         query: The query text (can be partial/incomplete)
         top_k: Number of memories to return
         include_superseded: include entries marked as superseded
+        compartment: optional semantic-domain partition to scope recall
     Returns:
         Relevant memories with ids, scores, age and provenance stamps
     """
     with _mem_lock:
         mem = get_memory()
-        results = mem.recall(query, top_k=top_k, include_superseded=include_superseded)
+        results = mem.recall(query, top_k=top_k,
+                             include_superseded=include_superseded,
+                             compartment=compartment or None)
         if not results:
             return "No relevant memories found."
         output = []
@@ -335,6 +344,41 @@ def flymemory_insights(decay_threshold: float = 0.5, limit: int = 10) -> str:
         for m in fading:
             parts.append(f"  [dw={mem_decay_pct(m, mem):.0f}%] {m.text[:70]}")
         return "\n".join(parts)
+
+
+@mcp.tool()
+def flymemory_recall_index(query: str, top_k: int = 10,
+                            compartment: str = "") -> str:
+    """Progressive disclosure, layer 1: compact index of matching
+    memories (one line each: id + score + age + first 50 chars). Cheap.
+    If an entry looks relevant, fetch its full text with
+    flymemory_get_memory."""
+    with _mem_lock:
+        mem = get_memory()
+        results = mem.recall(query, top_k=top_k,
+                             compartment=compartment or None)
+        if not results:
+            return "No matching memories."
+        out = []
+        for entry, sim, _eff in results:
+            out.append(f"[#{entry.memory_id} | {sim:.2f} | "
+                       f"{_age_str(entry.timestamp)}] {entry.text[:50]}")
+        return "\n".join(out)
+
+@mcp.tool()
+def flymemory_get_memory(memory_id: int) -> str:
+    """Progressive disclosure, layer 2: full text + metadata of one
+    memory (use after flymemory_recall_index flags it as relevant)."""
+    with _mem_lock:
+        mem = get_memory()
+        for m in mem.memories:
+            if m.memory_id == memory_id:
+                meta = [f"#{m.memory_id}", f"src={m.source}",
+                        f"age={_age_str(m.timestamp)}"]
+                if m.superseded_by:
+                    meta.append(f"SUPERSEDED by #{m.superseded_by}")
+                return f"[{' | '.join(meta)}]\n" + m.text
+        return f"memory #{memory_id} not found"
 
 
 @mcp.tool()
