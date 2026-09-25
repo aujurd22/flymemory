@@ -440,6 +440,12 @@ chronological) instead of prose summaries -- same 50 questions (seed 7):
 | prose-summary overlay | 19/50 = 38% | 0.400 |
 | timeline overlay (50-question sample) | 22/50 = 44% | 0.440 |
 | turn + entity-state overlay (same-source records) | 18/50 = 36% | 0.390 |
+| turn + timeline + prose (dual overlay) | 21/50 = 42% | 0.420 |
+
+Dual overlay (timelines + prose stacked) does NOT beat timeline-only: the
+top-5 pool is finite, and prose entries compete for slots without helping
+the temporal questions timelines answer. Timeline-only is the optimal
+single configuration; stacking more consolidated forms dilutes it.
 
 (Entity-state records -- "entity.attribute = current value (changed from
 old)" -- generated from the same 940 sessions: above turn-only, below
