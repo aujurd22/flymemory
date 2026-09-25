@@ -143,3 +143,17 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - 论文:Sleep-time Compute: Beyond Inference Scaling at Test-time(arXiv 2504.13171, Letta+UCB+Stanford)——agent 在空闲时对 memory/context 做"思考",同准确率下 test-time compute 降 ~5×(Stateful GSM-Symbolic)。
 - 实现:background subagents 审查近期对话→提炼教训→重写 memory blocks(不中断活跃 agent)。docs 称 "dreaming"。
 - **flymemory 映射**:我们的整合发生在写入时(hook/consolidate);缺独立 idle-time 整理。可实现路径:Windows 计划任务(FlyMemoryGuard 先例)在空闲时段跑 "dreaming" 整理——对 RECENT 通道近 90 分钟对话做二次 consolidation(overlay 式),不改 engine 主路径,纯 bench 式后处理脚本即可。
+
+## 论文精读(2026-09-25 追加,搜索链:state tracking / temporal)
+
+### STALE: Can LLM Agents Know When Their Memories Are Outdated? (arXiv 2605.06527) —— **最直接的同题基准**
+- **规模**:400 专家验证冲突场景、1,200 查询、100+ 话题、上下文至 150K tok——比我们 v1.4(144 场景)大且专家验证。
+- **三维探测框架**(比我们 current/stale 二分细):①State Resolution(识别旧信念过时)②Premise Resistance(拒绝问题中嵌入的过期预设)③Implicit Policy Adaptation(下游行为应用新状态)。
+- **核心 gap**:"检索到更新证据却不据此行动"(retrieval-action gap)+ 接受查询中嵌入的过期假设。最好模型仅 55.2% overall。
+- **CUPMem 原型**:写入时状态合并(state consolidation)+ 传播感知搜索——**与我们 V4 的 I1(state_key 自动取代)机制同向**,验证了"写入时维护优于检索智能"路线。
+- **对照价值**:①我们 30 场景五臂可对标其 400 场景协议(三维探测可借用);②我们 n=77 supersede 双 1.00 是结构化明确场景,STALE 的 Implicit Conflict(无显式否定)是我们未测的更难维度;③CUPMem 的 propagation-aware search 对应我们 v4-rfc 的 query planner 待办。
+
+### Governing Evolving Memory / SSGM (arXiv 2603.11768, 概念论文)
+- 记忆损坏风险分类:拓扑诱导知识泄露(敏感上下文固化进长期存储)、语义漂移(迭代摘要退化)、隐私脆弱性。
+- 治理三机制:一致性验证/时间衰减建模/动态访问控制——**与 flymemory 已有机制一一映射**(dedup+tombstone/decay/compartment)。方向互证:独立工作收敛到同一治理清单。
+- 评审提示 2603 编号属未来日期需留意;摘要级可信,未读全文。
