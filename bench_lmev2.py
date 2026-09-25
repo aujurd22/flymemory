@@ -213,9 +213,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("stage", choices=["filter", "ingest", "eval"])
     ap.add_argument("--limit-traj", type=int, default=20)
-    ap.add_argument("--limit-q", type=int, default=5,
+    ap.add_argument("--limit-q", type=int, default=0,
                     help="ingest only haystacks for the first N questions")
-    ap.add_argument("--sample", type=int, default=30)
+    ap.add_argument("--sample", type=int, default=0)
     ap.add_argument("--topk", type=int, default=5)
     args = ap.parse_args()
     if args.stage == "filter":
