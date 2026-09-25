@@ -548,6 +548,11 @@ class SmartMemory:
         if best_sim > dup_t and not new_tokens:
             best_match.access_count += 1
             best_match.last_accessed = time.time()
+            if state_key:
+                # state fields ride along even on a pure strengthen: the
+                # caller asserted this entry IS the current state
+                best_match.state_key = state_key
+                best_match.state_value = state_value
             return {"stored": True, "action": "strengthened",
                     "novelty": 1.0 - best_sim, "memory_id": best_match.memory_id}
 
@@ -584,7 +589,9 @@ class SmartMemory:
                 best_match.text = text
                 best_match.embedding = emb
                 best_match.updated_at = time.time()
-                best_match.state_value = None  # caller sets via state_key path
+                if state_key:
+                    best_match.state_key = state_key
+                    best_match.state_value = state_value
                 self._index_entry(best_match)
                 self._mat_dirty = True
                 self._codes_dirty = True
