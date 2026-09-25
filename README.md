@@ -535,7 +535,7 @@ uvicorn, numpy, pytest.
 python -m pytest tests/
 ```
 
-51 behavioral rule tests. The first run downloads
+55 behavioral rule tests. The first run downloads
 `paraphrase-multilingual-MiniLM-L12-v2` (~470 MB) from HuggingFace into the
 standard HF cache; after that everything works offline. If HuggingFace is
 unreachable from your network, set a mirror endpoint first:
