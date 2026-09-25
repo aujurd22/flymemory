@@ -114,7 +114,7 @@ def stage_ingest(limit_traj, limit_q):
     qs = load_questions()
     q_by_id = {q["id"]: q for q in qs}
     wanted_traj = set()
-    for q in qs[:limit_q] if limit_q else []:
+    for q in (qs[:limit_q] if limit_q else qs):
         wanted_traj.update(haystack[q["id"]])
     if not wanted_traj:
         sys.exit(f"no trajectories for the first {limit_q} questions")
@@ -147,8 +147,7 @@ def stage_eval(sample, topk):
     haystack = load_small_haystack()
     qs = load_questions()
     q_by_id = {q["id"]: q for q in qs}
-    rng = __import__("random").Random(7)
-    pick = rng.sample(qs, min(sample, len(qs))) if sample < len(qs) else qs
+    pick = (qs[:sample] if sample and sample < len(qs) else qs)
 
     client = ds_client()
     tally = {"correct": 0, "partial": 0, "wrong": 0, "judge_error": 0}
