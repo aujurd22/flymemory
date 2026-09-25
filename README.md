@@ -402,11 +402,10 @@ after — the three misses are its pre-existing baseline) confirm no
 regression.
 
 Known trade-off: 6/20 of those updates rewrite the entry in place (merge),
-which fixes the state but loses the old text — `include_superseded=True`
-cannot recover it because no lineage entry was created. Candidate v4 change
-(DESIGNED, NOT IMPLEMENTED): on a rewriting merge, park the old text as a
-superseded tombstone pointing at the updated entry, so history recovery
-works uniformly. Cost: +1 entry per rewriting merge. Also open from the
+which fixes the state but loses the old text — SHIPPED in v3.5: a rewriting
+merge now parks the old text as a superseded tombstone pointing at the
+updated entry, so `include_superseded=True` recovers history uniformly.
+Cost: +1 entry per rewriting merge. Also open from the
 end-to-end run: a full attribution of the 265 overlay-wrong answers —
 114 had the evidence turn in top-5 (no consolidated entry hit), 53 had
 BOTH the evidence turn and the consolidated entry and still failed
