@@ -472,6 +472,17 @@ def flymemory_auto(context: str, response: str = "") -> str:
             output_parts.extend(f"  [#{m.memory_id} | {_age_str(m.timestamp)}] "
                                 f"{m.text[:70]}" for m in recent)
 
+        # ===== Progressive-disclosure hint (round-7 review finding) =====
+        # Models default to re-searching the web when a recalled one-liner is
+        # thin, even though the full text is one flymemory_get_memory(id)
+        # away. Say it once per injection so cross-session details get
+        # expanded instead of re-fetched.
+        if recall_parts or recent:
+            output_parts.append(
+                "HINT: entries above are one-line summaries; fetch full text "
+                "with flymemory_get_memory(memory_id) before re-searching the "
+                "web for something already in memory.")
+
         # ===== STORE: store this interaction if novel =====
         combined_text = context
         if response:

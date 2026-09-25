@@ -19,3 +19,8 @@ lme_*.log
 connectome_params_result.log
 scale_v*.log
 qa_sample.log
+data_longmemeval_v2/*.jsonl
+data_longmemeval_v2/*.md
+
+data_longmemeval_v2/needed_traj_ids.json
+get_mem_resp.txt

@@ -1,0 +1,480 @@
+Memory Attention
+Jiale Kang
+kangjiale827@gmail.com
+/githubmemory-attention
+Abstract
+Language models typically construct attention values from contextual hidden states,
+even when some of their content may be reusable across contexts. We investigate
+whether token-indexed memory can replace the dedicated value projection when
+complemented by contextual information. We proposeMemory Attention (MA),
+which forms values by combining layer-specific token memory with contextual
+keys. The memory supplies token-specific representations, while the keys preserve
+context dependence. At inference, normalization can be folded into the memory
+tables, reducing value construction to lookup and addition. Token-indexed retrieval
+also enables CPU offloading with prefetching, reducing GPU parameter storage.
+Under matched training token budgets and with additional memory parameters,
+experiments across attention configurations show improved language modeling and
+average downstream performance.
+1 Introduction
+Standard Attention
+GPU
+Output
+Attention
+Linear Linear
+Hidden states
+Q K V
+Linear
+Memory Attention
+GPU
+Merge at
+inference
+Output
+Attention
+Linear Linear
+Hidden states
+Q K V
++
+Norm
+Embedding
+M
+Token IDs
+MA-Offload
+GPU
+CPU / SSD
+Merge at
+inference
+Output
+Attention
+Linear Linear
+Hidden states
+Q K V
++
+Norm
+Embedding
+M
+Token IDs
+Figure 1: Standard Attention, Memory Attention, and MA-Offload. Memory Attention replaces
+the value projection with V=K+ Norm(M) , where M is retrieved by token ID. At inference,
+normalization is merged into the embedding table, which MA-Offload stores on CPU or SSD.
+Additional components used in experiments, including RoPE, are omitted.
+Improving language model quality under limited computation and GPU memory remains a central
+challenge. One approach is to expand model capacity through lookup-based representations, which
+provide additional learned parameters without proportional increases in dense computation. Re-
+cent methods, including Value Embedding [7], DeepEmbed [2], Per-Layer Embeddings (PLE) [6],
+STEM [11], and Engram [3], explore this direction through learned embeddings and memory modules.
+These developments raise a complementary question: can explicit memory replace part of an existing
+computation, rather than only supplement it?
+Self-attention provides a natural setting for this question. Viewed as a content-addressable memory,
+attention uses query–key interactions to determine which information to retrieve and values to supply
+arXiv:2609.28399v1  [cs.LG]  23 Sep 2026
+the content to be aggregated. Standard attention constructs values from contextual hidden states
+through a dedicated linear projection [13]. We hypothesize that token-specific representations shared
+across contexts can supply part of this content, while an existing contextual representation supplies
+the remainder. In particular, keys already encode contextual information for attention. Can they also
+provide the contextual component of values, allowing token-indexed memory to replace the dedicated
+value projection?
+We proposeMemory Attention (MA), which forms values by adding learned, layer-specific token
+memory to contextual keys. Each layer maintains its own embedding table, allowing the same token
+to have distinct stored representations at different depths. The retrieved embeddings contribute
+token-specific content, while the keys preserve context dependence. Unlike value embeddings that
+supplement projected values, MA removes the independent value projection and reuses the key
+representation. It introduces explicit memory directly into the value pathway while preserving the
+standard attention weighting and aggregation rules.
+This representation changes both value construction and parameter placement. MA replaces a dense
+value projection with embedding lookup, normalization, and addition. At inference, normalization
+can be precomputed and folded into the memory tables, leaving only lookup and addition for online
+value construction. Although the tables increase total parameter storage, their entries are addressed
+solely by token IDs and layer indices. We exploit this property inMA-Offload, which stores the
+tables in CPU memory and prefetches the required entries before the corresponding layer uses them.
+This allows additional memory capacity to reside outside the GPU, with a latency cost determined
+by retrieval, transfer, and their overlap with computation. The additive representation also permits
+values to be reconstructed from retained keys and token memory. We analyze this possibility as
+MA-Recall, an extension that trades repeated retrieval and reconstruction for reduced persistent
+value-cache storage.
+We evaluate MA through language modeling, downstream tasks, retrieval, and inference mea-
+surements. Across the evaluated attention configurations, MA improves both language modeling
+perplexity metrics and average downstream accuracy under matched training token budgets, while
+introducing additional memory parameters. Retrieval experiments also show gains within the training
+context window and at twice its length. Inference measurements demonstrate that CPU offloading can
+accommodate the larger MA parameterization with lower GPU parameter storage than the standard
+baseline, while introducing decoding overhead. These results characterize the quality and efficiency
+of the combined design; they do not isolate the contribution of its structure from the increase in
+parameter capacity.
+Our main contributions are as follows:
+• We proposeMemory Attention, which combines layer-specific token memory with contex-
+tual keys to replace the dedicated value projection while preserving the standard attention
+weighting and aggregation rules.
+• We develop and evaluateMA-Offload, which exploits token-indexed retrieval to place
+memory tables in CPU memory and prefetch the required entries. We further analyze
+MA-Recallas a potential extension for reconstructing values without a persistent value
+cache.
+• We evaluate model quality and inference behavior, and analyze the trade-offs among param-
+eter capacity, value-construction arithmetic, GPU parameter storage, memory traffic, and
+persistent cache storage.
+2 Background
+We review self-attention and three mechanisms for incorporating token-indexed memory. Layer
+indices are omitted throughout; embedding tables and transformations may differ across layers.
+Self-Attention.Given hidden states X, self-attention computes queries, keys, and values through
+linear projections:
+Q=XW Q,K=XW K,V=XW V .(1)
+2
+For a single head, the attention output is
+Attn(X) = softmax
+ QK⊤
+√dk
++C
+
+V,(2)
+where dk is the key dimension and C is the causal mask. Query–key interactions determine the
+aggregation weights, while the values supply the content to be aggregated. All three representations
+are derived from the current hidden states.
+Value Embeddings.We use E to denote a learnable embedding table and E[i] to denote an
+embedding lookup that retrieves its i-th row. Value embeddings supplement projected values with
+token-specific representations fromE∈R N×d v:
+ve,t =E[s t], evt = (1−λ)v t +λv e,t.(3)
+where st is the token ID and λ controls the embedding contribution. This combines contextual values
+with token-specific representations while retaining the original value projection.
+Per-Layer Embeddings.Per-Layer Embeddings (PLE) introduce a learnable embedding table E∈
+RN×d e at each layer, where de is the embedding dimension. Omitting layer indices, normalization,
+and scaling, the update is
+et =E[s t] +Px (0)
+t ,(4)
+∆ht =W o [GELU(Wght)⊙e t],(5)
+where x(0)
+t is the input embedding and ht is the hidden state at the injection point. The lookup and
+projected input embedding provide token-specific information, while the hidden-state gate modulates
+its contribution to the update.
+Engram.Engram retrieves learned memory using local n-gram patterns. Let E∈R H×d m denote
+a learnable memory table with H entries of dimension dm. Abstracting the multiple lookups in the
+full architecture, a single retrieval is
+mt =E[h(s t−n+1, . . . , st)],(6)
+where h maps a local n-gram to a table index. The retrieved memory is integrated through contextual
+gating. Because lookup addresses depend only on token IDs, retrieval can be prefetched before
+the corresponding hidden states become available. This allows memory capacity to grow without a
+proportional increase in dense computation.
+3 Memory Attention
+Memory Attention (MA) replaces the dedicated value projection with a combination of contextual
+keys and layer-specific token memory. We first define this construction and its integration into
+attention, then analyze its computational and storage costs. We omit layer indices unless needed;
+each MA layer has its own memory table and learned transformations.
+3.1 Memory-Based Value Construction
+Let X∈R T×d denote the hidden states of a sequence with token IDs s= (s 1, . . . , sT ). Let HKV
+denote the number of key/value heads and dh their head dimension. We assume matching key and
+value dimensions and writed v =H KVdh for the total dimension across key/value heads.
+Each MA layer maintains a learnable memory table E∈R N×d v, where N is the vocabulary size.
+The token memory is
+M= Norm(E[s])∈R T×d v ,(7)
+where E[s] retrieves the rows indexed by the input tokens. Norm applies RMSNorm independently
+to each token vector within each key/value head. The memory tables and normalization parameters
+are learned jointly with the rest of the model. Within a layer, the same token retrieves the same
+memory vector across positions and contexts; separate tables allow different layers to learn distinct
+representations.
+3
+MA computes queries and keys from the hidden states, then constructs values by addition:
+Q=XW Q,K=XW K,V=K+M.(8)
+The memory supplies token-specific representations, while the keys provide dynamically computed
+information from the current hidden states. These hidden states incorporate contextual information and
+intermediate representations accumulated through preceding layers. The key contribution therefore
+reflects both the current context and the computation performed up to the current depth. Layer-specific
+memory complements this contribution with stored token representations. Unlike supplementing
+projected values with token embeddings, MA removes the independent value projection WV and
+jointly learns the key projection and memory table to support value construction.
+For attention with rotary positional embeddings (RoPE), positional transformations are applied to the
+queries and keys used for attention scoring:
+QR = RoPE(Q),K R = RoPE(K),V=K+M.(9)
+Values are constructed from K before this transformation, while QR and KR are used to compute
+attention weights. The resulting values are passed to the original attention operator, leaving its
+weighting and aggregation rules unchanged.
+3.2 Connection to MLA through Attention Aggregation
+The connection between MA and MLA can be understood through their use of a shared representation
+for attention scoring and content aggregation. For a single head, omitting positional components and
+attention masks, MLA constructs keys and values from a compressed latent representationC:
+K=CW K,V=CW V .(10)
+By associativity, its attention computation can be written as
+AMLA = softmax
+ (QW⊤
+K)C⊤
+√dk
+
+,(11)
+OMLA = (AMLAC)WV .(12)
+The key mapping can therefore be absorbed into the query-side computation, while the value mapping
+can be applied after aggregation. In this form, attention retrieves information directly from the shared
+latent representation, and the value mapping transforms the retrieved content.
+To make the comparison explicit, letZ denote the shared representation being aggregated:ZMLA =C
+for MLA and ZMA =K for MA, where the latter denotes keys before positional transformation. The
+two outputs then take the forms
+OMLA = (AMLAZMLA)WV ,(13)
+OMA =A MA(ZMA +M)(14)
+=A MAZMA +A MAM.(15)
+Both formulations use a shared contextual representation to support attention scoring and content
+retrieval. Their difference lies in how the retrieved content becomes the output: MLA applies a
+learned linear value mapping, whereas MA directly aggregates keys and supplements the result with
+token memory under the same attention weights. The shared notation describes their functional roles;
+it does not imply identical representations, dimensions, or attention weights.
+This comparison offers a rationale for MA. As discussed above, the keys contain contextual informa-
+tion and intermediate representations accumulated through preceding layers, providing a dynamically
+computed source of output content. Token memory supplies an additional, layer-specific source of
+content without a dedicated value projection. Although each memory entry is fixed across contexts,
+its aggregated contribution depends on the attention weights. The key projection and memory table
+are learned jointly, allowing them to adapt to these complementary roles. MA thus explores an
+alternative to a separate linear value mapping through direct key reuse and an additive memory read,
+rather than an algebraically equivalent reformulation of MLA.
+4
+Metric Standard MA
+Value constructionXW V K+ E[s]
+Trainable parametersLdd v L(N dv +p norm)
+Stored inference parametersLdd v LN dv
+Online value-construction FLOPs≈2LSdd v LSdv
+Table 1: Value-construction costs across L replaced layers. Shared components, including the key
+projection, are excluded. Each multiplication or addition counts as one FLOP. Lookup overhead and
+memory traffic are excluded. Inference costs apply to newly processed tokens and do not include
+reconstruction of historical values.
+3.3 Computation and Parameter Storage
+We compare the value-construction costs of MA and standard attention across L replaced layers.
+Let S denote the number of newly processed tokens: S=BT for prefill with batch size B and
+sequence length T , and S=B for one decoding step. We assume bias-free projections and denote
+the number of learned normalization parameters per layer by pnorm. Shared components, including
+the key projection, are excluded from this comparison.
+Parameter capacity.Standard attention uses Lddv parameters for the value projections. MA
+replaces them with L(N dv +p norm) memory and normalization parameters. When N > d, this
+increases parameter capacity and total parameter storage. The additional capacity is accessed through
+token lookup rather than a dense projection.
+Training computation.The standard value projection requires approximately 6LSddv FLOPs
+for the forward pass and the input and weight gradients. MA instead requires O(LSd v) arithmetic
+for head-wise normalization, addition, and gradient accumulation over accessed memory entries.
+This comparison excludes optimizer updates, gradient-buffer initialization, and memory traffic. In
+particular, lookup-based computation does not by itself imply sparse gradient storage or sparse
+optimizer states.
+Inference computation.At inference, both the memory tables and normalization parameters are
+fixed. Because normalization acts independently on each retrieved row, it can be folded into the
+tables:
+E[i] = Norm(E[i]), i= 1, . . . , N.(16)
+Online value construction then becomes
+V=K+ E[s],(17)
+requiring only lookup and element-wise addition. Table 1 summarizes the parameter and inference
+arithmetic costs.
+The reduction in online value-construction arithmetic is approximately
+∆FV ≈LSd v(2d−1).(18)
+If Fcommon denotes the FLOPs of all unchanged components for the same workload, the complete-
+model FLOP reduction is
+ηmodel ≈ LSdv(2d−1)
+Fcommon + 2LSddv
+.(19)
+This arithmetic reduction does not directly determine latency, which also depends on memory access,
+kernel execution, and synchronization.
+3.4 MA-Offload
+The folded memory tables need not remain on the GPU. Their lookup addresses depend only on
+token IDs and layer indices, so the required entries can be identified before the corresponding hidden
+states are available.MA-Offloadstores the folded tables in CPU memory and prefetches the required
+vectors to the GPU, allowing retrieval and transfer to overlap with model computation.
+5
+Letb w denote the number of bytes per stored memory element. Offloading moves
+Poffloaded =b wLN dv (20)
+bytes of memory-table parameters from GPU to CPU storage. It does not change the total parameter
+count or the value-construction arithmetic. The GPU still requires temporary lookup and transfer
+buffers.
+Without caching or deduplication, the logical host-to-device payload for S newly processed tokens is
+DOffload =b wLSdv.(21)
+With a conventional KV cache, historical values remain cached, so each decoding step retrieves
+memory only for the new tokens. The resulting payload isb wLBdv bytes per step.
+MA-Offload reduces GPU parameter residency while retaining the historical key and value cache.
+Its latency cost depends on CPU lookup performance, transfer bandwidth, synchronization, and the
+overlap available in the execution schedule. Consequently, moving the tables off the GPU reduces
+parameter storage but does not guarantee a reduction in either total GPU memory usage or inference
+latency.
+3.5 MA-Recall: An Extension for Value Reconstruction
+The additive value representation also permits reconstruction of historical values. We analyze this
+possibility asMA-Recall, an extension that avoids a persistent value cache by retaining sufficient key
+information and the historical token IDs. MA-Recall is not included in the inference measurements
+reported in this work. Given historical content keys and token IDs, values are recovered as
+V1 :T=K1 :T+ E[s1:T ].(22)
+A practical implementation must also support the keys required for attention scoring. With standard
+RoPE, a cached rotated key can in principle be mapped back to its content representation using the
+inverse positional rotation. Alternatively, content keys can be retained and rotated when needed.
+Either choice introduces positional-transformation work that must be included in implementation-
+level cost measurements. Retaining both representations would require additional cache storage. Let
+bc denote the number of bytes per cached key or value element. For equal key and value dimensions
+and precision, a conventional content KV cache occupies 2bcLBT dv bytes. Retaining one key
+representation per historical position reduces this component to bcLBT dv bytes, a reduction of 50%.
+This accounting excludes token IDs, position metadata, temporary reconstruction buffers, and any
+additional positional-key storage. Blockwise reconstruction could avoid materializing the complete
+value history on the GPU. The storage reduction comes at the cost of repeated memory access and
+reconstruction. Let R denote the number of historical positions whose values are reconstructed
+per sequence in a decoding step, assuming the same count across layers. Reconstruction requires
+approximately LBRdv additions, excluding any positional transformations. For full causal attention,
+R=T ; for restricted attention patterns, R is the number of positions actually reconstructed. When
+memory tables are also CPU-offloaded, the corresponding logical transfer payload is
+DRecall =b wLBRdv,(23)
+without caching or deduplication. MA-Recall therefore trades persistent cache storage for additional
+retrieval, transfer, and reconstruction work. Its practical benefit depends on the attention pattern,
+cache representation, memory placement, and reconstruction implementation.
+4 Experiments
+We evaluate MA in terms of language modeling and downstream performance, training efficiency,
+retrieval, and inference behavior. The quality evaluations examine whether token memory and shared
+keys can effectively replace the dedicated value projection. The efficiency evaluations characterize
+the computational and parameter-storage trade-offs of GPU-resident and CPU-offloaded memory
+tables.
+6
+Backbone Variant Params. Lamb. WikiText Lamb. ARC-E ARC-C HellaSwag PIQA WinoGrande OBQA Avg.
+PPL↓PPL↓ Acc.↑Acc.↑Acc. n ↑Acc. n ↑Acc.↑Acc.↑Acc.↑ ↑
+24 layers, hidden size 1,024; 10B training tokens; 0.5M tokens per batch
+MHA Standard 373M 44.35 31.55 31.59 53.9126.9636.86 65.18 49.0921.2040.68
+Memory 1,135M42.78 28.64 32.25 56.4425.8538.41 66.00 50.3620.4041.39
+GQA Standard 349M 50.46 31.71 30.86 54.21 27.47 36.5965.8348.9322.4040.90
+Memory 729M43.68 29.45 30.97 56.27 27.65 38.0765.1851.6220.8041.51
+MQA Standard 336M 50.38 31.84 31.32 54.1726.8835.98 64.5353.28 21.6041.11
+Memory 526M45.93 29.82 31.55 55.0526.6237.55 65.5652.25 20.8041.34
+Gate Standard 398M 41.88 29.67 32.10 56.06 26.71 38.21 65.23 50.91 20.60 41.40
+Memory 1160M36.60 27.48 33.73 56.69 27.99 39.73 66.65 51.78 23.60 42.88
+24 layers, hidden size 2,048; 20B training tokens; 1M tokens per batch
+MHA Standard 1,364M 18.59 21.52 40.5066.6731.31 46.9869.9153.67 34.40 49.06
+Memory 2,836M18.15 20.79 41.5966.0433.96 48.3869.4254.78 37.40 50.22
+Table 2: Zero-shot language modeling and downstream results at matched training token budgets.
+Parameter counts include memory tables and differ within pairs. Accuracies are percentages; Accn
+denotes normalized accuracy; Avg. averages the seven accuracy scores. Bold marks the better result
+in each Standard–Memory pair. Experiments on additional backbones, including swa and linear
+attention, as well as larger models and mixture-of-experts (MoE) architectures, are ongoing.
+4.1 Experimental Setup
+Training configurations.We train models on NVIDIA H800 GPUs using the
+flash-linear-attention [14] framework. The backbone consists of attention blocks
+and gated MLPs, with rotary positional embeddings (RoPE) and RMSNorm. Detailed pretraining
+settings are provided in Appendix A, and model configurations are summarized in Table 2. Within
+each configuration, Standard and MA use matched training token budgets, while MA introduces
+additional memory parameters.
+Evaluation benchmarks.We evaluate language modeling and downstream performance in a
+zero-shot setting using lm-evaluation-harness [5]. We report perplexity on LAMBADA [10]
+and WikiText [8], together with LAMBADA word-prediction accuracy. Downstream benchmarks
+include ARC-Easy and ARC-Challenge [ 4], HellaSwag [ 15], PIQA [ 1], WinoGrande [ 12], and
+OpenBookQA [9]. We use normalized accuracy for ARC-Challenge and HellaSwag and accuracy for
+the remaining tasks. The average score is the unweighted mean of the seven accuracy-based scores,
+excluding perplexity.
+4.2 Language Modeling
+Table 2 shows that MA improves both perplexity metrics and the average accuracy-based score across
+all three configurations. For example, WikiText perplexity decreases from 31.55 to 28.64 for the
+smaller MHA model, while LAMBADA perplexity decreases from 50.46 to 43.68 for GQA. The
+larger model also improves on both language modeling metrics.
+The average accuracy gains are 0.71 percentage points for the smaller MHA model, 0.61 for GQA,
+and 1.16 for the larger MHA model. Improvements vary across tasks: at the larger scale, MA gains
+3.00 points on OpenBookQA and 2.65 points on ARC-Challenge, while slightly reducing ARC-Easy
+and PIQA accuracy. Thus, the aggregate improvements do not imply gains on every benchmark.
+These results support the effectiveness of the combined MA design under the reported training
+budgets. Because MA includes additional memory parameters, they do not isolate the contribution of
+its structure from the increase in parameter capacity.
+These ratios describe the number of training tokens needed to reach the selected loss levels. They do
+not directly measure wall-clock training speed. MA also reduces value-construction arithmetic, as
+analyzed in Section 3.3, but realized training time additionally depends on memory access, gradient
+handling, and optimizer updates for the larger parameter set.
+Retrieval and Context-Length ExtrapolationWe evaluate retrieval within the training context
+window and under context-length extrapolation using three single-needle NIAH tasks. The evaluated
+7
+models have 24 layers and a hidden dimension of 1,024 and are trained on 10B tokens with a context
+length of 2,048. Evaluation lengths are 1,024, 2,048, and 4,096 tokens. The first two fall within the
+training window, while the last tests extrapolation to twice the training length.
+Variant niah_single_1 niah_single_2 niah_single_3
+1K 2K 4K † 1K 2K 4K † 1K 2K 4K †
+Standard0.998 0.844 0.414 0.856 0.914 0.232 0.624 0.704 0.130
+MA 1.000 0.994 0.510 0.940 1.000 0.454 0.982 0.910 0.294
+Table 3: Zero-shot single-needle NIAH scores for models
+trained with a 2K context window. 1K, 2K, and 4K denote
+1,024, 2,048, and 4,096 tokens, respectively. † marks extrap-
+olation beyond the training context length. Higher scores are
+better; bold indicates the better result in each column.
+As shown in Table 3, MA outperforms
+Standard across all nine task–length
+combinations. Within the training
+window, its mean scores are 97.4%
+at 1K and 96.8% at 2K, compared
+with 82.6% and 82.1% for Standard.
+The largest individual gain occurs on
+niah_single_3 at 1K, where per-
+formance increases from 62.4% to
+98.2%.
+At 4K, MA retains an advantage on
+all three tasks, with a mean score of
+41.9% compared with 25.9% for Stan-
+dard. Both models nevertheless degrade substantially beyond the training window. These results
+demonstrate improved retrieval on the evaluated tasks, including under 2× length extrapolation, but
+do not establish robust retrieval at longer context lengths.
+4.3 Training and Inference Efficiency
+L24-D1024
+TRAINING
+1.42×
+token efficiency
+4 6 8 10
+Tokens (B)
+2.50
+2.55
+2.60
+2.65
+2.70
+2.75
+2.80
+2.85Loss
+Δ=0.058
+baseline
+MA
+L24-D2048
+TRAINING
+1.16×
+token efficiency
+TFLOPs
+TRAINING
+1.78×
+computational cost
+baseline 525
+MA 934
+0 500 1,000
+TFLOPs
+Parameter
+INFERENCE
+2.08×
+total parameter capacity
+GPU CPU
+baseline 1,364
+MA 2,836
+MA-Offload 1,264 1,573 2,836
+0 1,000 2,000 3,000
+Parameters (M)
+Prefill
+INFERENCE
+1.03×
+MA speedup
+baseline 90.97
+MA 88.20
+MA-Offload 90.69
+0 50 100
+Latency (ms)
+Decode
+INFERENCE
+1.03×
+MA-Offload speedup
+baseline 17.64
+MA 17.79
+MA-Offload 17.19
+0 10 20
+Latency (ms)
+Figure 2: Training and inference comparison of MA and Standard. At the matched-loss operating
+points shown, MA achieves 1.42× and 1.16× token efficiency for L24-D1024 and L24-D2048,
+respectively. The remaining panels report training FLOPs, parameter placement, and model forward-
+pass latency for L24-D2048. MA-Offload stores memory-table parameters in CPU memory.
+We examine whether MA can expand parameter capacity while reducing value-construction arithmetic
+and GPU parameter storage. We first compare training token efficiency, then evaluate inference latency
+and parameter placement. The inference results use a prototype implementation with prefetching and
+computation–transfer overlap.
+Training efficiency.We compare the number of training tokens required to reach a matched loss.
+For a target loss ℓ, let nStandard(ℓ) and nMA(ℓ) denote the corresponding token counts. We define
+token efficiency as
+ρtoken(ℓ) = nStandard(ℓ)
+nMA(ℓ) .(24)
+At the operating points shown in Figure 2, MA achieves token efficiencies of 1.42× and 1.16× for
+L24-D1024 and L24-D2048, respectively. These correspond to approximately 29.6% and 13.8%
+fewer training tokens to reach the selected loss levels. The comparisons use models with additional
+memory parameters and measure token efficiency rather than wall-clock training speed.
+Inference configurations.We compare standard attention (STANDARD), MA with memory tables
+stored on the GPU (MA), and MA with CPU-offloaded memory tables (MA-OFFLOAD). Both MA
+variants fold head-wise RMSNorm into the tables before inference, reducing online value construction
+to lookup and addition. MA-Offload additionally uses a prefetch pipeline to overlap CPU retrieval
+and host-to-device transfer with model computation. All three configurations retain a conventional
+KV cache; these measurements do not include MA-Recall.
+8
