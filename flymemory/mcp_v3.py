@@ -382,6 +382,38 @@ def flymemory_get_memory(memory_id: int) -> str:
 
 
 @mcp.tool()
+def flymemory_state_lookup(state_key: str) -> str:
+    """V4 entity-state direct lookup: the CURRENT value for a state_key
+    (e.g. 'user.phone'). At most one active entry per key is guaranteed.
+    For history, use flymemory_state_history."""
+    with _mem_lock:
+        mem = get_memory()
+        m = mem.state_lookup(state_key)
+        if m is None:
+            return f"No active state for key [{state_key}]."
+        vf = _age_str(m.valid_from or m.timestamp)
+        return (f"[{state_key}] CURRENT: {m.text} "
+                f"(since {vf})")
+
+@mcp.tool()
+def flymemory_state_history(state_key: str) -> str:
+    """V4 entity-state history: ALL entries for a state_key in
+    chronological order (superseded states included, current last)."""
+    with _mem_lock:
+        mem = get_memory()
+        hist = mem.state_history(state_key)
+        if not hist:
+            return f"No history for key [{state_key}]."
+        out = [f"STATE HISTORY: {state_key} ({len(hist)} entries)"]
+        for m in hist:
+            tag = ("CURRENT" if m.superseded_by is None
+                   else f"superseded by #{m.superseded_by}")
+            out.append(f"  [{_age_str(m.valid_from or m.timestamp)} | "
+                       f"{tag}] {m.text[:90]}")
+        return "\n".join(out)
+
+
+@mcp.tool()
 def flymemory_auto(context: str, response: str = "") -> str:
     """Automatic memory management — call this every conversation turn.
 

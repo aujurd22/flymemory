@@ -110,7 +110,7 @@ class MemoryEntry:
     text: str
     response: str
     embedding: np.ndarray          # 384-dim multilingual embedding
-    timestamp: float               # creation time
+    timestamp: float               # creation time (v4: created_at)
     last_accessed: float           # last recall time
     access_count: int              # how many times recalled
     tags: list
@@ -118,6 +118,12 @@ class MemoryEntry:
     superseded_by: Optional[int] = None   # replaced by a newer entry; excluded from default recall
     source: str = "hook"                  # hook=mechanical capture / model=model-judged / import / auto
     evidence_ids: List[int] = field(default_factory=list)  # for consolidated entries: the raw entries kept as evidence
+    # --- v4 Temporal-Evidence fields (v4-rfc.md §3.1; additive, default None) ---
+    updated_at: Optional[float] = None    # last text-changing edit (rewriting merge)
+    valid_from: Optional[float] = None    # state starts being true (defaults to timestamp)
+    valid_to: Optional[float] = None      # state stops being true (set on supersede; None = current)
+    state_key: Optional[str] = None       # entity-state lookup key, e.g. "user.phone"
+    state_value: Optional[str] = None     # current value for the state_key
 
 
 # ===== Chunking: one block per sentence so multi-topic messages stay separable =====
@@ -473,7 +479,9 @@ class SmartMemory:
                  tags: Optional[list] = None, source: str = "hook",
                  timestamp: Optional[float] = None,
                  force_new: bool = False,
-                 compartment: Optional[str] = None) -> Dict:
+                 compartment: Optional[str] = None,
+                 state_key: Optional[str] = None,
+                 state_value: Optional[str] = None) -> Dict:
         """Store one chunk with auto-dedup via semantic similarity.
 
         timestamp: optional backdated creation time (epoch seconds).
@@ -560,6 +568,11 @@ class SmartMemory:
                     access_count=0, tags=list(best_match.tags),
                     memory_id=self._next_id, source=best_match.source,
                     superseded_by=best_match.memory_id,
+                    valid_from=best_match.valid_from
+                    or best_match.timestamp,
+                    valid_to=time.time(),
+                    state_key=best_match.state_key,
+                    state_value=None,  # old value is no longer current
                 )
                 self.memories.append(tombstone)
                 self._index_entry(tombstone)
@@ -567,6 +580,8 @@ class SmartMemory:
                 self._unindex(best_match.memory_id)
                 best_match.text = text
                 best_match.embedding = emb
+                best_match.updated_at = time.time()
+                best_match.state_value = None  # caller sets via state_key path
                 self._index_entry(best_match)
                 self._mat_dirty = True
                 self._codes_dirty = True
@@ -593,8 +608,22 @@ class SmartMemory:
             embedding=emb, timestamp=now, last_accessed=now,
             access_count=0, tags=all_tags, memory_id=self._next_id,
             source=source,
+            valid_from=now,
+            state_key=state_key, state_value=state_value,
         )
         self.memories.append(entry)
+        # I1 active-unique (v4-rfc): for a given state_key at most one ACTIVE
+        # entry -- an older active entry with the same key is superseded
+        # mechanically (the temporal-state core of V4)
+        if state_key:
+            for older in self.memories:
+                if (older.memory_id != entry.memory_id
+                        and older.state_key == state_key
+                        and older.superseded_by is None):
+                    older.superseded_by = entry.memory_id
+                    older.valid_to = now
+                    self._unindex(older.memory_id)
+                    break
         self._index_entry(entry)
         self._mat_dirty = True
         self._codes_dirty = True
@@ -636,7 +665,11 @@ class SmartMemory:
             # Checked AFTER cycles: new == old's own successor is a cycle.
             return False, (f"new #{new_id} is itself superseded by "
                            f"#{by_id[new_id].superseded_by}; supersede old -> that one")
+        now_ts = time.time()
         by_id[old_id].superseded_by = new_id
+        # v4 temporal validity: the old state stops being true now (used by
+        # tombstones and any future valid-window query)
+        by_id[old_id].valid_to = now_ts
         return True, "ok"
 
     # ----- recall -----
@@ -651,6 +684,23 @@ class SmartMemory:
             from sentence_transformers import CrossEncoder
             self._reranker = CrossEncoder(self.rerank_model, max_length=256)
         return self._reranker
+
+    def state_lookup(self, state_key: str) -> Optional[MemoryEntry]:
+        """V4 direct entity-state lookup: the CURRENT entry for a state_key
+        (I1 active-unique guarantees at most one). Returns None if unknown."""
+        for m in self.memories:
+            if m.state_key == state_key and m.superseded_by is None:
+                return m
+        return None
+
+    def state_history(self, state_key: str) -> List[MemoryEntry]:
+        """V4 history query: all entries for a state_key, chronological
+        (current entry last). Superseded entries ARE included -- that is the
+        point."""
+        out = [m for m in self.memories
+               if m.state_key == state_key]
+        out.sort(key=lambda m: m.valid_from or m.timestamp)
+        return out
 
     def recall(self, query: str, top_k: int = 5,
                include_superseded: bool = False,
@@ -997,6 +1047,11 @@ def save(memory: SmartMemory, path: str):
                 "superseded_by": m.superseded_by,
                 "source": m.source,
                 "evidence_ids": list(m.evidence_ids),
+                "updated_at": m.updated_at,
+                "valid_from": m.valid_from,
+                "valid_to": m.valid_to,
+                "state_key": m.state_key,
+                "state_value": m.state_value,
             } for m in memory.memories
         ],
         "_next_id": memory._next_id,
@@ -1043,6 +1098,11 @@ def load(path: str, enable_hopfield: Optional[bool] = None) -> SmartMemory:
             memory_id=md["memory_id"],
             superseded_by=md.get("superseded_by"),
             source=md.get("source", "auto"),
+            updated_at=md.get("updated_at"),
+            valid_from=md.get("valid_from"),
+            valid_to=md.get("valid_to"),
+            state_key=md.get("state_key"),
+            state_value=md.get("state_value"),
             evidence_ids=list(md.get("evidence_ids", [])),
         )
         mem.memories.append(entry)

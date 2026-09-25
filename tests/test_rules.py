@@ -620,3 +620,65 @@ def test_remember_compartment_tagged(mem, warm_model):
     assert r["stored"]
     entry = next(m for m in mem.memories if m.memory_id == r["memory_id"])
     assert "comp:erp" in entry.tags
+
+
+# ------------------------------------------------- V4 temporal-state (RFC)
+def test_v4_state_lookup_active_unique(mem, warm_model):
+    """I1 active-unique: for a given state_key, at most one ACTIVE entry --
+    a second remember with the same key mechanically supersedes the older."""
+    mem.remember("The user's phone number is 138-0000-1111.", source="import",
+                 state_key="user.phone", state_value="138-0000-1111")
+    mem.remember("The user's phone number is 139-9999-8888.", source="model",
+                 state_key="user.phone", state_value="139-9999-8888")
+    cur = mem.state_lookup("user.phone")
+    assert cur is not None and "139-9999-8888" in cur.text
+    # lineage: the old entry is superseded with a valid_to stamp
+    hist = mem.state_history("user.phone")
+    assert len(hist) == 2
+    old = next(m for m in hist if m.superseded_by is not None)
+    assert "138-0000-1111" in old.text and old.valid_to is not None
+    assert old.valid_from is not None
+
+
+def test_v4_state_history_chronological_and_default_recall_clean(mem, warm_model):
+    """state_history returns chronological entries (current last); default
+    recall only shows the current state."""
+    mem.remember("The user lives in Shenzhen.", state_key="user.city",
+                 state_value="Shenzhen")
+    mem.remember("The user lives in Hangzhou.", state_key="user.city",
+                 state_value="Hangzhou")
+    hist = mem.state_history("user.city")
+    assert [m.state_value for m in hist] == ["Shenzhen", "Hangzhou"]
+    hits = mem.recall("Where does the user live?", top_k=5)
+    assert any("Hangzhou" in m.text for m, _, _ in hits)
+    assert not any("Shenzhen" in m.text and "Hangzhou" not in m.text
+                   for m, _, _ in hits)
+
+
+def test_v4_rewriting_merge_sets_updated_at_and_tombstone_validity(mem, warm_model):
+    """I2/I4 temporal completeness on a rewriting merge: tombstone gets
+    valid_from/valid_to, the updated entry gets updated_at."""
+    mem.remember("The user's phone number is 138-0000-1111.", source="import")
+    r = mem.remember("The user's phone number is 139-9999-8888 (updated in June).",
+                     source="model")
+    assert r["action"] == "merged"
+    cur = next(m for m in mem.memories if m.memory_id == r["memory_id"])
+    assert cur.updated_at is not None
+    tomb = [m for m in mem.memories if m.superseded_by == cur.memory_id]
+    assert len(tomb) == 1
+    assert tomb[0].valid_from is not None and tomb[0].valid_to is not None
+
+
+def test_v4_save_load_roundtrip_preserves_temporal_fields(tmp_path):
+    from flymemory.v3 import save, load
+    m = SmartMemory(n_bits=4096)
+    m.remember("The user lives in Shenzhen.", state_key="user.city",
+               state_value="Shenzhen")
+    m.remember("The user lives in Hangzhou.", state_key="user.city",
+               state_value="Hangzhou")
+    p = str(tmp_path / "v4.pkl")
+    save(m, p)
+    m2 = load(p)
+    cur = m2.state_lookup("user.city")
+    assert cur is not None and "Hangzhou" in cur.text
+    assert len(m2.state_history("user.city")) == 2
