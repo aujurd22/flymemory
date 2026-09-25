@@ -582,7 +582,8 @@ Any streamable-HTTP MCP client works. ZCode example
 
 Restart the client afterwards; you should see the `flymemory_*` tools
 (remember / recall / auto / supersede / consolidate / forget / cleanup /
-stats / session_pack).
+stats / session_pack / find_conflicts / insights / recall_index /
+get_memory; remember & recall also take an optional compartment).
 
 ### 5. (Recommended) mechanical capture hooks
 
