@@ -424,7 +424,9 @@ class SmartMemory:
                       tags: Optional[list] = None, source: str = "hook",
                       timestamp: Optional[float] = None,
                       force_new: bool = False,
-                      compartment: Optional[str] = None) -> Dict:
+                      compartment: Optional[str] = None,
+                      state_key: Optional[str] = None,
+                      state_value: Optional[str] = None) -> Dict:
         """Chunked store entry point: long text is split per sentence and each chunk
         goes through dedup/merge; short messages fall back to a single chunk via
         split_chunks' fragment merging.
@@ -455,7 +457,8 @@ class SmartMemory:
         for c in chunks:
             r = self.remember(c, response=response, tags=tags, source=source,
                               timestamp=timestamp, force_new=force_new,
-                              compartment=compartment)
+                              compartment=compartment,
+                              state_key=state_key, state_value=state_value)
             counts[r["action"]] = counts.get(r["action"], 0) + 1
             if r.get("memory_id") is not None:
                 ids.append(r["memory_id"])
