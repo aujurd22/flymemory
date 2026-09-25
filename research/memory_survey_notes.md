@@ -157,3 +157,11 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - 记忆损坏风险分类:拓扑诱导知识泄露(敏感上下文固化进长期存储)、语义漂移(迭代摘要退化)、隐私脆弱性。
 - 治理三机制:一致性验证/时间衰减建模/动态访问控制——**与 flymemory 已有机制一一映射**(dedup+tombstone/decay/compartment)。方向互证:独立工作收敛到同一治理清单。
 - 评审提示 2603 编号属未来日期需留意;摘要级可信,未读全文。
+
+### Supersede: Diagnosing and Training the Memory-Update Gap in LLM Agents (arXiv 2606.27472) —— **同题开源 RL 环境,重大发现**
+- **诊断与我们完全一致**:Memory-Update Gap = 应使用当前值却依赖旧值——正是 v1.4 supersede 场景与五臂 stale answer 测的同一个 gap。
+- **关键数字(gpt-5.4)**:记忆式 92% vs 全上下文 77%(p<0.005)——**记忆式反而差 15pp**;对话增长 24 倍:68%→28%,**扩大记忆容量无恢复(28%→28%)**——容量不是答案,直接呼应我们负结果链(堆格式/工具/CoT 全无效)。
+- **开源 RL 环境**:github.com/Vrin-cloud/supersede(verifiers/prime-rl 技术栈,CC BY 4.0),reward = 当前值正确+过时值惩罚,GRPO 训练 Qwen2.5-3B:**held-out supersede 准确率 9.0%→16.7%(翻倍)**,checkpoint 单调——收益来自学到的策略。
+- **定位**:瓶颈是记忆维护而非理解;不能靠更强模型或更大记忆,需要专门训练信号。
+- **对我们的直接意义(最重要的发现)**:他们的 RL 环境 + 我们的 v1.4 判断基准(144 场景)+ V4 机械 I1(active-unique 自动 supersede)= **自然组合的下一段实验**:用 GRPO 训练小模型的 memory-judgment 能力,我们的引擎已把机械可判定部分(I1 自动取代)拿走,模型只需学语义判断(该不该 supersede)——比 Supersede 论文的全上下文设定更接近生产,且我们的 144 场景可直接改造成 GRPO 训练环境。技术上:verifiers/prime-rl 栈与 vLLM 兼容,本地 4090 可跑 3B 级。
+- 论文边界:全上下文 vs 记忆式对比在 LME knowledge-update 子集;未测 engine 级机械不变量(I1);未与外部记忆系统(如 Mem0)对比——**这两个空格正是 FlyMemory 的位置**。
