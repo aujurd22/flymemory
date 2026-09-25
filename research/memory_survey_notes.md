@@ -177,3 +177,9 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - **StateAuditor 方法**:方向反转(存储状态→草稿,而非草稿→存储状态);LLM 提候选旧→新转移 + 确定性验证(钉到唯一记忆条目/核实新证据确实更新/只有验证通过的转移触发修复)。验证的是出处与时间顺序,非语义取代。
 - **数字**:STALE 全协议 **+5.0 点**(CI [+2.9,+7.2]),第三方 judge 复现 0.738 vs 0.680;匹配对照(同证据同预算)仅 +0.6 不显著——增益来自转移机制本身。边界:authored lifecycle 集无增益。
 - **与我们 V4 的映射**:StateAuditor ≈ 我们 dream.py 的蒸馏+审计门禁(方向相反:他们 state→draft 审计回答,我们 draft→state 审计记忆)。**互补**:两方向都需要——他们的发现(IPA 失效)正是我们 v1.4 需要补的第五类测试维度(回答中隐式依赖旧状态,检查"没说什么")。
+
+### cognee improve() 源码级 —— 多阶段自改进编排器(生产级工程)
+- **结构**:execute_stages 注册表顺序执行门控阶段;row contract(stage 在 record_operation 行上盖章,读者只信 completed 行);**fail-open**(stage 失败记录后下一阶段继续,除 fatal 阶段 persist_session_qa 数据丢失即停)。
+- **锁与 rerun 治理**:improve lock(claim/rerun 分离);SDK-593:锁持有者最多再做 3 次"再来一次"通过,仍 pending 的留给下一个 claimant(从全水位开始)——**生产级并发治理**,个人库暂不需要但设计可参考。
+- **session distillation 定位**:"curates accepted lessons into permanent memory"——与 flymemory dreaming 的蒸馏-审计-入库链同构;差异是 cognee 用多阶段编排+后台任务队列,我们是单脚本直通。
+- 信息密度结论:cognee 的工程成熟度(锁/迁移/遥测/多DB)远超本阶段需要;机制层面无新东西,记录以避免重复发明。
