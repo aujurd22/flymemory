@@ -174,6 +174,15 @@ two new optional fields:
   (hours-class on CPU, GPU-class if free). Worth doing AFTER the V4 schema
   lands so the backend speaks the entity-state model natively.
 
+  FIRST REAL-DATA RUN (2026-09-25, bench_lmev2.py): small-tier haystacks of
+  the first 20 questions ingested (100 trajectories -> 3,358 entries, 293s);
+  the 20 questions answered end-to-end score 35% strict (7/20). Failure
+  attribution: most wrongs are "I don't know" on environment specifics
+  (exact SSD sizes, default sort fields, filter labels) buried in long
+  accessibility trees -- retrieval coverage of UI micro-details, not
+  answering. trajectories_full.jsonl (1.2GB) filters to the 200 small-tier
+  trajectories in 53s.
+
 ## 8. Non-goals (unchanged)
 
 No knowledge graph, no graph database, no server-side LLM, no distributed
