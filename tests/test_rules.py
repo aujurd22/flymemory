@@ -682,3 +682,26 @@ def test_v4_save_load_roundtrip_preserves_temporal_fields(tmp_path):
     cur = m2.state_lookup("user.city")
     assert cur is not None and "Hangzhou" in cur.text
     assert len(m2.state_history("user.city")) == 2
+
+
+# ------------------------------------------------- V4 query routing
+def test_query_routing_history_auto_includes_superseded(mem, warm_model):
+    """History-type questions automatically include superseded entries --
+    the caller no longer has to remember include_superseded=True."""
+    mem.remember("The user's phone number is 138-0000-1111.", source="import")
+    mem.remember("The user's phone number is 139-9999-8888.", source="model")
+    mem.supersede(mem.memories[0].memory_id, mem.memories[1].memory_id)
+    hist = mem.recall("Did the user ever use the 138 number before?", top_k=3)
+    assert any("138-0000-1111" in m.text for m, _, _ in hist)
+    # default recall stays clean
+    cur = mem.recall("What is the user's phone number?", top_k=3)
+    assert any("139-9999-8888" in m.text for m, _, _ in cur)
+    assert not any("138-0000-1111" in m.text for m, _, _ in cur)
+
+
+def test_classify_query_types(mem):
+    assert SmartMemory.classify_query("What is the user's current city?") == "state"
+    assert SmartMemory.classify_query("Did the user ever live in Shenzhen?") == "history"
+    assert SmartMemory.classify_query("When did the user book the flight?") == "temporal"
+    assert SmartMemory.classify_query("How many restaurants in total?") == "aggregation"
+    assert SmartMemory.classify_query("Recommend a hotel") == "lookup"

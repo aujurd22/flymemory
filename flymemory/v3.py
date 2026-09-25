@@ -695,6 +695,27 @@ class SmartMemory:
             self._reranker = CrossEncoder(self.rerank_model, max_length=256)
         return self._reranker
 
+    @staticmethod
+    def classify_query(query: str) -> str:
+        """Query-type routing (v4-rfc "Memory routing"): a mechanical
+        classifier that picks the retrieval strategy per question type.
+        Heuristics only -- no LLM. Types: state / history / temporal /
+        aggregation / lookup."""
+        q = query.lower()
+        if any(w in q for w in ("current", "now", "currently", "现在", "当前")):
+            return "state"
+        if any(w in q for w in ("ever", "used to", "before", "previously",
+                                "history", "以前", "曾经", "之前")):
+            return "history"
+        if any(w in q for w in ("how long", "how many years", "when did",
+                                "first", "order", "多久", "什么时候", "先",
+                                "顺序")):
+            return "temporal"
+        if any(w in q for w in ("total", "how many", "how much", "sum",
+                                 "count", "一共", "总共", "多少")):
+            return "aggregation"
+        return "lookup"
+
     def state_lookup(self, state_key: str) -> Optional[MemoryEntry]:
         """V4 direct entity-state lookup: the CURRENT entry for a state_key
         (I1 active-unique guarantees at most one). Returns None if unknown."""
@@ -713,7 +734,7 @@ class SmartMemory:
         return out
 
     def recall(self, query: str, top_k: int = 5,
-               include_superseded: bool = False,
+               include_superseded: Optional[bool] = None,
                two_stage: Optional[bool] = None,
                compartment: Optional[str] = None) -> List[Tuple[MemoryEntry, float, float]]:
         """Hybrid recall: vectorized semantic similarity (max over query chunks)
@@ -744,6 +765,10 @@ class SmartMemory:
         comp_tag = f"comp:{compartment}" if compartment else None
         if comp_tag and not any(comp_tag in m.tags for m in self.memories):
             return []  # unknown compartment: empty, not a silent global search
+        # query-type routing: history questions automatically include
+        # superseded entries (the caller no longer has to remember this flag)
+        if include_superseded is None:
+            include_superseded = self.classify_query(query) == "history"
         q_texts = split_chunks(query) or [query]
         Q = np.stack([_embed(qt) for qt in q_texts])
         qn = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-8)
