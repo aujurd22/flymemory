@@ -342,6 +342,13 @@ it, and now one layer inside it (generic envelope estimation), does not.
   full orbits.  Orbit-vs-one-representative-degree mismatch is conceptual
   (K-conjugacy vs Q-degree).  P23-b (N=31..60 completion) registered.
 
+- **P24 HALTED / P26 PARTIAL (07:30-07:45)**: the orbit lambda action test
+  was ill-posed as registered (orbit lambdas are complex; category error
+  vs the cusp-side quadratic); P26 measured the t-family asymptotic
+  exponent alpha = 3/2 cleanly, but the constant K = 1.4344 has no closed
+  form in the tested Gamma bases -- the ODE-local-analysis route at the
+  ramification point x = 1/8 is the recorded next step.
+
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
 - LongMemEval / LongMemEval-V2: external benchmarks (integration pending)
