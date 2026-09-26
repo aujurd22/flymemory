@@ -157,6 +157,49 @@ MLP-AE bottleneck b swept so compression c spans 1..1664:
 - Local-vs-global: kNN-based SD is high while global k-means ARI stays low
   (0.05-0.23) -- latent geometry is locally structured, globally unseparated.
 
+## Intuition-Mechanism track: P3/P5/P7/P8 verdicts (2026-09-26)
+
+New track repo `aujurd22/intuition-mechanism` (plan + T2 math pipeline).
+Registered predictions, judged:
+
+- **P3 PARTIAL** (compression vs text-embedding on real math objects):
+  AE wins on q-expansion SHAPE objects (Eisenstein hard: 0.567 vs embed
+  0.088), loses on digit-IDENTITY objects (CM j-digits: embed 0.946 vs AE
+  0.411 -- same-d instances are digit rolls; MSE is shift-sensitive, the
+  embedder is lexical/shift-invariant). Sub-law: the representation must
+  match the invariant type (shape vs identity).
+- **P5 CONFIRMED** (T2 identity-search A/B, hard space 949 monomials,
+  2929 truth pairs, seeded start): first fresh hit 7.75x faster (1.0 vs
+  7.75 steps), post-recombination hit rate 1.0 vs baseline 0.128 (7.8x,
+  registered >=3x); coverage advantage decays to 1.7x by the 10th relation
+  (recombination candidates exhaust). v0 easy-space (baseline 10.2%)
+  showed NO first-hit advantage -- space difficulty is a prerequisite for
+  the judgment to be decidable at all.
+- **P7 FALSIFIED** (notation forging): VQ codebook on coefficients aligns
+  with the weight invariant at ARI 0.029 (v2 healthy training) vs
+  inherited raw k-means 0.674. Mechanism: MSE reconstruction puts no
+  pressure on preserving the invariant -- codes allocate by geometric
+  density (Tishby-consistent). Revival condition: the objective must
+  explicitly reward invariant retention (task loss), pure reconstruction
+  is never enough.
+- **P8 FALSIFIED** (surface salience): a 40-char per-instance surface tag
+  does NOT create an under-compression wall (c=1 keeps SD 0.545);
+  instead it creates a MID-compression interference valley (SD dips to
+  0.35-0.42 at c=13-52) while structure still beats surface even with
+  the tag occupying 31% of the signal.
+
+Also: T2 math pipeline landed -- validator (50-digit gate, both anchor
+series PASS), family_gen (Heegner j-values exact; d=163 anchor caught a
+nome-squared bug), series_gen (D1 gate PASS: Chudnovsky coefficients
+(13591409, 545140134) reproduced from d=163 alone at 96.9 integer digits;
+two derivation bugs caught numerically, incl. the inverted identity
+T = 640320^(3/2)/(12*pi)).
+
+Blocked items and why: P4/P6 need 1/pi series for general d -- the (A,B)
+coefficients for non-class-number-1 d come from modular-form theory beyond
+what we can derive honestly without the Borwein reference; fetching the 17
+literature series is the alternative. T3 (miniF2F) deferred to phase 3.
+
 ## Related
 
 - FlyPoet(k-WTA×Transformer,216M 反转):架构轴实验记录
