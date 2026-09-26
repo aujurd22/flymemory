@@ -245,6 +245,25 @@ coefficients for non-class-number-1 d come from modular-form theory beyond
 what we can derive honestly without the Borwein reference; fetching the 17
 literature series is the alternative. T3 (miniF2F) deferred to phase 3.
 
+## Intuition-Mechanism: the three-level mechanization map (2026-09-26)
+
+The track's central question -- "which steps of mathematical discovery can be
+mechanized?" -- now has a measured three-level answer:
+
+| Level | Question | Verdict | Evidence |
+|---|---|---|---|
+| **L1 Recognise** | given the invariant representation, identify the structure | **MECHANIZED** | P4 clean: ratio-norm kNN 17/17; c_s extraction 7/7 |
+| **L2 Discover removal** | given the operator family, find the nuisance-removing transform | **MECHANIZED** | P14: with counterfactual nuisance data (random A,B,z per sample) + explicit invariance pressure (DANN/GRL), same-signature kNN 0.750, s-classifier 0.883; family-known LSQ selection 0.975 |
+| **L3 Discover family** | discover the operator family itself, blind | **OPEN (negative)** | P13 v1+v2 (26 transform configs x readouts incl k-WTA, two-phase training): nothing exceeds chance 0.368; P9: prediction objective learns log abs(z), not the invariant |
+
+The honest reading: L2 succeeds only when (a) the data contain explicit
+counterfactual nuisance variation, and (b) an explicit invariance pressure
+exists (labels for s + gradient reversal on the nuisance). Neither P4's 17
+literature series (confounded s/A/B/z) nor P13's transform menus provided
+that. The current boundary of "intuition mechanization" is therefore: the
+outermost step -- inventing the right operator family without being handed
+it -- remains un-mechanized; everything downstream of it does not.
+
 ## Related
 
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
