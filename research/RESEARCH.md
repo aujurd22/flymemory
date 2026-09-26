@@ -204,13 +204,18 @@ Registered predictions, judged:
   (recombination candidates exhaust). v0 easy-space (baseline 10.2%)
   showed NO first-hit advantage -- space difficulty is a prerequisite for
   the judgment to be decidable at all.
-- **P7 FALSIFIED** (notation forging): VQ codebook on coefficients aligns
-  with the weight invariant at ARI 0.029 (v2 healthy training) vs
-  inherited raw k-means 0.674. Mechanism: MSE reconstruction puts no
-  pressure on preserving the invariant -- codes allocate by geometric
-  density (Tishby-consistent). Revival condition: the objective must
-  explicitly reward invariant retention (task loss), pure reconstruction
-  is never enough.
+- **P7 REVERSED to CONFIRMED** (notation forging): the original
+  falsification was an implementation artifact -- the straight-through
+  estimator was inverted (values from z_e, gradients into the buffer
+  codes), so the encoder never received quantizer gradients. With a
+  correct VQ: forged alignment 0.693 vs inherited raw 0.674 / embed
+  0.142, and reconstruction improves 20x. Task loss is unnecessary
+  (lambda sweep flat; lambda=10 harms reconstruction). Honest limitation:
+  forged codes do not transfer to eta products (0.494 vs inherited 1.000)
+  -- self-forged notation is domain-specific. The revival experiment's
+  null result (lambda-insensitivity) was the diagnostic clue that exposed
+  the bug: a null result should trigger an implementation audit before a
+  hypothesis verdict.
 - **P8 FALSIFIED** (surface salience): a 40-char per-instance surface tag
   does NOT create an under-compression wall (c=1 keeps SD 0.545);
   instead it creates a MID-compression interference valley (SD dips to
