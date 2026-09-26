@@ -134,6 +134,29 @@
 全部基准脚本在仓库根,固定 seed,数据集版本化(`data/memory_judgment.json` v1.3)。
 复现索引见 README 与 `OVERNIGHT_20260924.md`。
 
+## T0: Structure-Induction Window (Intuition-Mechanism track, first results)
+
+New track repo: `aujurd22/intuition-mechanism` (plan: docs/RESEARCH_PLAN.md
+there). T0 measures, on synthetic families, whether a compressed encoder's
+latent makes "same structure, different surface" samples become nearest
+neighbours (SD = kNN same-family-different-instance fraction).
+
+First sweep, two domains (graphs n=12 six families; algebraic identities
+six templates with name-renaming + term-shuffle + side-swap as surface),
+MLP-AE bottleneck b swept so compression c spans 1..1664:
+
+- **Over-compression wall confirmed in BOTH domains**: at extreme
+  compression the gap SD - surface_dom collapses (+10.8pp graphs,
+  +12.1pp algebra) vs +24..67pp in the working range.
+- **Under-compression end does NOT collapse**: algebra SD peaks at c=1
+  (+67.4pp). The planned "under-compression dominated by surface" half of
+  the window is CONDITIONAL on surface salience -- with 2 name chars as
+  surface, structure dominates even with zero compression. Sub-finding for
+  L5: the window is one-sided unless surface signal is engineered to be
+  strong.
+- Local-vs-global: kNN-based SD is high while global k-means ARI stays low
+  (0.05-0.23) -- latent geometry is locally structured, globally unseparated.
+
 ## Related
 
 - FlyPoet(k-WTA×Transformer,216M 反转):架构轴实验记录
