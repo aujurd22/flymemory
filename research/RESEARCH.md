@@ -252,17 +252,22 @@ mechanized?" -- now has a measured three-level answer:
 
 | Level | Question | Verdict | Evidence |
 |---|---|---|---|
-| **L1 Recognise** | given the invariant representation, identify the structure | **MECHANIZED** | P4 clean: ratio-norm kNN 17/17; c_s extraction 7/7 |
-| **L2 Discover removal** | given the operator family, find the nuisance-removing transform | **MECHANIZED** | P14: with counterfactual nuisance data (random A,B,z per sample) + explicit invariance pressure (DANN/GRL), same-signature kNN 0.750, s-classifier 0.883; family-known LSQ selection 0.975 |
-| **L3 Discover family** | discover the operator family itself, blind | **OPEN (negative)** | P13 v1+v2 (26 transform configs x readouts incl k-WTA, two-phase training): nothing exceeds chance 0.368; P9: prediction objective learns log abs(z), not the invariant |
+| **L1 Recognise** | given the invariant representation, identify the structure | **MECHANIZED** | P4 clean: ratio-norm kNN 17/17; c_s extraction 7/7; P1-tag: family signal survives 2x-content noise tags (inst recall 0.046 vs chance 0.017) |
+| **L2 Discover removal** | given the operator family, find the nuisance-removing transform | **MECHANIZED (with supervision caveats)** | P14: family-known LSQ selection (no labels, form given) 0.975; label-supervised DANN/GRL (s labels in training) 0.750, s-acc 0.883 -- the DANN arm is SUPERVISED invariance extraction, not blind factorization; P2 registered-caliber variant: structure ARI beats instance ARI at all 8 bottlenecks (+0.109..+0.218) |
+| **L3 Discover family** | discover the operator family itself, blind | **OPEN (negative)** | P13 v1+v2 (26 transform configs x readouts incl k-WTA): nothing exceeds chance 0.368; P13-v3 corrected grid on TRUE sequences (90 cells: 15 transforms x b{4,16} x seeds{0,1,2} x 3 readouts, pre-AE raw baselines): best AE cell 0.529 (selection-biased), best raw 0.471 (ratio-direction transforms), AE never lifts above raw -- the missing step is envelope estimation, not another transform; P9: prediction objective learns log abs(z), not the invariant |
 
 The honest reading: L2 succeeds only when (a) the data contain explicit
-counterfactual nuisance variation, and (b) an explicit invariance pressure
-exists (labels for s + gradient reversal on the nuisance). Neither P4's 17
-literature series (confounded s/A/B/z) nor P13's transform menus provided
-that. The current boundary of "intuition mechanization" is therefore: the
-outermost step -- inventing the right operator family without being handed
-it -- remains un-mechanized; everything downstream of it does not.
+counterfactual nuisance variation, and (b) the machine is HANDED part of the
+answer -- the family form (arm c, 0.975) or the per-sample invariant labels
+(arm b, 0.750). The truly blind end is weaker everywhere: recon-only AE
+reaches 0.475 (above chance, no pressure), and L3 (no family given) sits at
+chance across every transform menu tried. Reviewer framing adopted: the open
+question is not "more transforms" but whether a system can perform
+NUISANCE IDENTIFICATION -> INVARIANCE CONSTRUCTION -> STRUCTURE
+RECOGNITION as one data-driven loop. The current boundary of "intuition
+mechanization" is therefore: the outermost step -- inventing the right
+operator family without being handed it -- remains un-mechanized;
+everything downstream of it does not.
 
 ## Related
 
