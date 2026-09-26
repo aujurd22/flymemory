@@ -221,6 +221,17 @@ Registered predictions, judged:
   instead it creates a MID-compression interference valley (SD dips to
   0.35-0.42 at c=13-52) while structure still beats surface even with
   the tag occupying 31% of the signal.
+- **P4 CLEAN RERUN (three-tier, post-review)**: an implementation bug
+  (hyper factor added as linear term instead of multiplied) invalidated
+  the first negative. Clean re-run with correct coefficients:
+  Tier A blind raw: hit@1 5/17 (chance 0.368), Tier A' embed: 5/17,
+  Tier B ratio-norm: **hit@1 17/17, mean_frac3 0.784**,
+  Tier C template (aligned+normalized): **1.000**,
+  c_s extraction (eq28-34, no c0): **7/7 exact**.
+  The signature is FULLY accessible in the ratio-normalized representation;
+  blind and embed representations cannot see it (both at chance).
+  This closes the "invariant discovery" question for this dataset: the
+  invariant IS discoverable, but only through the correct ratio transform.
 
 Also: T2 math pipeline landed -- validator (50-digit gate, both anchor
 series PASS), family_gen (Heegner j-values exact; d=163 anchor caught a
