@@ -336,6 +336,12 @@ it, and now one layer inside it (generic envelope estimation), does not.
   the A +- 2Num antisymmetry IS the 1/x(q) + 1/x(-q) = 4 identity
   under the phase-corrected half-period translate.
 
+- **P23 CONFIRMED (07:12)**: class-group orbit generation -- the identity
+  holds at EVERY conjugate CM point (~180 verified across N=2..30, zero
+  failures); the published rational rows are the trace-degenerate tips of
+  full orbits.  Orbit-vs-one-representative-degree mismatch is conceptual
+  (K-conjugacy vs Q-degree).  P23-b (N=31..60 completion) registered.
+
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
 - LongMemEval / LongMemEval-V2: external benchmarks (integration pending)
