@@ -305,6 +305,37 @@ it, and now one layer inside it (generic envelope estimation), does not.
   identifiability (external assumptions required), ML symmetry discovery
   (labels/priors needed), Ramanujan Machine (search WITH human ansatz).
 
+### Overnight continuation 2026-09-27 (P16-P22; intuition-mechanism to 480b377)
+
+- **P16 PARTIAL (substance confirmed)**: Gamma-constant proposition
+  proven to 17 digits (constrained exact-Bernoulli extrapolation);
+  confusability ordering rho = -0.956, most-confused pair (2,3) =
+  smallest Gamma-gap.  Band-setting meta-lesson recorded (three
+  threshold errors across its registration history).
+- **P17 INCONCLUSIVE**: 27B reasoning model at chance on both
+  literature-real (0.235) and counterfactual (0.250) sequences; with
+  wrong few-shot labels it follows labels (C = 0.000).  Discriminator
+  open for stronger models.
+- **P18 CONFIRMED**: Z(X) level-6 machinery implemented and verified
+  (ODE 1e-63, differential identity 1e-68 on the cusp-side sheet); X0
+  table at CM points = exact rationals (1/36, 1/54, 1/100, ...).
+- **P19 CONFIRMED (generation mechanized end-to-end)**: 59 identities
+  for N = 2..60 generated and re-verified at machine precision
+  (docs/IDENTITIES.md); lambda solved numerically exactly as the CWZ
+  paper prescribes; lambda algebraicity recognized (quadratics at
+  N = 2, 11, 19, 23, 25, 35, 43, 47).  Novelty: absent from CWZ Table 1
+  and Chan-Cooper 2012 tables.
+- **P20 CONFIRMED + ERRATUM FINDING**: census caught the arXiv CWZ
+  Table-1 N=17 lambda = 143/238 as inconsistent with their own eq (3.9)
+  (correct value 43/238; identity closes at 1e-56 only with 43/238).
+- **P21 NEGATIVE (informative)**: deg(x0) is bounded (<= 9) with clean
+  residue-class structure; NOT h(-24N) -- level-12 conductor mix;
+  hypothesis recorded.
+- **P22 CONFIRMED**: negative-branch Table-1 identities verified
+  (4/5 at <= 1e-62, the fifth is the |x| = 1/8 radius boundary);
+  the A +- 2Num antisymmetry IS the 1/x(q) + 1/x(-q) = 4 identity
+  under the phase-corrected half-period translate.
+
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
 - LongMemEval / LongMemEval-V2: external benchmarks (integration pending)
