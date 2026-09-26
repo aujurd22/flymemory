@@ -254,7 +254,7 @@ mechanized?" -- now has a measured three-level answer:
 |---|---|---|---|
 | **L1 Recognise** | given the invariant representation, identify the structure | **MECHANIZED** | P4 clean: ratio-norm kNN 17/17; c_s extraction 7/7; P1-tag: family signal survives 2x-content noise tags (inst recall 0.046 vs chance 0.017) |
 | **L2 Discover removal** | given the operator family, find the nuisance-removing transform | **MECHANIZED (with supervision caveats)** | P14: family-known LSQ selection (no labels, form given) 0.975; label-supervised DANN/GRL (s labels in training) 0.750, s-acc 0.883 -- the DANN arm is SUPERVISED invariance extraction, not blind factorization; P2 registered-caliber variant: structure ARI beats instance ARI at all 8 bottlenecks (+0.109..+0.218) |
-| **L3 Discover family** | discover the operator family itself, blind | **OPEN (negative, one crack, now precisely shaped)** | P13 v1+v2 + corrected grid (90 cells): nothing beats chance; P9: objectives learn the nuisance. CRACK (P15): a generic per-sample log-domain envelope fit (no H_s form, no labels) lifts hit@1 to 0.946 on counterfactual data (chance 0.247) -- "estimate the envelope, cancel it, read the residual" IS mechanizable. Arc follow-ups: P15-b refinement FALSIFIED (same-span refit is vacuous; obstruction = z-modulated fit bias on the invariant's own axis); P15-c ratio-domain reconstruction CONFIRMED 1.000 on one family / NEGATIVE on the other -- the two envelope schemes are complementary, neither dominates; P15-d blind scheme selection PARTIAL -- silhouette picks the right scheme when the signal is strong and falls into the salience trap (picks raw by 0.0009) when weak. Sharpest remaining statement: representations are salience-robust (P1-tag) but LABEL-FREE SELECTION criteria are not; separating invariant-structure from salient-structure by purely internal criteria is open |
+| **L3 Discover family** | discover the operator family itself, blind | **OPEN (gap fully mapped overnight 09-27; see arc below)** | P13 v1+v2 + corrected grid (90 cells): nothing beats chance; P9: objectives learn the nuisance. CRACK (P15): a generic per-sample log-domain envelope fit (no H_s form, no labels) lifts hit@1 to 0.946 on counterfactual data (chance 0.247) -- "estimate the envelope, cancel it, read the residual" IS mechanizable. Arc follow-ups: P15-b refinement FALSIFIED (same-span refit is vacuous; obstruction = z-modulated fit bias on the invariant's own axis); P15-c ratio-domain reconstruction CONFIRMED 1.000 on one family / NEGATIVE on the other -- the two envelope schemes are complementary, neither dominates; P15-d blind scheme selection PARTIAL -- silhouette picks the right scheme when the signal is strong and falls into the salience trap (picks raw by 0.0009) when weak. Sharpest remaining statement: representations are salience-robust (P1-tag) but LABEL-FREE SELECTION criteria are not; separating invariant-structure from salient-structure by purely internal criteria is open |
 
 The honest reading: L2 succeeds only when (a) the data contain explicit
 counterfactual nuisance variation, and (b) the machine is HANDED part of the
@@ -275,6 +275,35 @@ without being handed it -- remains un-mechanized; everything downstream of
 it, and now one layer inside it (generic envelope estimation), does not.
 
 ## Related
+
+### Overnight arc 2026-09-27 (P15-e/f, P16, D1-eta; intuition-mechanism 050aca4/b1d2b73)
+
+- **P15-e FALSIFIED**: 2D (z, B/A) confound regression-out -- random control
+  (0.379) matches oracle (0.395) and blind (0.360); bias is idiosyncratic,
+  representation-side cleanup exhausted (kNN 0.946 shows information present).
+- **P15-f NEGATIVE + REGIME THEOREM**: PC1 salience-correction fixes the true
+  family (ratio ARI 0.087 -> 0.394) and destroys the ratio family (1.000 ->
+  0.291): the invariant may be dominant or subordinate; internal geometry
+  does not encode the regime.  With P15-d, all three internal-criterion
+  families are closed with distinct mechanisms (salience capture /
+  idiosyncratic bias / regime ambiguity).  Remaining openings: external
+  information (counterfactual access) or mild structural priors.
+- **P16 PARTIAL (substance confirmed)**: Gamma-proposition -- after exact
+  envelope removal the invariant axis IS C_s = 1/(Gamma(1/2)Gamma(1/s)-
+  Gamma(1-1/s)), verified at 17 digits with exact-Bernoulli-coefficient
+  constrained extrapolation; confusability ordering confirmed (rho=-0.956,
+  most-confused pair (2,3) = smallest-Gamma-gap pair).  Registered band
+  1e-25 was an instrument-range error -> meta-lesson on band-setting.
+- **D1-eta GATE PASS**: level-6 eta-quotient machinery mechanized
+  (documented values j6C=32, j6D=81, j6A=39200 reproduced at 1e-56..59;
+  Conway-Norton relation constant corrected 22 -> 14); integer CM-value
+  sweep finds 3/36 true hits incl. two NEW small class invariants (8, 9);
+  D1's 0/27 explained: the parameters live in eta quotients, not j.
+- **Literature anchors** (docs/LITERATURE.md): Kolmogorov structure
+  function (what-to-keep), Fisher ancillarity (nuisance), Rosenfeld IRM
+  critique (invariance does not identify the invariant), nonlinear-ICA
+  identifiability (external assumptions required), ML symmetry discovery
+  (labels/priors needed), Ramanujan Machine (search WITH human ansatz).
 
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
