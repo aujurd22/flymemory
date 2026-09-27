@@ -359,3 +359,58 @@ it, and now one layer inside it (generic envelope estimation), does not.
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
 - LongMemEval / LongMemEval-V2: external benchmarks (integration pending)
+
+
+### Overnight arc 2026-09-28 (P32-g..P36; intuition-mechanism to 086e59a)
+
+The LLM-subject line (P32-h..P36-c) turned the "insight = compression"
+motto into measured results, and the math line produced the night's
+headline:
+
+- **P32-h balanced novelty detection PARTIAL**: blind judge
+  (doubao, thinking disabled) existing-family 16/20 (80%, p~4e-7)
+  vs new-family 4/20 (20%, at the 25% guess line) -- recognition
+  WITHOUT novelty; the judge says NEW only 7/40 times and absorbs
+  misses indiscriminately (A x9/B x5/C x2).  Native structural
+  subject 38/40 -- the information IS in the window.
+- **P32-i causal cue intervention**: supplying the P34-d extraction
+  procedure lifts the blind judge to 39/40 (new-arm 20/20, p=9e-13);
+  merely truncating sequences to 8 terms does NOT teach extraction
+  (new 11/20 but existing collapses 16->10/20; NEW-answer rate flips
+  7/40 -> 19/40).  The novelty deficit lives in the EXTRACTION step;
+  the representation-to-comparison wiring is the missing piece.
+- **P35-a blind MDL discovery**: exhaustive MDL over threshold-free
+  features (equality-to-mode + flip), no labels/class-count, on the
+  4800-family corpus, rediscovers EXACTLY the P34-d tree features
+  {eq2=6, eq3=20, eq4=70, flip}; 8/9 winner cells align with truth.
+  P35-b: doubao induces the right SCHEMA from 24 examples (55.8%
+  executed; chance 12.5%), one recalibration round -> 76.2%; MDL
+  code 400/400 on the same test -- where-to-look is inducible from
+  tiny data, calibration is a data requirement.
+- **P36-a lambda arithmetic census (HEADLINE; N=2..160)**: the
+  algebraic degree of the hidden parameter lambda EXACTLY reproduces
+  the human publication boundary of the family.  Degree 1 (rational)
+  = {3,5,7,13,17} -- precisely the published rows; degree 2 = {2,11,
+  19,23,25,35,43,47,55,73}; degree 3 = {9,27,29,31,37,41,49,53};
+  deg(lambda) = deg(x0) on 20/20 resolved rows (two-row census with
+  P20/P21).  Showcase N=9: 96l^3-192l^2+114l-17 (height 192), exact
+  radical lambda_9 = 2/3 - (3sqrt2+19)^(1/3)/12 -
+  7/(12(3sqrt2+19)^(1/3)), identity verified <= 5e-51 -- one
+  algebraic level deeper than anything published.  All relations
+  verified by unique-root test + direct substitution.  (Precedence:
+  x0-side census is P20/P21; this row is the lambda side, extended
+  to 160, with strict verification.)
+- **P36-c depth perception**: a blind judge shown only x0 to 12
+  digits separates deep/plain 15/15 TWICE (independent samples),
+  names four rationals exactly (1/12, 1/32, 1/104, 1/200), full
+  ranking |rho| = 0.79 / 0.72 (p = 4e-4 / 3e-3), above a mechanical
+  rational-detector baseline (0.61) -- arithmetic depth is visible
+  on the surface.
+
+Law candidate sharpened across the three repos: intuition is
+extracting a low-dimensional, predictively valid sufficient
+structure from high-entropy experience -- and in this testbed that
+structure is provably small (four features), mechanically
+discoverable (MDL), causally the bottleneck (P32-i), and its
+"depth" axis is what human mathematicians were tracking all along
+(P36-a).
