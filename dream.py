@@ -138,6 +138,10 @@ def main():
                     help="skip if fewer than this many turns in window")
     ap.add_argument("--dry-run", action="store_true",
                     help="print what would be stored, write nothing")
+    ap.add_argument("--compartment", default="",
+                    help="dream only entries tagged comp:<name> (default: "
+                         "ungrouped entries without any comp: tag). Use "
+                         "'all' to dream everything together")
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -152,6 +156,14 @@ def main():
 
     recent = [m for m in mem.memories
               if m.timestamp >= window_start and m.superseded_by is None]
+    comp_tag = f"comp:{args.compartment}" if args.compartment and args.compartment != "all" else None
+    if comp_tag:
+        # compartment-scoped dreaming: exclude entries from OTHER
+        # compartments (cross-domain contamination fix, 2026-09-26);
+        # ungrouped entries (no comp: tag) stay included
+        recent = [m for m in recent
+                  if not any(t.startswith("comp:") and t != comp_tag
+                             for t in m.tags)]
     if len(recent) < args.min_turns:
         print(f"dream: only {len(recent)} turns in the last {args.window}min "
               f"(min {args.min_turns}) -- skipping", flush=True)
@@ -159,7 +171,8 @@ def main():
     recent.sort(key=lambda m: m.timestamp)
     turns = [f"{m.source}: {m.text}" for m in recent]
     span_new = (now - recent[0].timestamp) / 60
-    print(f"dream: window has {len(recent)} turns ({span_new:.0f} min ago .. now)",
+    print(f"dream: window has {len(recent)} turns ({span_new:.0f} min ago .. now)"
+          + (f" [compartment={args.compartment}]" if args.compartment else ""),
           flush=True)
 
     client = ds_client()
@@ -180,7 +193,10 @@ def main():
         if args.dry_run:
             stored.append(entry)
             continue
-        result = mcp_call("flymemory_remember", {"text": entry})
+        write_args = {"text": entry}
+        if args.compartment and args.compartment != "all":
+            write_args["compartment"] = args.compartment
+        result = mcp_call("flymemory_remember", write_args)
         print(f"    -> {result[:100]}", flush=True)
         stored.append(entry)
     mode = "(dry-run, not stored)" if args.dry_run else "stored via MCP"

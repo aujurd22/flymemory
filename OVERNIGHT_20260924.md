@@ -62,3 +62,8 @@ DEEPSEEK_API_KEY=sk-... $PY bench_e2e_answer.py
 DEEPSEEK_API_KEY=sk-... $PY bench_lme_e2e.py --sample 50
 DEEPSEEK_API_KEY=sk-... $PY bench_granularity.py --mode overlay
 ```
+
+## 后续部署(2026-09-27 追加)
+
+- **dream.py 已定时部署**:Windows 计划任务 `FlyMemoryDream`(每小时,只使用交互方式登录态)。缺 DEEPSEEK_API_KEY 时优雅退出(dream: window has N turns → exit),不会产生噪音。要变更窗口/小室:编辑任务的 //TR 参数,加 `--window 120` 或 `--compartment flyloop`。
+- **compartment 分区 dreaming 已实现**:`--compartment <name>` 只整理该小室+未分组条目(排除其他小室,防跨域污染);写入时自动带同名 compartment。默认(无参数)= 只整理未分组条目。
