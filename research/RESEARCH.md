@@ -509,7 +509,10 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   rationality is a level-12-specific degeneration condition (P23's
   orbit tips); lambda-algebraicity + deg(lambda)=deg(x0) recorded as
   the standing theory sketch (docs/THEORY_LAMBDA.md); CCL Thm 2.1
-  scoped out (levels {1..9} exclude level 12).
+  scoped out (levels {1..9} exclude level 12).; P33-d hull-axis NULL at n=15 (rho=-0.06): parameter-space novelty
+  does not scale as an interestingness axis -- the lambda-degree axis is
+  the one with signal; P32-i Arm T on GLM gave no usable signal
+  (parse-failure dominated), truncation conclusion stands on doubao.
 
 - **P39 capstone (04:55)**: end-to-end mechanized recognition + novelty
   pipeline (support-pattern rule -> class -> novelty comparison) scores
