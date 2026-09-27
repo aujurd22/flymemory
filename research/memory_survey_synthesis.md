@@ -91,3 +91,23 @@ confirmed"却仍 2/12 次写入——概念存在,执行不稳。
 这是三项目母题(稀疏选择→压缩→稳定结构→再利用)之外的第二条通用方法:
 **balanced probes dissociate recognition from bias**——P32-h 用它分离
 recognition(80%)与 novelty(随机),这里用它分离"知道变了"与"该不该写"。
+
+### 7.1 Arm-S 移植负结果(P32-i → flymemory,2026-09-28)
+
+P32-i 证明其新颖性缺陷是提取失败(Arm S 供提取程序 20/40→39/40,Arm T 截断
+只换偏置 21/40)。移植 two-step 协议(强制断言提取 fact/intent/question)到
+判断基准 168 场景,预注册判据判定 **NOT SUPPORTED**:
+
+- bal_resist_01 未修复:模型提取正确但把 "I'm switching back to VS Code"
+  标为 fact——失败在**分类裁量**,不在提取
+- RESIST mutation 3→4(08 修复,11/12 新增协议允许的 consideration 写入)
+- 噪声回归:noop 0/36→1/36、supersede R 1.00→0.989(sup_06)、
+  consolidation 时机 3 例改变
+
+**与 P32-i 的调和(跨界线发现)**:P32-i 的程序有效因为其充分统计量是客观的
+(与 6/20/70 的算术比较+符号翻转);memory judgment 没有机械充分统计量——
+什么算 update、什么值得存是语义裁量。**脚手架修复适用于"客观签名的提取瓶颈",
+不适用于"语义边界的裁量瓶颈"**。三方对照:P32-i=提取瓶颈(可脚手架修复)、
+flymemory=裁量瓶颈(不可)、Arm T 式"换偏置"在两域都出现过(P32-i 21/40;
+此处 STALE 未翻转因为协议保留了 fact-only supersede 规则)。这加深 flymemory
+核心论点:judgment lives in the caller——裁量原语不能被流水线脚手架机械化。

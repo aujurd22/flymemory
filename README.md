@@ -293,6 +293,27 @@ P32-h-style setup reported NEW only 7/40); it concentrates in
 intent-statements, and the model's own reasons show it *has* the
 considered-vs-confirmed distinction yet still writes 2/12 times.
 
+**Arm-S transplant (negative result, 2026-09-28)**: intuition-mechanism
+P32-i showed its novelty deficit is an EXTRACTION failure -- supplying the
+cue-extraction procedure took the blind judge from 20/40 to 39/40. A
+two-step protocol (`--two-step`: mandatory assertion extraction tagged
+fact/intent/question before deciding, `ACTOR_SYSTEM_TWO`) was transplanted
+here as a pre-registered arm. Verdict: NOT SUPPORTED -- the flagged
+intent-supersede (bal_resist_01) persisted because the model labels
+"I'm switching back to X" as a `fact`, i.e. the failure is in the
+classification discretion, not extraction; RESIST mutations went 3 -> 4
+(bal_resist_08 fixed, bal_resist_11/12 newly written consideration entries
+the protocol text itself permits), one classic no-op gained a mutation
+(0/36 -> 1/36), one supersede recall slipped (sup_06), and consolidation
+timing shifted on 3 cases. supersede R 1.00 -> 0.989 overall. The
+transplant failure is itself informative: P32-i's procedure worked because
+its sufficient statistic is objective (numeric comparisons against 6/20/70
+plus sign-flip); memory-judgment has no mechanical sufficient statistic --
+what counts as an update and what is worth keeping are semantic
+discretion. Judgment really does live in the caller, and cannot be
+restored by pipeline scaffolding. The flag is kept as a regression
+sentinel, not adopted into the production prompt.
+
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the
 id flow itself (remember first, take the returned id, then supersede). Same

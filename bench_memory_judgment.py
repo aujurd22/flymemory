@@ -93,6 +93,53 @@ Respond with ONLY this JSON (no markdown fence, no extra text):
  "consolidate": [{"memory_ids": [1, 2], "conclusion": "..."}],
  "forget": [{"memory_id": 5}], "reason": "one short sentence"}"""
 
+# Two-step variant (P32-i Arm-S cross-pollination): the prompt supplies a
+# MANDATORY EXTRACTION PROCEDURE -- list every assertion in the turn tagged
+# fact / intent / question BEFORE deciding. Tests whether judgment failures
+# (an intent statement superseding a state) are extraction failures
+# (P32-i: supplying the extraction procedure took the judge to 39/40)
+# rather than comparison failures.
+ACTOR_SYSTEM_TWO = """You are the memory-policy module of a personal AI assistant.
+Given the assistant's current long-term memory entries and the user's new
+message, decide which memory operations to perform.
+
+MANDATORY EXTRACTION PROCEDURE: before any decision, fill
+"extracted_assertions" with EVERY factual claim the user's message asserts,
+each tagged with its kind:
+  - "fact"    : stated as currently true ("I moved to Hangzhou")
+  - "intent"  : only a plan/consideration/hypothetical ("I'm thinking of
+                switching back to Notion", "should I go back to X?")
+  - "question": a pure question, asserting nothing
+Only assertions tagged "fact" can make an existing entry OUTDATED, so only
+"fact" assertions may drive supersede or forget. An "intent" is at most a
+new rememberable fact about the user's current consideration; it never
+updates an existing entry. If extracted_assertions is empty, all decision
+arrays must be empty.
+
+Rules:
+- remember: genuinely NEW facts worth keeping long-term.
+- supersede: an existing entry is OUTDATED because the message updates that
+  exact fact. Mentioning an old fact is NOT an update. A supersede REQUIRES
+  the new state to be stored: include the new fact in remember and point
+  remember_index at it -- a supersede without a matching remember entry is
+  invalid and will be rejected.
+- forget: an entry is factually WRONG (a mistake). Merely old-but-true facts
+  are superseded, NEVER forgotten.
+- consolidate: several entries are fragments of one topic and a higher-level
+  conclusion would serve future recall better. The conclusion must contain
+  ONLY information present in the selected entries. When the user asks for a
+  summary/overview of some area, that is the moment to consolidate that
+  area's fragments -- the summary should then come from the consolidated
+  entry, not from re-reading fragments every time.
+- If nothing qualifies, return empty arrays. Most turns should NOT mutate
+  long-term memory.
+
+Respond with ONLY this JSON (no markdown fence, no extra text):
+{"extracted_assertions": [{"text": "...", "kind": "fact|intent|question"}],
+ "remember": ["..."], "supersede": [{"old_id": 1, "remember_index": 0}],
+ "consolidate": [{"memory_ids": [1, 2], "conclusion": "..."}],
+ "forget": [{"memory_id": 5}], "reason": "one short sentence"}"""
+
 JUDGE_SYSTEM = """You are a strict factuality judge. Given EVIDENCE entries
 and a CONCLUSION drawn from them, decide whether the conclusion is safe to
 keep as a CURRENT-state summary:
@@ -172,11 +219,11 @@ def oracle_decide(case):
     return json.dumps(gold_decision(case))
 
 
-def deepseek_decide(client, case):
+def deepseek_decide(client, case, system=ACTOR_SYSTEM):
     lines = "\n".join(f"#{m['id']}: {m['text']}" for m in case["memories"])
     user = (f"Current memory:\n{lines}\n\nNew user message:\n"
             f"\"{case['turn']}\"\n\nDecide the memory operations now.")
-    return ds_chat(client, ACTOR_SYSTEM, user)
+    return ds_chat(client, system, user)
 
 
 def execute(mem, case, decision, id_map):
@@ -369,6 +416,9 @@ def main():
     ap.add_argument("--judge", action="store_true",
                     help="LLM semantic judge for consolidation conclusions")
     ap.add_argument("--limit", type=int, default=0, help="first N cases only")
+    ap.add_argument("--two-step", action="store_true",
+                    help="Arm-S protocol: mandatory assertion extraction "
+                         "before decisions (ACTOR_SYSTEM_TWO)")
     args = ap.parse_args()
 
     with open(args.data, encoding="utf-8") as f:
@@ -381,10 +431,12 @@ def main():
     if args.actor == "deepseek" or args.judge:
         client = ds_client()
 
-    prompt_hash = hashlib.sha1(ACTOR_SYSTEM.encode()).hexdigest()[:10]
+    actor_system = ACTOR_SYSTEM_TWO if args.two_step else ACTOR_SYSTEM
+    prompt_hash = hashlib.sha1(actor_system.encode()).hexdigest()[:10]
     print(f"cases: {len(cases)} | actor: {args.actor} "
           f"(model {ACTOR_MODEL if args.actor == 'deepseek' else 'gold'}, "
-          f"prompt {prompt_hash}) | judge: {args.judge}\n", flush=True)
+          f"prompt {prompt_hash}{' two-step' if args.two_step else ''}) "
+          f"| judge: {args.judge}\n", flush=True)
 
     traces, agg = [], {"supersede_p": [], "supersede_r": [], "forget_p": [],
                        "forget_r": [], "noop_mutated": 0, "noop_total": 0,
@@ -392,7 +444,7 @@ def main():
     for ci, case in enumerate(cases):
         mem, id_map = build_memory(case)
         raw = (oracle_decide(case) if args.actor == "oracle"
-               else deepseek_decide(client, case))
+               else deepseek_decide(client, case, system=actor_system))
         decision, perr = parse_decision(raw)
         if perr:
             decision = {}

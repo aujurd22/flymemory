@@ -29,3 +29,4 @@ run_judge_with_key.py
 data_longmemeval_v2/trajectories_full.jsonl
 data_longmemeval_v2/trajectories_small.jsonl
 data_longmemeval_v2/lmev2_flymemory.pkl
+run_twostep_with_key.py
