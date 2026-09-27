@@ -349,6 +349,13 @@ it, and now one layer inside it (generic envelope estimation), does not.
   form in the tested Gamma bases -- the ODE-local-analysis route at the
   ramification point x = 1/8 is the recorded next step.
 
+- **P28-b orbit extension CONFIRMED / P29 NEGATIVE (08:40)**: orbit
+  generation extended to N=61..90 (430 identities, all verified; census
+  patterns hold out-of-sample); the universal lambda function G(x0) has
+  NO simple low-parameter closed form (best tested basis 8e-2 residual)
+  -- G is non-elementary, consistent with lambda involving z(x0) and
+  z'(x0) at CM points.
+
 - FlyPoet (k-WTA x Transformer, 216M inversion): architecture-axis experiment log
 - FlyMemory README: memory-system engineering doc (a testbed of this program)
 - LongMemEval / LongMemEval-V2: external benchmarks (integration pending)
