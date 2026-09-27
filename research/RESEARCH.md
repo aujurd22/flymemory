@@ -510,3 +510,11 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   orbit tips); lambda-algebraicity + deg(lambda)=deg(x0) recorded as
   the standing theory sketch (docs/THEORY_LAMBDA.md); CCL Thm 2.1
   scoped out (levels {1..9} exclude level 12).
+
+- **P39 capstone (04:55)**: end-to-end mechanized recognition + novelty
+  pipeline (support-pattern rule -> class -> novelty comparison) scores
+  40/40 on the same P32-h trials the blind LLM judges score 50-52% on.
+  The family's map is now: recognition MECHANIZED, novelty MECHANIZED
+  (given the discovered code), depth MEASURED (lambda degree census),
+  interestingness-as-value OPEN (hull axis falsified at n=15,
+  rho = -0.06).
