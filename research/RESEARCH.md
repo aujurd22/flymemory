@@ -50,6 +50,47 @@ nothing over time-scoped search (54.0% vs 56.0%, noise) — the residual
 bottleneck is evidence collection, not arithmetic. Retrieval FORM must
 match question TYPE (lookup -> top-k, aggregation -> toolized multi-round).
 
+**L6 · Anchoring law (candidate, round-9/10)** — the solvability of a
+semantic discretion task is governed by ANCHORING, not by task surface:
+with a concrete reference value to compare against, discretion becomes
+near-mechanical; unanchored linguistic-behavior classification is where
+discretion truly lives. Evidence: atomic decomposition -- state-change
+detection WITH an anchor (stored value vs assertion) is 30/30, including
+exactly the three "considering switching back" assertions that fail
+end-to-end; unanchored assertion-kind classification is 26/32 with ALL
+confusions biased toward fact (1/5 intent, 5/7 question). Cross-testbed
+support: P32-i scaffold with an OBJECTIVE sufficient statistic restores
+novelty 20/40 -> 39/40, while the same scaffold shape transplanted onto
+unanchored flymemory judgment is a registered negative (3f87703).
+Worded as candidate: two arms, n=92, single model (deepseek-chat).
+Repro: `bench_atomic_judgment.py`
+
+## Cross-testbed evidence chain (2026-09-28, round-9/10)
+
+The program-level question "which cognitive tasks compress into an
+objective sufficient statistic, and which must retain semantic
+discretion" now has one measured cell per testbed:
+
+| testbed | task | sufficient statistic? | result |
+|---|---|---|---|
+| intuition-mechanism P32-i | novelty vs family | objective (numeric signature) | scaffold restores 39/40 |
+| intuition-mechanism P35-a | structure discovery | found BY search (MDL, unlabeled) | rediscovers the 4-feature tree 4800/4800 |
+| FlyMemory (Arm-S transplant) | assertion kind | none found in fact/intent/question schema | scaffold NEGATIVE (3f87703) |
+| FlyMemory (atomic) | state change WITH anchor | anchored (stored value) | 30/30 |
+| FlyMemory (atomic) | assertion kind WITHOUT anchor | unanchored | 26/32, bias-to-fact |
+| FlyPoet | which ingredient works | dissection: stable subset, update throttling (not competition, not surprise selectivity) | mechanism ≠ biology's mechanism |
+
+**Restraint policy (round-10 review, adopted)**: candidate conclusions are
+written scoped -- "in this family / under this schema / at this scale" --
+never as existence claims. "No mechanical sufficient statistic" means
+"none found in this schema", not "cannot exist"; P36's "interestingness is
+mechanical" is written "algebraic depth is a strong candidate mechanical
+component of observed interestingness in this family". The program-level
+jump condition: replicate the sufficient-statistic -> capability chain on
+a second, structurally different math family, or land a mechanical
+sufficient statistic for memory judgment (the anchoring result is the
+first candidate).
+
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
 **P-2026-09-24-TL2 · structured timeline overlay**
