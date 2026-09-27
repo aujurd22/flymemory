@@ -342,6 +342,24 @@ compare against". Engineering prescription to explore next: always ask the
 B-question per stored entry (anchored, mechanical-adjacent) instead of
 asking the model to free-classify the turn first.
 
+The prescription was then tested as a **pre-registered paired experiment**
+(P-ANCH-1, `bench_anchor_pairing.py`; criteria committed before running --
+279e9aa): the SAME 48 turns under both conditions, one dependent variable
+(does this message invalidate the stored state?).
+
+| condition | input | acc |
+|---|---|---|
+| U unanchored (kind + naive rule) | turn alone | 34/48 = 70.8% (structural ceiling 75%) |
+| A anchored | (stored entry, turn) | **47/48 = 97.9%** |
+
+U's errors landed exactly where predicted: all 12 noop facts-about-old-objects
+became false positives (structural), plus 2 resist; discordant pairs went
+13:0 for anchoring (exact McNemar p ~ 2e-4). The single anchored miss is
+"I'm switching back to VS Code" -- the pre-declared declarative-intent
+residual, i.e. an annotation-boundary disagreement, not an anchoring
+failure. Pre-registered verdict: **SUPPORTED-with-scope**. L6 is upgraded
+from candidate to established (single-model scope) in the program doc.
+
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the
 id flow itself (remember first, take the returned id, then supersede). Same

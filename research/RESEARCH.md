@@ -50,11 +50,14 @@ nothing over time-scoped search (54.0% vs 56.0%, noise) — the residual
 bottleneck is evidence collection, not arithmetic. Retrieval FORM must
 match question TYPE (lookup -> top-k, aggregation -> toolized multi-round).
 
-**L6 · Anchoring law (candidate, round-9/10)** — the solvability of a
-semantic discretion task is governed by ANCHORING, not by task surface:
-with a concrete reference value to compare against, discretion becomes
-near-mechanical; unanchored linguistic-behavior classification is where
-discretion truly lives. Evidence: atomic decomposition -- state-change
+**L6 · Anchoring law (established single-model, P-ANCH-1 paired
+replication)** — the solvability of a semantic discretion task is governed
+by ANCHORING, not by task surface: with a concrete reference value to
+compare against, discretion becomes near-mechanical (47/48 = 97.9%, the
+one miss the predicted declarative-intent residual); unanchored
+linguistic-behavior classification is where discretion truly lives (same
+48 turns through kind-classification + naive rule: 70.8%, hitting the 75%
+structural ceiling; discordant pairs 13:0, exact McNemar p ~ 2e-4). Evidence: atomic decomposition -- state-change
 detection WITH an anchor (stored value vs assertion) is 30/30, including
 exactly the three "considering switching back" assertions that fail
 end-to-end; unanchored assertion-kind classification is 26/32 with ALL
@@ -120,6 +123,17 @@ PRE-REGISTERED CRITERIA:
   ("I'm switching back to X") -- if so, verdict is recorded
   SUPPORTED-with-scope: anchoring repairs consideration and old-object
   classes; the declarative class is an annotation-disagreement residual.
+
+**VERDICT (2026-09-28, reports/anchor_pairing_1790534250.json):
+SUPPORTED-with-scope.** acc(A) = 47/48 = 97.9% (>= 44 required);
+resist-class repair 11/12 (>= 10 required); acc(U) = 34/48 = 70.8% with
+the errors EXACTLY where predicted (noop 12/12 structural false positives,
+resist 2). Discordant pairs 13:0 in A's favor (exact McNemar p ~ 2e-4).
+The single anchored error is bal_resist_01 ("I'm switching back to VS
+Code") -- the predicted declarative-intent residual, recorded as scope:
+anchoring repairs the consideration and old-object classes; the
+declarative class is an annotation-disagreement residual, not an
+anchoring failure.
 
 
 
