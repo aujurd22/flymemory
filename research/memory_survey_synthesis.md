@@ -111,3 +111,57 @@ P32-i 证明其新颖性缺陷是提取失败(Arm S 供提取程序 20/40→39/4
 flymemory=裁量瓶颈(不可)、Arm T 式"换偏置"在两域都出现过(P32-i 21/40;
 此处 STALE 未翻转因为协议保留了 fact-only supersede 规则)。这加深 flymemory
 核心论点:judgment lives in the caller——裁量原语不能被流水线脚手架机械化。
+
+## 八、Round-9 评审:law 正式化 + 三裁量原子拆分(2026-09-28,用户贴文)
+
+**Program-level law(两仓交叉验证,用户正式化)**:
+- Scaffolding helps when the target has an objective sufficient statistic
+- Scaffolding does not automatically solve semantic boundary judgment
+
+**对 P32-i 的方法学警告(留给 intuition-mechanism 侧)**:Arm S 同时供给
+representation+classifier rule(签名怎么算+类别怎么比),39/40 证明的是
+"供给正确结构表示及其判别方式后任务变易",**抽取与比较两因果因素未分离**。
+建议 P32-j 两阶段:阶段一只输出 signature(H/A/B/C)不给映射规则;阶段二
+把结构化 signature 交给通用 comparator——真正拆开
+raw→representation 与 representation→decision。
+(该实验属 intuition-mechanism 仓库,由其并行会话执行;此处存档设计。)
+
+**对 flymemory README 措辞的逻辑边界(已采纳修正)**:
+"no mechanical sufficient statistic" → "this schema supplies no comparable
+mechanical sufficient statistic"(关于本 schema 的陈述,非存在性证明);
+判断"原则上能否分解为客观子问题"恰是下一阶段研究对象。
+
+**三裁量原子拆分(下一阶段主实验,bench_atomic_judgment.py v0 已建)**:
+- A Assertion extraction:turn → [{text, kind: fact|intent|question}]
+  ——表征问题,P32-i 同构
+- B State-change detection:(entry, assertion) → CHANGED|UNCHANGED|UNKNOWN
+- C Memory-worthiness:(assertion, context) → KEEP|DISCARD|EPHEMERAL
+目标:把 168 端到端的错误归因到原子段,寻找 flymemory 的机械充分统计量
+在哪个原子存在。关键预期:A 段在"I'm switching back"类语句上 fact/intent
+标注分歧=resist_01 根因的直接测量;B 段若给定 fact 断言后 CHANGED 判定
+容易,则端到端失败完全归属 A 段。
+
+**瓶颈收敛判定(用户)**:supersede ~1.0 P/R + stale 12/12 意味着
+"明确的 state-change"已解,瓶颈从 memory management 收敛为
+**semantic boundary detection**(用户只是说起可能性但尚未真改状态的边界)。
+
+### 8.1 三原子首轮结果(2026-09-28,atomic_1790532587.json)
+
+| 原子 | 分数 | 混淆 |
+|---|---|---|
+| A 断言提取 | 81.2% (26/32) | 全部单向偏 fact:intent 4/5(a_rs01 声明式进行时→fact)、question 2/7(3→fact,2→intent) |
+| B 状态变化检测 | **100%** (30/30) | 无——含 3 条 resist 类考虑语句全部正确 UNCHANGED |
+| C 记忆价值 | 86.7% (26/30) | KEEP 10/10、EPHEMERAL 10/10;4 条一次性事件→EPHEMERAL(无害) |
+
+**分解归因(本轮最重要发现)**:
+1. 端到端 RESIST 失败完全归属 A 段;B 段给锚点(存储值 vs 断言值)后
+   恰恰是那些失败语句全部可解
+2. **锚点=半客观充分统计量的来源**:同一条"I'm considering switching
+   back to VS Code",在 A 段(无锚点,纯语言行为分类)守不住 fact/intent
+   边界;在 B 段(有 entry 具体值可比)100% 正确。语义裁量并非均匀地难——
+   **有锚点的裁量近乎机械,无锚点的裁量才真是裁量**
+3. question→fact 3 例:A 段 prompt 明说 question 不作断言仍被吸成 fact
+   ——向 fact 的拉力比指令强,这是单向偏置的又一证据
+4. C 段错误全部无害方向(宁存勿删,不产错误状态)
+5. 工程处方(下一阶段候选):调用方协议改为"对每条已存条目问 B 问题
+   (锚定、近机械)",而非"先自由分类 turn 再决策"(无锚)

@@ -1,6 +1,6 @@
 # FlyMemory
 
-*Last updated: 2026-09-25 · v4.0 (Temporal-Evidence Memory schema landed)*
+*Last updated: 2026-09-28 · v4.0 + judgment dataset v1.5 (168 cases; balanced stale/new detection; P32-i Arm-S transplant studied as a negative result)*
 
 **A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
 
@@ -308,11 +308,39 @@ the protocol text itself permits), one classic no-op gained a mutation
 timing shifted on 3 cases. supersede R 1.00 -> 0.989 overall. The
 transplant failure is itself informative: P32-i's procedure worked because
 its sufficient statistic is objective (numeric comparisons against 6/20/70
-plus sign-flip); memory-judgment has no mechanical sufficient statistic --
-what counts as an update and what is worth keeping are semantic
-discretion. Judgment really does live in the caller, and cannot be
+plus sign-flip); this schema (fact/intent/question) supplies no comparable
+mechanical sufficient statistic -- what counts as an update and what is
+worth keeping are, so far, semantic discretion. That is a statement about
+this one schema, not a proof that judgment cannot be decomposed into
+objective sub-problems; hunting for such a decomposition (assertion
+extraction / state-change detection / memory-worthiness, benchmarked
+separately) is the next phase. Judgment really does live in the caller, and cannot be
 restored by pipeline scaffolding. The flag is kept as a regression
 sentinel, not adopted into the production prompt.
+
+**Atomic decomposition (`bench_atomic_judgment.py`, 2026-09-28)**: the
+monolithic memory-policy prompt was split into three primitives benchmarked
+separately, each with its own system prompt and gold labels:
+
+| primitive | input -> output | score | confusion |
+|---|---|---|---|
+| A assertion extraction | turn -> kind (fact/intent/question) | **81.2%** (26/32) | ALL errors bias toward fact (1/5 intent, 5/7 question) |
+| B state-change detection | (entry, assertion) -> CHANGED/UNCHANGED/UNKNOWN | **100%** (30/30) | none |
+| C memory-worthiness | (assertion, context) -> KEEP/DISCARD/EPHEMERAL | **86.7%** (26/30) | 4 one-off events -> EPHEMERAL (harmless) |
+
+The decomposition localizes the end-to-end failures with unusual clarity:
+**given an anchor** (a concrete stored value to compare the assertion
+against), state-change detection is perfectly solvable -- the three
+"considering switching back" assertions that caused the Arm-S failures are
+all judged UNCHANGED here. The unsolvable-feeling part is A: classifying
+bare linguistic behavior (declaration vs consideration vs question) with no
+anchor, where every confusion flows toward fact. The round-9 review's
+framing holds: the bottleneck has narrowed from memory management to
+semantic boundary detection, and within that, from "no sufficient
+statistic" to "**no anchor** -- the missing ingredient is the thing to
+compare against". Engineering prescription to explore next: always ask the
+B-question per stored entry (anchored, mechanical-adjacent) instead of
+asking the model to free-classify the turn first.
 
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the
