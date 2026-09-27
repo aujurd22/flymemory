@@ -12,7 +12,7 @@ FlyMemory gives a coding agent a persistent, self-managed memory: every user mes
 > matrix survives only as an *experimental* associative-expansion layer, and
 > measurements (see [Benchmarks](#benchmarks)) currently argue against enabling it.
 
-## How it works (v3)
+## How it works
 
 ```text
 user message
@@ -21,13 +21,20 @@ chunked store: one block per sentence (multi-topic messages stay separable)
    ↓
 semantic dedup, length-tiered thresholds
    > 0.95 (short) / 0.92 (long)  → strengthen existing entry
-   > 0.85 (short) / 0.75 (long)  → merge (longer text wins)
+   > 0.85 (short) / 0.75 (long)  → merge (longer text wins; V4: old text
+                                    becomes a superseded TOMBSTONE with
+                                    valid_from/valid_to, current gets
+                                    updated_at)
    else                          → new entry (source=hook)
    ↓
 model precision-store: the calling agent stores conclusions it judges
-important via flymemory_remember (source=model)
+important via flymemory_remember (source=model; optional state_key/
+state_value -- I1 active-unique: the same key auto-supersedes older states)
 
 recall (per query):
+   query-type ROUTING (V4): state / history / temporal / aggregation /
+   lookup -- history questions auto-include superseded entries; state
+   questions answerable via state_lookup(key) without competing in top-k
    dense ranking: multilingual embedding cosine, max over query chunks
  + lexical ranking: IDF boost (part numbers, paths, IDs — invisible to embeddings)
         ↓ RRF fusion (k=60, pool 200) → candidate ORDER
@@ -37,6 +44,11 @@ recall (per query):
 decay R(t) = (1 + t/τ)^-0.5 is a MAINTENANCE signal (drives cleanup and
 rehearsal), not a ranking feature — ordering by it was measured to lose to
 plain RRF (see the LongMemEval and state-aware sections below).
+
+idle-time consolidation ("dreaming", hourly task):
+   RECENT window (90 min) → LLM distill → per-entry faithfulness audit
+   → overlay via flymemory_remember (compartment-scoped supported)
+   -- see dream.py and v4-rfc.md §9
 ```
 
 **Decay is a power law, not an exponential half-life**: R(τ) ≈ 0.707 and the
