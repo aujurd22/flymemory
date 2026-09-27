@@ -21,7 +21,11 @@ scale_v*.log
 qa_sample.log
 data_longmemeval_v2/*.jsonl
 data_longmemeval_v2/*.md
+!data_longmemeval_v2/SCHEMA.md
 
 data_longmemeval_v2/needed_traj_ids.json
 get_mem_resp.txt
 run_judge_with_key.py
+data_longmemeval_v2/trajectories_full.jsonl
+data_longmemeval_v2/trajectories_small.jsonl
+data_longmemeval_v2/lmev2_flymemory.pkl
