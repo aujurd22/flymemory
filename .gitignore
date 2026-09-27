@@ -24,3 +24,4 @@ data_longmemeval_v2/*.md
 
 data_longmemeval_v2/needed_traj_ids.json
 get_mem_resp.txt
+run_judge_with_key.py

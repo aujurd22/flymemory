@@ -67,3 +67,27 @@ narrative turns(32%)→ key-value entity-state(36%,过度压缩有害)→ prose 
 8. LME-V2 能力分类学采纳(state tracking/workflow/gotchas/premise);数据集接入在 V4 schema 落地后
 9. 跨 actor/judge 三角验证(需第二家 API key)
 10. 论文:以"预注册负结果文化 + 状态机不变量"为方法学贡献,以 144 场景判断基准 + 500 题 e2e 五臂为实证
+
+## 七、Round-8 交叉传粉:P32-h 方法学移植(2026-09-28)
+
+把 intuition-mechanism P32-h(balanced novelty detection)的平衡设计与 STALE
+的 Premise Resistance 轴移植进判断基准 → 数据集 v1.5(168 场景),新增
+balanced-stale / balanced-resist 各 12 条(gen_dataset_batch5.py)。
+
+**结果(DeepSeek, temperature 0)**:
+- balanced-STALE 12/12 —— 真变化零漏检,无保守偏差
+- balanced-RESIST 9/12 —— 3 条越界,分两类:
+  ① 1 条真 Premise-Resistance 失守:意图声明("I'm switching back to VS Code")
+     被直接 supersede 成状态变化
+  ② 2 条边界 remember:状态未动(正确),但把"考虑中"本身存成了新条目
+     ——可辩解为真,但严格 no-op gold 下是噪音
+
+**Response bias 结论**:DeepSeek 的偏差方向是 **over-eager 而非 conservative**
+(对照:P32-h 里 doubao judge NEW 仅 7/40,严重保守)。集中出现在
+intent-statement 场景;模型 reason 里明确写出"only considering, not
+confirmed"却仍 2/12 次写入——概念存在,执行不稳。
+
+方法学价值:单侧 P/R 看不见偏差方向;平衡设计两侧一测,方向+大小同时出来。
+这是三项目母题(稀疏选择→压缩→稳定结构→再利用)之外的第二条通用方法:
+**balanced probes dissociate recognition from bias**——P32-h 用它分离
+recognition(80%)与 novelty(随机),这里用它分离"知道变了"与"该不该写"。

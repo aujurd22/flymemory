@@ -231,7 +231,7 @@ while this benchmark exists. Mechanical validity (id existence, active
 supersede target) is checked in code; unsupported inference in consolidation
 conclusions goes to an LLM judge.
 
-Dataset v1.4 (144 cases, four batches): 62 supersede (14 from the
+Dataset v1.5 (168 cases, five batches): 62 supersede (14 from the
 contradiction scenarios + 20 from the state-fidelity pairs + 28 fresh
 themes), 30 adversarial no-ops ("I fixed something on my old Windows VM"
 must NOT supersede the Fedora entry), 14 consolidation (summary requests
@@ -241,8 +241,17 @@ supersede, never forget), and batch 4 adding four NEW capability dimensions
 (5 each): multi-update (two prior states both need superseding), reversal
 (value reverts -- must create a new entry, never resurrect the superseded
 one), temporary state (a time-boxed fact is new info, not an update), and
-partial correction (one field of a compound entry changes). Generators:
+partial correction (one field of a compound entry changes).  Generators:
 gen_dataset_batch2.py / batch3.py / batch4.py.
+
+Batch 5 adds **balanced stale/new detection** (12 + 12 cases) borrowed from
+intuition-mechanism P32-h and the STALE benchmark's Premise Resistance axis:
+in the STALE half the fact really changed (correct = supersede onto the new
+value); in the RESIST half the fact is UNCHANGED and the user's message
+merely embeds a stale premise or an unconfirmed intent to switch ("I'm
+thinking of going back to Notion"). The balanced design measures response
+bias -- over-conservative (missing real changes) vs over-eager (mutating on
+talk) -- which single-sided P/R cannot see.
 
 First results, 2026-09-24 (oracle = gold replay, harness sanity check, all
 1.0 with zero mechanical errors; actor = `deepseek-chat`, temperature 0;
@@ -268,6 +277,21 @@ unsupported-inference judge does not catch this, it is a separate axis.
 Oracle vs autonomous shows **zero judgment gap on supersede and forget** at
 this scale; the gap concentrates in consolidation timing and evidence
 selection — the target for the next iteration.
+
+Re-run at v1.5 (2026-09-28, 168 cases): supersede **0.99 / 1.00**,
+unnecessary mutation 0/36 on the classic no-ops, and the batch-5 balanced
+block scores **STALE 12/12** (a real change is never missed -- zero
+conservative bias) vs **RESIST 9/12**. The three RESIST failures split into
+two distinct behaviors: one genuine Premise-Resistance breach ("I'm
+switching back to VS Code" superseded the Zed entry outright -- an
+unconfirmed intent treated as a state change), and two boundary remembers
+that correctly left the state alone but stored the *consideration itself*
+as a new entry ("user is considering switching to pour-over") -- arguably
+true, but noise under a strict no-op gold. The bias direction is
+over-eager, not conservative (contrast: a doubao-based judge in the
+P32-h-style setup reported NEW only 7/40); it concentrates in
+intent-statements, and the model's own reasons show it *has* the
+considered-vs-confirmed distinction yet still writes 2/12 times.
 
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the

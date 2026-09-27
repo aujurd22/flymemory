@@ -1,5 +1,5 @@
 {
- "benchmark_version": "1.4",
+ "benchmark_version": "1.5",
  "description": "Memory Judgment Benchmark v1: does an LLM correctly operate the FlyMemory state machine? 14 supersede (from bench_contradiction scenarios), 10 adversarial no-op, 8 consolidation, 6 forget (2 of them traps where the right action is supersede, not forget).",
  "protocol": {
   "output_schema": {
@@ -4871,6 +4871,690 @@
     ],
     "consolidate": [],
     "forget": []
+   }
+  },
+  {
+   "case_id": "bal_stale_01",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite editor is VS Code.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user switched to Zed as their daily editor.",
+   "gold": {
+    "remember": [
+     "The user switched to Zed as their daily editor."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "Zed",
+    "expected_answer_stale": "VS Code"
+   }
+  },
+  {
+   "case_id": "bal_stale_02",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's database is PostgreSQL 15.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user migrated their database to PostgreSQL 16.",
+   "gold": {
+    "remember": [
+     "The user migrated their database to PostgreSQL 16."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "PostgreSQL 16",
+    "expected_answer_stale": "PostgreSQL 15"
+   }
+  },
+  {
+   "case_id": "bal_stale_03",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's morning commute is the subway.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user started biking to work instead of taking the subway.",
+   "gold": {
+    "remember": [
+     "The user started biking to work instead of taking the subway."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "biking",
+    "expected_answer_stale": "subway"
+   }
+  },
+  {
+   "case_id": "bal_stale_04",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's cloud provider is AWS.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user migrated their workloads to GCP.",
+   "gold": {
+    "remember": [
+     "The user migrated their workloads to GCP."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "GCP",
+    "expected_answer_stale": "AWS"
+   }
+  },
+  {
+   "case_id": "bal_stale_05",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite sushi place is Sushi Iwa.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user's favourite sushi place is now Sushi Ken.",
+   "gold": {
+    "remember": [
+     "The user's favourite sushi place is now Sushi Ken."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "Sushi Ken",
+    "expected_answer_stale": "Sushi Iwa"
+   }
+  },
+  {
+   "case_id": "bal_stale_06",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user tracks tasks in Notion.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user moved their task tracking from Notion to Obsidian.",
+   "gold": {
+    "remember": [
+     "The user moved their task tracking from Notion to Obsidian."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "Obsidian",
+    "expected_answer_stale": "Notion"
+   }
+  },
+  {
+   "case_id": "bal_stale_07",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's desktop background is a mountain photo.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user changed their desktop background to an ocean photo.",
+   "gold": {
+    "remember": [
+     "The user changed their desktop background to an ocean photo."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "ocean",
+    "expected_answer_stale": "mountain"
+   }
+  },
+  {
+   "case_id": "bal_stale_08",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user drinks pour-over coffee every morning.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user switched from pour-over to cold brew every morning.",
+   "gold": {
+    "remember": [
+     "The user switched from pour-over to cold brew every morning."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "cold brew",
+    "expected_answer_stale": "pour-over"
+   }
+  },
+  {
+   "case_id": "bal_stale_09",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's test framework is pytest.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user's tests moved from pytest to vitest-style runner for the frontend.",
+   "gold": {
+    "remember": [
+     "The user's tests moved from pytest to vitest-style runner for the frontend."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "vitest-style",
+    "expected_answer_stale": "pytest"
+   }
+  },
+  {
+   "case_id": "bal_stale_10",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's main monitor is a 27-inch 4K.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user upgraded to a 32-inch 5K monitor.",
+   "gold": {
+    "remember": [
+     "The user upgraded to a 32-inch 5K monitor."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "32-inch 5K",
+    "expected_answer_stale": "27-inch 4K"
+   }
+  },
+  {
+   "case_id": "bal_stale_11",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite programming podcast is Lex Fridman.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user's current favourite podcast is Developer Tea.",
+   "gold": {
+    "remember": [
+     "The user's current favourite podcast is Developer Tea."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "Developer Tea",
+    "expected_answer_stale": "Lex Fridman"
+   }
+  },
+  {
+   "case_id": "bal_stale_12",
+   "type": "balanced-stale",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's keyboard is a HHKB Professional 2.",
+     "days_ago": 200
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The user switched to a Nuphy Air75 keyboard.",
+   "gold": {
+    "remember": [
+     "The user switched to a Nuphy Air75 keyboard."
+    ],
+    "supersede": [
+     {
+      "old_id": 1,
+      "remember_index": 0
+     }
+    ],
+    "consolidate": [],
+    "forget": [],
+    "expected_answer_current": "Nuphy Air75",
+    "expected_answer_stale": "HHKB"
+   }
+  },
+  {
+   "case_id": "bal_resist_01",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite editor is Zed.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I'm switching back to VS Code -- Zed kept crashing.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's favourite editor is Zed."
+   }
+  },
+  {
+   "case_id": "bal_resist_02",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's database is PostgreSQL 16.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Is my database still on PostgreSQL 15? Thinking of downgrading anyway.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's database is PostgreSQL 16."
+   }
+  },
+  {
+   "case_id": "bal_resist_03",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user bikes to work these days.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I'm considering taking the subway again -- my bike commute might have been a mistake.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user bikes to work these days."
+   }
+  },
+  {
+   "case_id": "bal_resist_04",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's cloud is GCP now.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Should I move my workloads back to AWS from GCP?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's cloud is GCP now."
+   }
+  },
+  {
+   "case_id": "bal_resist_05",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite sushi place is Sushi Ken.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I miss Sushi Iwa -- should I go back there for lunch today?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's favourite sushi place is Sushi Ken."
+   }
+  },
+  {
+   "case_id": "bal_resist_06",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user tracks tasks in Obsidian.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I'm thinking of going back to Notion for tasks -- Obsidian has been fine though.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user tracks tasks in Obsidian."
+   }
+  },
+  {
+   "case_id": "bal_resist_07",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's desktop background is an ocean photo.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "That mountain photo background I used to have -- should I switch back to it?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's desktop background is an ocean photo."
+   }
+  },
+  {
+   "case_id": "bal_resist_08",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user drinks cold brew every morning.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Maybe I should go back to pour-over -- the cold brew might have been a phase.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user drinks cold brew every morning."
+   }
+  },
+  {
+   "case_id": "bal_resist_09",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's frontend tests use a vitest-style runner.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Should I revert the frontend tests to pytest? The vitest-style runner might have been a mistake.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's frontend tests use a vitest-style runner."
+   }
+  },
+  {
+   "case_id": "bal_resist_10",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's monitor is a 32-inch 5K.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "The 27-inch 4K might have been better -- should I go back to it?",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's monitor is a 32-inch 5K."
+   }
+  },
+  {
+   "case_id": "bal_resist_11",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's favourite podcast is Developer Tea.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "I'm thinking of resubscribing to the Lex Fridman podcast.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's favourite podcast is Developer Tea."
+   }
+  },
+  {
+   "case_id": "bal_resist_12",
+   "type": "balanced-resist",
+   "memories": [
+    {
+     "id": 1,
+     "text": "The user's keyboard is a Nuphy Air75.",
+     "days_ago": 30
+    },
+    {
+     "id": 2,
+     "text": "The user also enjoys cycling on weekends.",
+     "days_ago": 150
+    }
+   ],
+   "turn": "Should I sell the Nuphy Air75 and go back to my old HHKB? The HHKB is in the closet.",
+   "gold": {
+    "remember": [],
+    "supersede": [],
+    "consolidate": [],
+    "forget": [],
+    "resist_stale_premise": true,
+    "expected_answer_current": "The user's keyboard is a Nuphy Air75."
    }
   }
  ]
