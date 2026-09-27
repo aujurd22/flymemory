@@ -93,6 +93,36 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-28-ANCH1 · anchor pairing experiment** (registered BEFORE
+running; criteria locked now). Turns L6 from an observational A-vs-B
+comparison into a paired controlled experiment: the SAME 48 turns, two
+conditions, one dependent variable (does this message invalidate the
+stored state?).
+
+- Set (n=48): 12 balanced-stale (anchor=YES), 12 supersede-type from the
+  v1.5 dataset (anchor=YES), 12 balanced-resist (anchor=NO), 12 noop-type
+  (anchor=NO -- all assert facts about old objects; the structural
+  false-positive source).
+- Condition U (unanchored): turn alone -> asserts_fact true/false; a
+  naive rule (asserts_fact -> invalidate) formalizes "classify first,
+  decide freely". Structural ceiling 36/48 = 75%.
+- Condition A (anchored): (stored entry, turn) -> invalidates true/false.
+- Model: deepseek-chat, temperature 0. Script: bench_anchor_pairing.py.
+
+PRE-REGISTERED CRITERIA:
+- SUPPORTED  : acc(A) >= 44/48 (91.7%) AND acc(A) on the resist class
+               >= 10/12 -- anchoring makes the discretion near-mechanical.
+- NOT SUPPORTED : acc(A) < 38/48 (79.2%) OR resist-class repair < 8/12.
+- otherwise PARTIAL.
+- Mechanistic prediction: U's errors concentrate in the noop class (all
+  12 assert facts -> structural false positives) and the resist class;
+  any residual A errors are predicted to be declarative-intent statements
+  ("I'm switching back to X") -- if so, verdict is recorded
+  SUPPORTED-with-scope: anchoring repairs consideration and old-object
+  classes; the declarative class is an annotation-disagreement residual.
+
+
+
 **P-2026-09-24-TL2 · structured timeline overlay**
 - Registered 2026-09-24 (see git history, before the experiment ran)
 - Intervention: consolidation entries switch from prose summaries to a
