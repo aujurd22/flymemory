@@ -499,3 +499,14 @@ structure is provably small (four features), mechanically
 discoverable (MDL), causally the bottleneck (P32-i), and its
 "depth" axis is what human mathematicians were tracking all along
 (P36-a).
+
+- **P36-d/e perception pooled + P38 theory (cross-model)**: deep/plain
+  partition 15/15 in FIVE consecutive runs (two model families, four
+  seeds; the n=20 explicit-ask run gives an exact PLAIN set, zero
+  FP/FN); direction of "special" is unstable (convention), partition
+  is robust.  P38: naive class-number theory NEGATIVE (h(D_K)=1 at 12
+  non-rational rows; Spearman(h(order), deg(x0)) = 0.146 ns) --
+  rationality is a level-12-specific degeneration condition (P23's
+  orbit tips); lambda-algebraicity + deg(lambda)=deg(x0) recorded as
+  the standing theory sketch (docs/THEORY_LAMBDA.md); CCL Thm 2.1
+  scoped out (levels {1..9} exclude level 12).
