@@ -96,6 +96,44 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**Verdict discipline (2026-09-28, adopted from the intuition-mechanism P47
+integrity incident)**: a registration's verdict field is written `PENDING`
+until the result artifact has been read; verdict text must never contain
+numbers transcribed from memory or pre-filled placeholders -- numbers
+enter only in the backfill commit that cites the artifact path.
+
+**P-2026-09-28-PHASE1 · anchor phase boundary** (registered BEFORE the
+run; verdict PENDING). Borrows P47's phase-boundary method: the SAME
+anchored-judgment task at graded task difficulty, everything else fixed.
+Question: WHERE does L6's near-mechanical anchored discretion degrade?
+
+- Task: (6-entry store, message) -> does the message invalidate entry #1?
+  Same prompt shape as P-ANCH-1 condition A, deepseek-chat temp 0.
+- 36 trials: 18 YES (invalidates) at three construction levels of textual
+  delta between old and new state -- 6 SMALL (digit/date swap inside an
+  otherwise near-identical sentence; the L4 small-edit class), 6 MID
+  (value swap + natural rewording), 6 LARGE (different wording + value
+  domain; the B-arm class that scored 15/15) -- and 18 NO (6
+  consideration, 6 question, 6 old-object mention WITH a near-collision
+  distractor entry in the field).
+- Frozen per-trial measurements (computed at construction, before the
+  LLM run): delta_emb = 1 - cos(A, E) on YES trials; sim-gap
+  cos(A,E) - max_j cos(A,D_j) on all trials.
+- Script: bench_phase_boundary.py. Artifacts: reports/phase_*.json.
+
+PRE-REGISTERED CRITERIA:
+- P1 (phase gradient): YES-accuracy non-decreasing across small -> mid
+  -> large AND acc(large) - acc(small) >= 15pp (the band threshold) =>
+  CONFIRMED: the small-edit fragility (L4) reproduces at the JUDGMENT
+  level -- L4 and L6 connect; the anchor does not rescue small deltas.
+- P2 (sigma side): NO false-positive rate in the near-collision subtype
+  exceeds the rate in consideration + question subtypes.
+- Direction holds but gap < 15pp => PARTIAL; reversed or non-monotone =>
+  NOT SUPPORTED (judgment level does not inherit L4's fragility).
+- VERDICT: PENDING (to be backfilled citing the artifact).
+
+
+
 **P-2026-09-28-ANCH1 · anchor pairing experiment** (registered BEFORE
 running; criteria locked now). Turns L6 from an observational A-vs-B
 comparison into a paired controlled experiment: the SAME 48 turns, two
