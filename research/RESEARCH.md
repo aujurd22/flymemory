@@ -576,3 +576,30 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   (given the discovered code), depth MEASURED (lambda degree census),
   interestingness-as-value OPEN (hull axis falsified at n=15,
   rho = -0.06).
+
+
+- **P43 MI/MDL convergence QUANTIFIED**: rank correlation between
+  mutual information and MDL gain rises monotonically with sample
+  size (rho 0.565 -> 0.871 -> 0.890 -> 0.849 across m=10..60, all
+  p < 1e-5) -- the discovery threshold m* is WHERE the two ranking
+  criteria converge.  Below m*, the compressor finds features that
+  compress but do not inform.
+- **P47 phase boundary MAPPED**: accuracy rises monotonically with
+  Delta/sigma for both memory arms (STR >= EPI-ALL at every ratio);
+  transition between ratio 1 and 2.  On matched geometry the
+  memory-type choice is secondary to the gap-to-noise ratio.
+- **P17-B FORMAT-BOUND resolved with 6-model fleet**: all six model
+  families fail raw-decimal format on both legs (A-lit AND
+  B-counterfactual at chance); R2 ratio-table scaffold doubles
+  deepseek-v4-flash (0.25 -> 0.50) -- the extraction lesson (P32-i)
+  reproduces at the L3 layer.
+- **P48 Markov authors (non-math)**: memory law REPLICATES (STR
+  87.6% vs EPI 83.4%, recovery 10/10); NEW-author detection FAILS
+  (STR 2/12, EPI 1/12) -- novelty failure is family-robust.
+- **P49 oscillators (4th family, FFT transform)**: recognition
+  CONFIRMED both arms (89.8% / 90.9% -- FFT is the correct blind
+  transform); novelty still poor (4/12, 2/12).
+- **P50 two-condition law CONFIRMED across four families**: C1
+  (extraction quality) determines recognition; C1 AND C2 (novelty
+  hull geometry) jointly determine novelty detection; no family
+  violates the law.
