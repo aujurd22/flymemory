@@ -360,6 +360,19 @@ residual, i.e. an annotation-boundary disagreement, not an anchoring
 failure. Pre-registered verdict: **SUPPORTED-with-scope**. L6 is upgraded
 from candidate to established (single-model scope) in the program doc.
 
+**P-PHASE-1 (`bench_phase_boundary.py`)** then asked WHERE the anchored
+advantage degrades, borrowing P47's phase-boundary method: the same
+anchored verdict on a textual-delta ladder (digit-swap / reworded /
+re-domain updates, plus near-collision distractors). Result: 36/36 --
+flat 6/6 at every level, zero false positives even when the message is
+topically CLOSER to a distractor than to the anchor. No phase boundary
+in the tested range; the small-edit fragility of L4 (the engine's dedup
+dropping 5/20 digit/date edits) does NOT reproduce at the judgment
+layer -- the model reads value swaps perfectly when the question is
+anchored and binary. L4 stays mechanism-layer; L6's anchor flattens the
+gradient down to delta_emb ~ 0.2. Verdict per pre-registration:
+P1 PARTIAL / P2 NEGATIVE (gap 0 < 15pp band; no FP concentration).
+
 **Phase 1.5 (real tool-calling, `bench_memory_judgment_tools.py`)** repeats
 the same 38 cases through the actual tool surface — the model must handle the
 id flow itself (remember first, take the returned id, then supersede). Same

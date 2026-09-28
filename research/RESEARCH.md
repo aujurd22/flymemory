@@ -57,7 +57,10 @@ compare against, discretion becomes near-mechanical (47/48 = 97.9%, the
 one miss the predicted declarative-intent residual); unanchored
 linguistic-behavior classification is where discretion truly lives (same
 48 turns through kind-classification + naive rule: 70.8%, hitting the 75%
-structural ceiling; discordant pairs 13:0, exact McNemar p ~ 2e-4). Evidence: atomic decomposition -- state-change
+structural ceiling; discordant pairs 13:0, exact McNemar p ~ 2e-4). P-PHASE-1 adds the first quantitative
+edge: on a textual-delta ladder the anchored verdict stays perfect down
+to digit-swap updates (delta_emb ~ 0.2), so the L4 small-edit fragility
+is engine-layer, not judgment-layer. Evidence: atomic decomposition -- state-change
 detection WITH an anchor (stored value vs assertion) is 30/30, including
 exactly the three "considering switching back" assertions that fail
 end-to-end; unanchored assertion-kind classification is 26/32 with ALL
@@ -130,7 +133,21 @@ PRE-REGISTERED CRITERIA:
   exceeds the rate in consideration + question subtypes.
 - Direction holds but gap < 15pp => PARTIAL; reversed or non-monotone =>
   NOT SUPPORTED (judgment level does not inherit L4's fragility).
-- VERDICT: PENDING (to be backfilled citing the artifact).
+- **VERDICT (2026-09-28, reports/phase_1790586567.json): P1 PARTIAL,
+P2 NEGATIVE -- no phase boundary located in the tested range.** 36/36
+perfect: YES accuracy flat at 6/6 across SMALL (delta_emb 0.214) / MID
+(0.496) / LARGE (0.655); NO false-positives 0/18 with no
+near-collision concentration. Per the registered bands (gap 0 < 15pp,
+direction non-decreasing) P1 is PARTIAL; P2's concentration prediction
+fails with zero FPs anywhere. **Interpretation: the anchored judgment
+layer does NOT inherit L4's small-edit fragility -- the model reads
+digit-swap updates and negative-sim-gap targeting (NEAR-COLL trials,
+mean sim(A,D_near) 0.631 > sim(A,E)) perfectly when asked the anchored
+binary question. L4 stays a MECHANISM-layer law (dedup/merge geometry
+cannot see value swaps); L6 strengthens: the anchor flattens the
+gradient down to delta_emb ~ 0.1.** Boundary, if any, lies below the
+tested range or in a different variable (multi-anchor ambiguity,
+unrestated slots) -- next-phase design, not a rerun of this ladder.
 
 
 
