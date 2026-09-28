@@ -609,3 +609,10 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   detection has a float-precision bug (fix queued): N=7 lambda = 5/21
   (rational!) was misclassified as degree 2 because float precision is
   insufficient for tol = 1e-35 PSLQ.
+
+- **P46 memory comparison on SECOND family (envelope, continuous
+  ladder)**: EPI-3 65.5% > STR-centroid 55.7% -- the advantage
+  INVERTS.  Discrete-support families: structural memory wins.
+  Continuous-overlapping families: instance memory wins.  This IS
+  the prototype-vs-exemplar dissociation from cognitive psychology,
+  replicated with a mechanistic pipeline.
