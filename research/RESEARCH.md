@@ -127,6 +127,29 @@ checkpoints.
   to LLM scale by L3 (sweet spot is scale-x-data dependent).
 - Script: flypoet/bench_compress_score.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-28, flypoet/logs_v2/compress_score_1790601490.json +
+sanity_mask_coverage.py): P1 NOT SUPPORTED -- negative result with a clean
+mechanism.** Scoring card (deterministic 320x256 windows, delta vs native
+dynamic 0.25): arm D (dynamic dial) degrades gracefully -- k25_24k:
++0.022 @0.15 / +0.051 @0.10 / +0.357 @0.05 (k25 and s8 agree within
+0.01); arm S (static elite mask) collapses at EVERY ratio on ALL three
+checkpoints (S@0.25 delta +4.1 to +7.8). Sanity check closes the
+implementation loophole: the calibrated static set covers only **56.8%**
+of each token's actual dynamic top-192 on val (per-layer 0.42-0.89,
+shallower = more concentrated). The selection pattern is per-token and
+co-adapted with the weights; the marginal win-rate statistic cannot
+reconstruct it. P2: D@0.10 (+0.04..0.05) beats S@0.10 (+2.6..4.2) by two
+orders of magnitude -- **how channels are chosen (per-token) matters far
+more than how many are chosen**; freezing the set post-hoc is not the
+same as training with a fixed set (the fix25 control trained fine --
+co-adaptation, not subset sufficiency). Practical scoring verdict: the
+training-free compression frontier on this architecture is the dynamic
+dial at r=0.15 (activation-FLOP saving ~40% at delta ~ +0.01..0.02);
+no LOSSLESS cell at delta<=+0.01 was found at any tested ratio. True
+storage reduction would require TRAINING with a static mask (the natural
+P-COMP-2) -- the theoretical sparse-storage bound of post-hoc masking is
+only ~6.9% of params (W_O rows). Scope unchanged: 92.6M char-level.
+
 
 
 **Verdict discipline (2026-09-28, adopted from the intuition-mechanism P47
