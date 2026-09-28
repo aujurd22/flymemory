@@ -99,6 +99,36 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-28-COMP1 · compression scoring harness** (registered BEFORE
+the run; verdict PENDING). Question from the round-11 review discussion:
+can the program's own selection theory (k-WTA sweet spot, elite-channel
+concentration, stable-subset dissection) compress a TRAINED model at
+inference time, and at what quality cost? First experiment is
+training-free inference-time compression on the flypoet 92.6M k-WTA
+checkpoints.
+
+- Arms: D = dynamic dial (lower k_frac at inference); S = static elite
+  mask (per-layer channel win-rates calibrated on the train.bin tail,
+  keep-set frozen to top-r, no retraining). Baseline: native dynamic 0.25.
+- Ratios r in {0.25, 0.15, 0.10, 0.05}. Checkpoints: k25_24k, k25, k25_s8.
+- Scoring protocol (the scoring system): deterministic fixed-window val
+  loss (320 windows x 256 tokens, batch 1, bf16 -- zero RNG; the
+  +/-0.06-noise lesson forbids random-batch protocols for <0.05 effects);
+  per-cell delta vs same-checkpoint baseline; LOSSLESS (delta<=+0.01) /
+  HALF-COST (<=+0.05) / DEGRADED verdicts; theoretical activation-FLOP
+  saving (1-r) and sparse-storage bound (W_O rows only, architecture
+  keeps d_model dense) reported separately. No invented scalar score
+  (restraint policy): the headline number is the per-checkpoint
+  "lossless point".
+- P1: |delta(S@0.25)| <= 0.01 (freezing to the earned elite set is
+  functionally equivalent to dynamic top-k).
+- P2 (exploratory): S@0.10 vs D@0.10 at equal activation budget.
+- Scope: 92.6M char-level, data-starved regime; results do NOT transfer
+  to LLM scale by L3 (sweet spot is scale-x-data dependent).
+- Script: flypoet/bench_compress_score.py. VERDICT: PENDING.
+
+
+
 **Verdict discipline (2026-09-28, adopted from the intuition-mechanism P47
 integrity incident)**: a registration's verdict field is written `PENDING`
 until the result artifact has been read; verdict text must never contain
