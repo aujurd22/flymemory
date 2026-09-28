@@ -603,3 +603,9 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   (extraction quality) determines recognition; C1 AND C2 (novelty
   hull geometry) jointly determine novelty detection; no family
   violates the law.
+
+- **P44 negative-q lambda census (partial)**: negative-q lambda values
+  DIFFER from positive-q (confirms the +/- sign structure).  Degree
+  detection has a float-precision bug (fix queued): N=7 lambda = 5/21
+  (rational!) was misclassified as degree 2 because float precision is
+  insufficient for tol = 1e-35 PSLQ.
