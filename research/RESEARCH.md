@@ -21,6 +21,14 @@ fail is experimentally measurable.
 | **FlyMemory** | memory compression (dedup / supersede / merge / consolidation) | similarity selection + time decay | QA accuracy, stale rate |
 | **FlyPoet** | activation compression (k-WTA sparse competition) | winner-take-all + gradient optimization | math / reasoning performance |
 
+**Role of this repo (fixed 2026-09-28, round-12 review):** FlyMemory is
+the program's **memory substrate and experimental infrastructure**, not a
+third parallel cognitive-theory line. New benchmarks are built only as
+instruments for cross-testbed law validation (the P32-i transplant,
+P-ANCH-1, P-PHASE-1 pattern), not to accrete a self-standing benchmark
+zoo. Theory flows intuition-mechanism -> law ledger (here) -> testbeds;
+flyloop consumes this substrate.
+
 ## Laws (established, all one-command reproducible)
 
 **L1 · Form law** — abstraction must OVERLAY, never replace.
