@@ -209,3 +209,23 @@ vectorless、无 chunking、页级引用可追溯。FinanceBench 自报 98.7% SO
 aggregation miss 题做"导航+簇内 top-k"对照现有 RRF。树构建一次
 (数百次调用),导航 85 题×~5 步,成本几块钱。风险:85 题单口径;
 树质量依赖 consolidation 质量。
+
+## Hallucination as a Computational Boundary (arXiv 2508.07334, 2026-09-29 解析)
+
+8 页理论 preprint(v2 2025-12):LLM=概率图灵机,"learner pump lemma",
+幻觉必然性三层级(对角化/不可计算/信息论)。两条逃逸路线:①RAG=oracle
+machine(计算类跳跃,自称首个 RAG 为何有效的形式化);②continuous
+learning=内化 oracle(神经博弈论框架)。安全原则 CCA=任务复杂度与系统
+计算类严格对齐。
+
+**速判**:正经理论包装(非民科,结构可检验),但 8 页无定量、证明未审;
+必然性方向的前置文献是 Xu et al. 2024 与 Kalai–Vempala 2023(概率界),
+本篇增量=计算复杂度层级+博弈论外衣。**与四仓框架的对接口**(记这些,
+不用引它):
+1. "RAG=oracle 逃逸" ≙ 我们的两条件律语言:检索把 C2 依赖的判断改写成
+   C1 可判的锚定链——两种"逃逸"说法同构(外接计算类 vs 改写问题形式)。
+2. "continuous learning=内化 oracle" 是 flymemory consolidation/overlay
+   的形式化外衣:记忆系统=模型可查询的内部 oracle,这正是我们架构的
+   理论定位语(可用,不必引)。
+3. CCA ≙ classify_query 的复杂度分级路由已经做了同样的事(五类路由)。
+工程增量有限;引用价值低于 Xu 2024 / Kalai–Vempala。
