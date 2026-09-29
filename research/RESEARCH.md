@@ -79,6 +79,43 @@ unanchored flymemory judgment is a registered negative (3f87703).
 Worded as candidate: two arms, n=92, single model (deepseek-chat).
 Repro: `bench_atomic_judgment.py`
 
+## Sister ledger: Memory Geometry laws (2026-09-29, P40b-P72 synthesis)
+
+intuition-mechanism's `docs/MEMORY_GEOMETRY.md` distills six laws of
+recognition/novelty geometry with production anchors measured on THIS
+repo's live store (7,325 active memories: NN-cosine band [0.44, 0.93],
+zero isolates; self-retrieval 100% hit@1 near-verbatim, 91.7% at
+half-text cues). Compressed ledger (full versions with artifacts in that
+doc):
+
+- **G1 · coverage** — recognition = coverage within THRESH = mind/2;
+  prototype viable iff R/mind <= 0.5, exemplar iff NN/mind <= 0.5
+  (interventional: 50% crossing at exactly 0.500).
+- **G2 · two scales** — prototype/exemplar divergence needs dense-core +
+  sparse-fringe (two-scale) classes; single-scale families lock the two
+  ratios together.
+- **G3 · plateau** — capacity saturates at the THRESH-reachable fraction;
+  coverage is a mixture, not an exponential; cold start is first-class.
+- **G4 · novelty** — needs coverage AND clearance; the lever is CONTRAST
+  features, not resolution (refining the same family closes the window).
+- **G5 · query floor** — below l_min ~ #free-statistic-entries no
+  detector works at any training size; production knee 10-25% of text
+  (~6-12 tokens). **Adopted hook rule: user messages under ~10 tokens
+  cannot reliably retrieve their target; above ~25 they can.**
+- **G6 · storage policy** — evict redundant CORES, keep the fringe
+  (streaming Hart): core-first 100% vs LRU 92.4% vs fringe-first 53.6%
+  on two-scale corpora. NOTE: FlyMemory's decay_cleanup is currently
+  LRU-family (last_accessed); **candidate experiment P-CLEANUP (not yet
+  registered)** would test core-first vs LRU on a production-geometry
+  library -- contingent on first measuring whether the production store
+  is two-scale (the anchor band suggests spread, but the core/fringe
+  structure is unmeasured).
+
+Design rules 1-6 of that doc apply here verbatim (memory type by
+geometry; capacity never substituted by structure; store until
+fringe-reachability; budget novelty screening by l_min and open the
+window with contrast; evict by redundancy; report arrival profile).
+
 ## Cross-testbed evidence chain (2026-09-28, round-9/10)
 
 The program-level question "which cognitive tasks compress into an

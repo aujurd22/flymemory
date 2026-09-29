@@ -140,6 +140,11 @@ def flymemory_recall(query: str, top_k: int = 5,
     unless include_superseded=True — use it for history questions like
     "did I ever use X?".
 
+    Query-length rule (production degradation knee, P70-b): queries under
+    ~10 tokens cannot reliably retrieve their target; above ~25 tokens
+    they can. If a short query returns nothing relevant, rephrase with
+    more context rather than concluding the memory does not exist.
+
     Args:
         query: The query text (can be partial/incomplete)
         top_k: Number of memories to return
