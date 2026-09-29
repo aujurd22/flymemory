@@ -166,6 +166,36 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-29-TREE · topic-tree navigation for multi-session evidence
+collection** (registered BEFORE the run; verdict PENDING). From the
+PageIndex analysis: its "vectorless" navigation works, by our reading,
+because it rewrites retrieval into a chain of ANCHORED comparisons
+(C1-suppliable, C2-free). Question: does the same retrieval FORM lift
+evidence collection on our shared turn store, where single-shot RRF
+top-5 structurally under-collects multi-session evidence (the L5
+aggregation-miss family)?
+
+- Zero-LLM first version (tests the retrieval FORM, not LLM summary
+  quality): two-level spherical k-means tree (32 x <=16, seed 42) over
+  the 9,729-entry production turn store; navigation = query -> top-2 L1
+  clusters -> top-2 L2 children each -> collect all -> exact rerank
+  top-30. Arm RRF = exact cosine top-5 on the same store (collection
+  shape is the comparison; reranker quality is not).
+- Metrics: session-hit (collected set contains >=1 entry from any
+  answer session) and session-coverage (fraction of the answer sessions
+  covered), both from the dataset's answer_session_ids annotation.
+- Sets: PRIMARY multi-session (133); GUARD single-session (156).
+- SUPPORTED : multi-session session-hit(TREE) >= RRF + 15pp AND guard
+  pass (TREE >= RRF - 3pp) -> proceed to end-to-end answer verification.
+  PARTIAL : +5..15pp. NOT SUPPORTED : < +5pp (L5 remedy stays the TOOL3
+  multi-round route). Guard regression caps at PARTIAL.
+- Known scope: LME-S has no `aggregation` question_type (the 85-miss
+  family was human-attributed by question wording) -- multi-session is
+  the closest annotated proxy; a positive result proceeds to answer-level
+  verification before any production adoption. VERDICT: PENDING.
+
+
+
 **P-2026-09-29-CLEANUP · eviction policy experiment** (registered BEFORE
 the run; verdict PENDING). The reshaped P-CLEANUP, admitted now that G6
 has three-substrate support (P90) and our production pre-study supplies
