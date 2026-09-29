@@ -183,3 +183,29 @@ inite-ai/inite-brain-service(bitemporal KG)、FlowElement-xinliuyuansu/m_flow(�
 - **锁与 rerun 治理**:improve lock(claim/rerun 分离);SDK-593:锁持有者最多再做 3 次"再来一次"通过,仍 pending 的留给下一个 claimant(从全水位开始)——**生产级并发治理**,个人库暂不需要但设计可参考。
 - **session distillation 定位**:"curates accepted lessons into permanent memory"——与 flymemory dreaming 的蒸馏-审计-入库链同构;差异是 cognee 用多阶段编排+后台任务队列,我们是单脚本直通。
 - 信息密度结论:cognee 的工程成熟度(锁/迁移/遥测/多DB)远超本阶段需要;机制层面无新东西,记录以避免重复发明。
+
+## PageIndex (VectifyAI, 36.8k stars, MIT, 2026-09-29 分析)
+
+**机制**:文档布局直接提取树结构(无需 LLM——布局即结构,index 模型只做摘要精化);
+检索 = LLM 在树上代理式导航("reasoning-based retrieval",AlphaGo 启发)。
+vectorless、无 chunking、页级引用可追溯。FinanceBench 自报 98.7% SOTA;
+自家 benchmark 仅 62 题/34 PDF。索引 ~$0.001/页;**查询成本 = 每次一次 LLM
+多跳导航,强模型依赖**。本地仅文本 PDF。
+
+**四仓透镜对接**:
+1. "similarity ≠ relevance" 在我们语言里 = embedding 相似是无锚匹配(A 臂
+   偏 fact 的同款失败);树导航把检索改写成**逐节点锚定判断链**——C1 可供给、
+   C2 不需要的格子。vectorless 卖点获得两条件律的机制解释。
+2. 适用域 = 长结构化文档的层级 lookup(FinanceBench 型);我们 L5 的
+   aggregation 型(跨 session 聚合)不在单树节点里,不解决 85 miss 的
+   根因——但两段式(树导航定位主题簇 → 簇内 top-k)机制上对症
+   (rank 深的证据被聚进簇后自然变浅)。
+3. 与"服务端零 LLM"的差异化冲突 → 整树导航不可做默认路径;只能做
+   aggregation 类问题按需触发的**降树检索**(classify_query 已有五类路由)。
+4. 与 L2 不冲突:树不是新的呈现形态(二阶),而是新的检索形式(一阶,
+   正是 L5 的杠杆点)。
+
+**候选实验 P-TREE(未注册)**:consolidation 产物组织主题树 → 85 个
+aggregation miss 题做"导航+簇内 top-k"对照现有 RRF。树构建一次
+(数百次调用),导航 85 题×~5 步,成本几块钱。风险:85 题单口径;
+树质量依赖 consolidation 质量。
