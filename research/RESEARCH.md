@@ -104,7 +104,14 @@ doc):
   cannot reliably retrieve their target; above ~25 they can.**
 - **G6 · storage policy** — evict redundant CORES, keep the fringe
   (streaming Hart): core-first 100% vs LRU 92.4% vs fringe-first 53.6%
-  on two-scale corpora. NOTE: FlyMemory's decay_cleanup is currently
+  on two-scale corpora; replicated on SQuAD (P90: core-first 42.5% >
+  random 38.2% > LRU ~ fringe 30% -- note LRU ties fringe there, and the
+  probe-coverage metric differs from ours); our production pre-study is
+  the boundary cell: heavy-tail redundancy, benefit-cost mirror
+  (+20.8pp recoverability / -21.0pp top-5 keep). CROSS-SUBSTRATE CAUTION:
+  the three measurements use different metrics (recognition-rate /
+  probe-coverage / recoverability+top-5-keep) -- ordering claims are
+  within-substrate; the metric口径 has not been unified. NOTE: FlyMemory's decay_cleanup is currently
   LRU-family (last_accessed); **candidate experiment P-CLEANUP (not yet
   registered)** would test core-first vs LRU on a production-geometry
   library -- contingent on first measuring whether the production store
