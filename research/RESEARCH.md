@@ -166,6 +166,43 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-29-CLEANUP · eviction policy experiment** (registered BEFORE
+the run; verdict PENDING). The reshaped P-CLEANUP, admitted now that G6
+has three-substrate support (P90) and our production pre-study supplies
+the boundary cell (benefit-cost mirror). Question: is there an eviction
+policy that beats LRU on BOTH axes the pre-study exposed?
+
+- Protocol: identical to the pre-study (production snapshot, budget 15%,
+  500 holdout anchors, seed 7), so pre-study numbers serve as the
+  baseline reference.
+- Arms: LRU (current rule), core-first (cov70 desc), random,
+  fringe-first (controls, replicate the pre-study), and the NEW
+  **backup-first**: eviction candidates are entries having a twin at
+  cos >= 0.85; within candidates, evict the older last_accessed first
+  (keep the newer of each pair); if the budget is unfilled, top up by
+  cov70 desc and record the top-up count. Rationale: the pre-study's
+  mirror came from evicting hub entries; a twin-backed entry is by
+  construction recoverable, and evicting PAIRS (not hubs) should spare
+  the retrieval order.
+- Metrics (BOTH in the criteria, per the pre-study lesson):
+  evicted-recoverability (top-1 surviving cos >= 0.75) AND holdout
+  top-5 keep.
+
+PRE-REGISTERED CRITERIA (all deltas vs LRU, same run):
+- SUPPORTED : backup-first recoverability >= LRU + 10pp AND
+              backup-first top-5 keep >= LRU - 2pp
+              (hub-sparing twin eviction dominates LRU on both axes);
+- PARTIAL   : recoverability band met but top-5 keep drops > 2pp
+              (mirror persists -- the twin definition needs revising);
+- NOT SUPPORTED : recoverability < LRU + 5pp OR top-5 keep drops > 10pp
+              (LRU is already a reasonable policy on this geometry).
+- Mechanistic prediction: backup-first recoverability near 100% by
+  construction; its top-5 keep loss concentrates on twin pairs where the
+  evicted member was itself a hub -- recorded if observed.
+- Script: bench_cleanup_registry.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-28-COMP1 · compression scoring harness** (registered BEFORE
 the run; verdict PENDING). Question from the round-11 review discussion:
 can the program's own selection theory (k-WTA sweet spot, elite-channel
