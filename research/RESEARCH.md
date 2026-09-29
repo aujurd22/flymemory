@@ -203,6 +203,28 @@ PRE-REGISTERED CRITERIA:
   + 5pp (sparse codes complete patterns better than dense floats).
   Scope: 7.5k-entry store, one embedder, no retraining. VERDICT: PENDING.
 
+**VERDICT (2026-09-29, reports/neustore_1790706107.json): P1/P2/P3 all
+FALSE -- a clean systematic negative with one usable residue.**
+Fidelity: best code TRI reaches only 0.694 recall@5 on real queries
+(self-retrieval 0.855) -- the 0.85 address-layer line fails. Noise:
+float is MORE robust (top-1 retention 0.345 vs 0.095 at sigma=0.1; both
+collapse by 0.4) -- the biological fault-tolerance intuition does NOT
+transfer. Pattern completion: float 0.590 vs kWTA-64 0.135 at 50% mask.
+N3 artifact worth keeping: ternary-code activation spread is 421
+"neighbours" at the analogical threshold (vs float 18) -- discrete-code
+similarity granularity is coarse and thresholds misbehave. **Reading:
+384-d MiniLM embeddings are ALREADY the distributed code -- they are the
+compressed semantic layer; discretizing them is a second lossy
+quantization, not a route to neuronal fault tolerance.** Biology's
+tolerance and completion live in million-neuron redundancy; at 384 dims
+every bit is expensive, and the store (9,729 items) exceeds the 0.138N
+Hopfield-compatibility regime (the v1 verdict, now confirmed from the
+storage-geometry side). Triple corroboration with flypoet's bit-code
+result (1/32 storage OK as ADDRESS layer, useless as ranking key) and the
+v1 Hopfield shutdown: usable residue = TRI as a 16x compact ADDRESS
+column under loose prefiltering; the ranking layer stays float. Storage
+account: 46.7 MB float vs 1.5 MB SIGN (32x) / 2.9 MB TRI (16x).
+
 
 
 **P-2026-09-29-TREE · topic-tree navigation for multi-session evidence
