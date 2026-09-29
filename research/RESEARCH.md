@@ -109,7 +109,22 @@ doc):
   registered)** would test core-first vs LRU on a production-geometry
   library -- contingent on first measuring whether the production store
   is two-scale (the anchor band suggests spread, but the core/fringe
-  structure is unmeasured).
+  structure is unmeasured; **pre-study DONE 2026-09-29,
+reports/cleanup_geometry_1790659478.json: the production store is NOT
+two-scale -- it has a HEAVY-TAIL REDUNDANCY structure** (1-NN unimodal,
+median 0.691; 55% zero-coverage @cos>=0.70 with a small high-redundancy
+head, max 35; one 1,906-entry component = 25% of the store). Eviction
+simulation (budget 15%, 500 holdout anchors) returned a clean BENEFIT-COST
+MIRROR: core-first recoverability 27.1% vs LRU 6.3% (+20.8pp, the
+pre-registered REGISTER band) BUT holdout top-5 keep 70.0% vs 91.0%
+(-21.0pp) -- high-coverage entries are BOTH the redundant region AND the
+retrieval hubs; the same structure shows its two faces in the two
+metrics. fringe-first 0.0% validates the metric; LRU's old entries are
+nearly unrecoverable (6.3%) but retrieval-transparent. DECISION:
+registration POSTPONED and reshaped -- a registered P-CLEANUP must carry
+BOTH metrics in its criteria and add a mixed arm (evict high-coverage
+NON-hub entries); the free-improvement narrative is rejected for this
+geometry).
 
 Design rules 1-6 of that doc apply here verbatim (memory type by
 geometry; capacity never substituted by structure; store until
