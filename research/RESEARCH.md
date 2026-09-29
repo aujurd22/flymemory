@@ -201,6 +201,25 @@ PRE-REGISTERED CRITERIA (all deltas vs LRU, same run):
   evicted member was itself a hub -- recorded if observed.
 - Script: bench_cleanup_registry.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-29, reports/cleanup_registry_1790686148.json):
+PARTIAL -- mirror persists; the twin definition needs revision.** But the
+failure is itself the finding: backup-first found only **69 twin pairs**
+in 7,025 pool entries (6% of the budget) -- the remaining 1,059 evictions
+were deg70 top-ups, so the arm degenerated into core-first (27.5% /
+71.4% vs core-first 27.2% / 71.6%). The upstream dedup (merge threshold
+0.92) has ALREADY harvested the twin pairs; at cos >= 0.85 the
+post-dedup store has almost none left. Two conclusions: (1) the mirror
+is not caused by evicting "unbacked" entries -- evicting ANY high-degree
+entry perturbs the retrieval order; hub-ness and redundancy are not
+separable in this geometry; (2) **upstream dedup already collected the
+redundancy dividend -- there is no second free lunch downstream**: G6
+applies to NOT-yet-deduplicated corpora (synthetic families, raw SQuAD);
+on a post-dedup production store the high-redundancy region is
+retrieval-critical, and LRU's ranking-transparency (89.8% top-5 keep,
+best of all arms) makes it the right default. Practical rule adopted:
+future space savings on this store must come from tightening the dedup
+threshold, not from eviction policy.
+
 
 
 **P-2026-09-28-COMP1 · compression scoring harness** (registered BEFORE
