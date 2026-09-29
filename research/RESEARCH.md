@@ -194,6 +194,24 @@ aggregation-miss family)?
   the closest annotated proxy; a positive result proceeds to answer-level
   verification before any production adoption. VERDICT: PENDING.
 
+**VERDICT (2026-09-29, reports/tree_navigation_1790690064.json +
+tree_e2e_1790690354.json): stage-1 PARTIAL / stage-2 TIE -- NOT ADOPTED.**
+Stage 1 (evidence collection): multi-session session-hit RRF 63.9% ->
+TREE 74.4% (+10.5pp, inside the PARTIAL band); guard single-session
++4.5pp; all-500 +4.8pp -- topic guidance finds the right REGION, nowhere
+hurt. Stage 2 (end-to-end, 50 multi-session questions, strict): RRF 6.0%
+vs TREE 6.0% -- TIE per the addition-lock. Wrong-answer autopsy: TREE's
+errors are mostly "don't know" -- the 30-entry pool reaches the right
+topic region but misses the few KEY turns inside it, and the 6x context
+dilutes the answerer. **Session-level hit does not compose into turn-level
+evidence: the missing turns are sparse needles inside a found haystack.**
+This also re-frames the 85-miss attribution: the difficulty is not topic
+targeting but needle concentration -- consistent with the L5 verdict that
+the remedy is multi-round/toolized collection, not a better index shape.
+Line closed under the addition-lock; tree collection stays behind a flag
+as an optional collector; revisit condition: an LLM-refined tree (real
+node summaries) or needle-targeted reranking inside the collected pool.
+
 
 
 **P-2026-09-29-CLEANUP · eviction policy experiment** (registered BEFORE

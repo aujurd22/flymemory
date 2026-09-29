@@ -121,17 +121,18 @@ def main():
 
     # tree
     l1_assign, l1_cent = spherical_kmeans(E, L1_K, SEED)
-    l2_assign = np.zeros(n, dtype=np.int64)
-    l2_cent = np.zeros((L1_K * L2_K, E.shape[1]), dtype=np.float32)
+    l2_assign = np.full(n, -1, dtype=np.int64)
+    l2_cent = {}
     for c in range(L1_K):
         idx = np.nonzero(l1_assign == c)[0]
         k2 = min(L2_K, max(1, len(idx) // 8))
         if len(idx) == 0:
             continue
         a2, c2 = spherical_kmeans(E[idx], k2, SEED + 100 + c)
-        l2_assign[idx] = c + 1000 + a2
-        for j, gi in enumerate(range(c * L2_K, c * L2_K + k2)):
-            l2_cent[gi] = c2[j]
+        leaf_ids = c * 1000 + np.arange(k2)      # unique: c<32, a2<16
+        l2_assign[idx] = leaf_ids[a2]
+        for j, g in enumerate(leaf_ids):
+            l2_cent[int(g)] = c2[j]
     # child cluster membership lists
     children = {}
     for i in range(n):
@@ -148,9 +149,8 @@ def main():
         l1 = np.argsort(-(l1_cent @ qv))[:L1_TOP]
         picked = []
         for c in l1:
-            kids = [g for g in children if g // L2_K == c]
+            kids = sorted(g for g in children if g // 1000 == c)
             if not kids:
-                picked.extend(children.get(c, [])[:])
                 continue
             kids_arr = np.stack([l2_cent[g] for g in kids])
             for g in [kids[i] for i in np.argsort(-(kids_arr @ qv))[:L2_TOP]]:
@@ -168,7 +168,12 @@ def main():
                  for arm in ("RRF", "TREE")}
         for qi, q in enumerate(subset):
             qv = embed_query(model, q["question"])
-            ans_sessions = set(q["answer_session_ids"])
+            # normalize BOTH sides to session level (annotations may carry
+            # a turn suffix: multi-session ids look like answer_xxx_2)
+            ans_sessions = {
+                a.rsplit("_", 1)[0] if str(a).rsplit("_", 1)[-1].isdigit()
+                else str(a)
+                for a in q["answer_session_ids"]}
             # RRF arm: exact cosine top-5 over the same store (production
             # RRF's lexical channel is off in this offline harness; the
             # comparison is collection-shape, not reranker quality)
