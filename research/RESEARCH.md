@@ -166,6 +166,45 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-29-NEUSTORE · neuron-style discrete memory storage**
+(registered BEFORE the run; verdict PENDING). User question: can memory be
+stored the way neurons encode -- and what properties would that storage
+have? Operationalization: convert the production store's 384-d float
+embeddings into discrete population codes (the Kenyon-cell family), and
+measure both the retrieval fidelity cost and the characteristic properties
+such storage buys.
+
+- Codes (384-d, per entry): SIGN (+1/-1 sign binarization; 48 B, 32x
+  compression), kWTA-64 (top-64 magnitude bits set; sparse 0/1 bitmap,
+  48 B), TRI (top-96 = +1, bottom-96 = -1, rest 0; 2-bit, 96 B). Queries
+  encoded by the same rule from their embeddings.
+- Retrieval: Hamming (SIGN), overlap (kWTA), dot (TRI) vs float-cosine
+  reference. Query sets: 200 LME-S questions + 200 store entries
+  (self-retrieval).
+- Metrics: Recall@5 vs float reference, top-1 agreement, storage account,
+  Hamming speed (numpy; the known 3x BLAS deficit expected).
+
+Characteristic-property tests (the actual point of the question):
+  N1 noise robustness -- q' = normalize(q + sigma*eps), sigma in
+  {0.1,0.2,0.4,0.8}: top-1 retention curve, discrete vs float. Neuron-style
+  distributed codes SHOULD degrade more gracefully (fault tolerance).
+  N2 partial cue -- 50% of dimensions masked (renormalized): top-1
+  retention. Pattern completion claim.
+  N3 activation spread -- how many neighbours a code "lights up" within
+  threshold (associative reach), discrete vs float.
+
+PRE-REGISTERED CRITERIA:
+  P1 (address-layer viability): SIGN Recall@5 >= 0.85 -- discrete code is
+  usable as the address layer (flypoet's 1/32-storage result on a
+  different store);
+  P2 (graceful degradation): SIGN top-1 retention under sigma=0.4 noise
+  >= float retention + 5pp -- the fault-tolerance property is real here;
+  P3 (pattern completion): kWTA-64 top-1 retention at 50% mask >= float
+  + 5pp (sparse codes complete patterns better than dense floats).
+  Scope: 7.5k-entry store, one embedder, no retraining. VERDICT: PENDING.
+
+
+
 **P-2026-09-29-TREE · topic-tree navigation for multi-session evidence
 collection** (registered BEFORE the run; verdict PENDING). From the
 PageIndex analysis: its "vectorless" navigation works, by our reading,
