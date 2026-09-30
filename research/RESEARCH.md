@@ -207,6 +207,28 @@ PRE-REGISTERED CRITERIA:
 - Budget: ~1,900 calls (50 x (30 map + 2 + 2 + 1) + judges).
 - Script: bench_answer_side.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-30, reports/answer_side_1790753458.json):
+ANSWER-SUPPORTED via MAPREDUCE -- 16.0% vs BASE 6.0% (+10pp, ~2.7x).**
+The answer layer IS repairable. Per-arm: MAPREDUCE 16.0% / STRUCT 8.0% /
+BASE 6.0% = HIGHLIGHT 6.0%. Abstention tells the mechanism: BASE
+abstained 35/50 (the model sees 30 turns it cannot aggregate); MAPREDUCE
+28/50 while converting many of the rest to correct (per-entry atomic-fact
+extraction turns an intractable cross-turn aggregation into tractable
+per-turn lookups, and the reduce step does the arithmetic over clean
+facts); HIGHLIGHT collapsed to 48/50 abstain -- asking the model to
+pre-select evidence made it MORE conservative, the opposite of intended;
+STRUCT +2pp confirms L2 (form is second-order) from the answer side.
+ADOPT as a CALLER-SIDE protocol, not a server feature (the no-LLM-in-
+server rule holds): for multi-session/aggregation-class questions the
+caller should (1) collect wide (top-30), (2) run per-entry atomic-fact
+extraction, (3) answer from the fact list. This is the first positive
+result of the whole collection line: retrieval shape and agency could
+not move it, answer decomposition did. Cost: ~31 extra short calls per
+question -- acceptable for explicitly routed aggregation queries, not
+for the per-message hook path. Registered follow-up (open): map-reduce
+vs the judge -- no fabricated-fact audit triggered yet; add an
+unsupported-claims check before any production wiring.
+
 
 
 **P-2026-09-29-AGENT · query-side agentic collection** (registered BEFORE
