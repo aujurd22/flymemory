@@ -166,6 +166,49 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-ANSWER · answer-side aggregation** (registered BEFORE the
+run; verdict PENDING). Route decision (user, 2026-09-30): retrieval-trick
+work is paused — P-TREE/P-NEEDLE/P-AGENT relocated the residual
+bottleneck to the answer layer (evidence 1.54x, strict flat at 8.0%).
+Question: can map-reduce / evidence highlighting / structured
+aggregation convert pooled evidence into correct answers?
+
+- Collector FIXED: FLAT-30 (plain cosine top-30, the strongest collector,
+  turn-recall 0.683) — every arm answers from the SAME pool, so all
+  deltas attribute to the answer strategy, not collection.
+- Arms (50 multi-session questions, seed 7 sample — directly comparable
+  to P-AGENT's 8.0%):
+  BASE     : pool -> single answer call (the 8.0% reference, re-run)
+  MAPREDUCE: map = per-entry extraction of stated atomic facts relevant
+             to the question (no inference allowed, empty if none);
+             reduce = answer from the atomic-fact list only
+  HIGHLIGHT: step 1 = model selects the specific entry ids needed and
+             names remaining gaps; step 2 = answer from selected entries
+             + gap list only
+  STRUCT   : pool re-presented as a chronological structured timeline
+             (low prior: L2 says form is second-order — included as the
+             cheap control)
+- Same judge and strict口径 as all e2e benches.
+
+PRE-REGISTERED CRITERIA:
+  ANSWER-SUPPORTED : any arm strict >= BASE + 5pp (>= 13%) -> the answer
+                     layer is repairable; wire the winning arm into the
+                     classify_query multi-session route (ADOPT discussion
+                     with cost accounting)
+  ANSWER-PARTIAL   : best arm in (BASE, BASE + 5pp]
+  ANSWER-NULL      : all arms <= BASE + 2pp -> the answer layer is ALSO
+                     at its boundary on deepseek-chat; the multi-session
+                     8% wall is a model-aggregation limit, honestly
+                     recorded (consistent with the GLM/DeepSeek
+                     model-independence finding)
+- Secondary: per-arm abstention rate ("don't know" share) and
+  wrong-answer share — distinguishes "still can't find it" from "found
+  it but aggregated wrong".
+- Budget: ~1,900 calls (50 x (30 map + 2 + 2 + 1) + judges).
+- Script: bench_answer_side.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-29-AGENT · query-side agentic collection** (registered BEFORE
 the run; verdict PENDING). Route decision (user, 2026-09-29): index-side
 work is PAUSED (P-TREE/P-NEEDLE closed the line at "same-topic evidence
