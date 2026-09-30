@@ -202,6 +202,26 @@ PRE-REGISTERED CRITERIA:
                       routing; TIE/REJECT -> flag-only, line closed.
 - VERDICT: PENDING.
 
+**VERDICT (2026-09-29, reports/needle_search_1790726913.json):
+COLLECT-PARTIAL -- line stays closed.** multi-session turn-hit:
+RRF 63.9% / TREE 74.4% / NEEDLE 72.2% (+8.3pp over RRF, inside the
+PARTIAL band); turn-recall RRF 0.384 / TREE 0.532 / NEEDLE 0.521 --
+**lexical needle scoring did NOT beat plain cosine rerank inside the
+same region**: aggregation queries' content words also appear in the
+neighbouring same-topic turns, so within-region lexical
+discriminability is near zero and the 30-entry truncation selects
+nearly the same set. Combined with P-TREE: the coarse stage is fine
+(region finding works), but the missing turns are not lexically
+separable from their neighbours -- they are "more of the same topic",
+which is exactly why flat top-k and both rerankers leave them out.
+Caliber note: the guard set's turn-level numbers are not comparable to
+the multi-session ones (single-session annotations mostly lack the turn
+suffix that turn-level matching requires); within-multi comparisons
+stand. Final state of the P-TREE/P-NEEDLE line: region-finding solved
+(+10.5pp), needle separation unsolved by lexical means; remaining
+levers are LLM-refined node/turn summaries or answer-side multi-round
+collection (L5/TOOL3), both out of scope for the mechanical server.
+
 
 
 **P-2026-09-29-NEUSTORE · neuron-style discrete memory storage**
