@@ -166,6 +166,44 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-29-AGENT · query-side agentic collection** (registered BEFORE
+the run; verdict PENDING). Route decision (user, 2026-09-29): index-side
+work is PAUSED (P-TREE/P-NEEDLE closed the line at "same-topic evidence
+discrimination"); the remaining lever is the query side. Question: does a
+multi-round self-rephrasing collector (the L5/TOOL3 remedy, now measured
+at TURN level on the multi-session set) lift evidence collection and
+end-to-end answers where every index-shape remedy failed?
+
+- Collector: round 1 = production RRF top-5 on the original question.
+  Each later round: DeepSeek sees the question + a digest of what has
+  been collected so far and emits 2-3 rephrasings probing different
+  aspects (entities, time windows, paraphrases); each rephrasing runs
+  RRF top-5; results merge into the pool (dedup by id). 3 rounds total
+  (~6 LLM calls per question including answer+judge).
+- Arms: RRF-1 (baseline, single round), FLAT-30 (plain cosine top-30,
+  the "width without agency" control), AGENT-3 (three rounds, merged
+  pool, top-30 out of the pool by cosine).
+- Sets: multi-session 133 (turn-recall primary), 50-question end-to-end
+  on a seed-7 sample of the same set (strict口径, ADOPT gate).
+
+PRE-REGISTERED CRITERIA:
+  COLLECT-SUPPORTED : turn-recall(AGENT-3) >= turn-recall(RRF-1) + 15pp
+                      (i.e. >= 0.534 -- must also beat the TREE 0.532
+                      boundary); AND turn-recall(AGENT-3) >
+                      turn-recall(FLAT-30) (agency beats bare width);
+  COLLECT-PARTIAL   : +5..15pp over RRF-1;
+  COLLECT-NULL      : < +5pp (query-side also exhausted; L5 line closes
+                      with a three-way negative: index shape, lexical
+                      needles, and agency all insufficient at this scale).
+  ADOPT (end-to-end): strict(AGENT-3) >= strict(RRF-1) + 3pp on the 50
+                      questions -> wire into classify_query multi-session
+                      routing (agentic collection behind the existing
+                      five-type router); else flag-only.
+- Budget: 133 x ~4 collection calls + 100 answer/judge calls.
+- Script: bench_agentic_collect.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-29-NEEDLE · coarse->needle two-stage collection** (registered
 BEFORE the run; verdict PENDING). Reopens the P-TREE line along its
 declared revisit condition (needle-targeted search inside the collected
