@@ -166,6 +166,44 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-29-NEEDLE · coarse->needle two-stage collection** (registered
+BEFORE the run; verdict PENDING). Reopens the P-TREE line along its
+declared revisit condition (needle-targeted search inside the collected
+pool). The stage-2 autopsy found two deaths: the needle turns never
+entered the pool, and the pool diluted the answerer. This experiment
+targets both with a two-stage collector:
+
+- Stage A (coarse, proven): tree navigation as in P-TREE -- top-2 L1 x
+  top-2 L2 leaves, collect ALL pool entries WITHOUT top-30 truncation.
+- Stage B (needle): inside the collected region, score every entry by
+  LEXICAL needle hits -- distinct query content words present in the
+  entry text (aggregation queries carry their signal in rare entity
+  words; stage-2's pure-cosine rerank threw the lexical channel away) --
+  take top-30 by needle score, cosine as tiebreak.
+
+- Metrics upgrade to TURN level (the stage-2 blind spot): the dataset's
+  answer_session_ids carry turn suffixes (answer_xxx_N) matching store
+  tags exactly, so we measure (a) turn-hit: >=1 annotated evidence turn
+  collected; (b) turn-recall: ALL annotated evidence turns collected;
+  (c) session-hit for continuity with stage 1.
+
+- Sets/arms: multi-session 133 (primary), guard single-session 156;
+  arms RRF top-5 / TREE top-30 (both replicate stage 1-2) / NEEDLE.
+
+PRE-REGISTERED CRITERIA:
+  COLLECT-SUPPORTED : turn-hit(NEEDLE) >= turn-hit(RRF) + 15pp AND
+                      turn-recall(NEEDLE) > turn-recall(TREE)
+                      -> proceed to the 50-question end-to-end check
+  COLLECT-PARTIAL   : +5..15pp
+  COLLECT-NULL      : < +5pp -> line stays closed (index-shape remedies
+                      exhausted; L5 remedy remains TOOL3)
+  ADOPT (end-to-end): strict(NEEDLE) >= strict(RRF) + 3pp on the 50
+                      questions -> wire into classify_query multi-session
+                      routing; TIE/REJECT -> flag-only, line closed.
+- VERDICT: PENDING.
+
+
+
 **P-2026-09-29-NEUSTORE · neuron-style discrete memory storage**
 (registered BEFORE the run; verdict PENDING). User question: can memory be
 stored the way neurons encode -- and what properties would that storage
