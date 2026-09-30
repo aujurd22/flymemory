@@ -202,6 +202,30 @@ PRE-REGISTERED CRITERIA:
 - Budget: 133 x ~4 collection calls + 100 answer/judge calls.
 - Script: bench_agentic_collect.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-29, reports/agentic_collect_1790745201.json):
+COLLECT-PARTIAL / e2e TIE -- NOT ADOPTED, and the whole line's headline
+moved.** Collection (turn-recall): RRF-1 0.384 / AGENT-3 0.590
+(+20.6pp) / **FLAT-30 0.683** -- bare width (plain cosine top-30, the
+control nobody had run) beats tree (0.532), lexical needles (0.521) AND
+the agent (0.590). Every "smart" mechanism tested across P-TREE,
+P-NEEDLE and P-AGENT underperforms simply widening the pool; agency is
+worse than width because rephrasings spend the budget on redundant
+neighbours of round-1 hits. End-to-end (50 questions): strict RRF-1
+8.0% = AGENT-3 8.0% despite a 1.54x evidence uplift -- **the answer
+layer eats the entire gain**: with the evidence in the pool, the model
+still cannot extract/aggregate it (the 09-25 "multi-turn aggregation is
+the bottleneck" verdict, now reconfirmed from the collection side).
+Line-level conclusions, closing index+query work:
+  1. free lever first: top-5 -> top-30 costs nothing and doubles
+     turn-recall (0.384 -> 0.683); every collector should be width-tuned
+     before any smart mechanism;
+  2. width does not fix answers: the residual bottleneck is answer-side
+     aggregation over multi-turn context (map-reduce answering /
+     evidence highlighting are the untested levers);
+  3. L5's "remedy = multi-round/toolized collection" is DOWNGRADED:
+     multi-round helps collection (0.384 -> 0.590) but underperforms
+     bare width and cannot move strict at this answer-side bottleneck.
+
 
 
 **P-2026-09-29-NEEDLE · coarse->needle two-stage collection** (registered
