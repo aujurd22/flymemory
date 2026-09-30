@@ -12,6 +12,41 @@ FlyMemory gives a coding agent a persistent, self-managed memory: every user mes
 > matrix survives only as an *experimental* associative-expansion layer, and
 > measurements (see [Benchmarks](#benchmarks)) currently argue against enabling it.
 
+## Results at a glance
+
+Every number below is one-command reproducible and carries its artifact
+path in the corresponding section. Four charts summarize the measured
+story; the negative results are as load-bearing as the positive ones.
+
+![Retrieval ladder](docs/img/retrieval_ladder.png)
+
+*Retrieval on the 9,729-entry LongMemEval-S oracle store. Hybrid fusion
+(RRF) and the cross-encoder each buy real points; the lexical channel is
+what carries part numbers and IDs that embeddings cannot see.*
+
+![L1 overlay + L6 anchoring](docs/img/laws.png)
+
+*Left: consolidation must overlay, never replace (L1) — replace-style
+abstraction is 10 points WORSE than storing nothing. Right: the anchoring
+law (L6) — the same 48 turns through two collection strategies; anchored
+judgment is near-mechanical (pre-registered paired experiment, discordant
+13:0, McNemar p ~ 2e-4).*
+
+![Memory judgment](docs/img/judgment.png)
+
+*Can the calling model actually OPERATE the state machine? 168-case
+judgment benchmark, execution-aware scoring. The balanced block measures
+response bias: real changes are never missed (12/12), unconfirmed intents
+occasionally mutate (9/12) — the bias is over-eager, not conservative.*
+
+![Eviction mirror](docs/img/eviction_mirror.png)
+
+*Storage policy on the production store: whatever eviction frees it
+perturbs. High-coverage entries are both the redundant region (easy to
+recover: orange) and the retrieval hubs (rank stability: blue). LRU wins
+the pair; the redundancy dividend was already collected by upstream
+dedup.*
+
 ## How it works
 
 ```text
@@ -50,6 +85,63 @@ idle-time consolidation ("dreaming", hourly task):
    → overlay via flymemory_remember (compartment-scoped supported)
    -- see dream.py and v4-rfc.md §9
 ```
+
+### The write path, end to end
+
+```mermaid
+flowchart TD
+    A["user message"] -->|"UserPromptSubmit hook<br/>(mechanical, ~8 s budget)"| B["split_chunks<br/>one block per sentence"]
+    B --> C{"semantic dedup<br/>length-tiered thresholds"}
+    C -->|"cos ≥ 0.95 / 0.92"| D["STRENGTHEN<br/>existing entry, access_count++"]
+    C -->|"cos ≥ 0.85 / 0.75"| E["MERGE<br/>longer text wins in place<br/>old text → superseded TOMBSTONE"]
+    C -->|"below"| F["NEW entry<br/>source=hook"]
+    G["calling model"] -->|"flymemory_remember<br/>(state_key → I1 auto-supersede)"| H["NEW entry, source=model"]
+    D --> K[("flymemory_v3.pkl<br/>one file, no database")]
+    E --> K
+    F --> K
+    H --> K
+```
+
+### The recall path
+
+```mermaid
+flowchart TD
+    Q["query"] --> R{"classify_query<br/>state / history / temporal /<br/>aggregation / lookup"}
+    R -->|"history"| S1["include_superseded = True"]
+    R -->|"state"| S2["state_lookup(key)<br/>no top-k competition"]
+    R -->|"others"| S3["default top-k"]
+    S3 --> T["dense: multilingual cosine<br/>max over query chunks"]
+    S3 --> U["lexical: IDF boost<br/>(IDs, paths, part numbers)"]
+    T --> V["RRF fusion (k=60, pool 200)"]
+    U --> V
+    V --> W["drop superseded unless history"]
+    W --> X["optional cross-encoder<br/>rerank of fused top-10"]
+    X --> Y["[#id · state · age · source · decay]<br/>hook-injected into context"]
+```
+
+### An entry's lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> active: remember (hook or model)
+    active --> active: strengthen / merge-in-place (updated_at set)
+    active --> superseded: supersede(old, new)<br/>or I1 same-state-key write
+    superseded --> superseded: recoverable via include_superseded
+    superseded --> [*]: forget (evidence links cleaned too)
+    active --> [*]: forget (wrong fact) / decay_cleanup (faded)
+    note right of superseded
+        tombstones keep valid_from / valid_to
+        history stays queryable; current state stays clean
+    end note
+```
+
+The pipeline has one hard rule: **the server never runs an LLM**. Every
+semantic decision — what to consolidate, whether a fact is outdated, what
+is worth forgetting — belongs to the calling model, which sees ids, ages
+and provenance and drives the state machine through MCP tools. The server
+owns everything mechanical: chunking, dedup, fusion, decay math, lineage
+hygiene (evidence links cleaned on forget and on decay cleanup), and
+persistence.
 
 **Decay is a power law, not an exponential half-life**: R(τ) ≈ 0.707 and the
 true half-life is 3τ (90 days at the default τ = 30 days). The heavy tail is
