@@ -166,6 +166,30 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-AUDIT · map-reduce unsupported-claims gate** (registered
+BEFORE the run; verdict PENDING). Closes the open gate left by P-ANSWER
+before any production wiring: does the map-reduce protocol introduce
+fabricated facts that the extraction step "smuggled in" despite the
+no-inference instruction?
+
+- Replay: the same 50 multi-session questions (seed 7), MAPREDUCE path
+  re-run at temperature 0, this time persisting BOTH the extracted
+  atomic-fact lists AND the final answers (the original trace kept only
+  answers).
+- Audit: a judge sees (question, extracted facts, final answer) and
+  flags any SPECIFIC claim in the answer (number, date, entity,
+  outcome) that no extracted fact supports. This parallels the
+  consolidation faithfulness audit (unsupported-inference channel).
+- Criteria: unsupported-claim rate (answers with >=1 unsupported claim /
+  50) < 5% -> gate passed, protocol may be wired into classify_query
+  aggregation-class routing (caller-side); >= 5% -> tighten the MAP
+  prompt (stronger no-inference, verbatim copying) and re-audit once;
+  still >= 5% -> the gate stays closed and map-reduce remains
+  experimental-only.
+- Script: bench_mapreduce_audit.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-30-ANSWER · answer-side aggregation** (registered BEFORE the
 run; verdict PENDING). Route decision (user, 2026-09-30): retrieval-trick
 work is paused — P-TREE/P-NEEDLE/P-AGENT relocated the residual
