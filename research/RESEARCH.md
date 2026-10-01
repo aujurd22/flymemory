@@ -166,6 +166,31 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-COMBO · two-hop compositional QA** (registered BEFORE the
+run; verdict PENDING). Cross-repo bridge #2: flyloop V10 adjudicated
+composition transfer REAL (P2). Memory-side version: questions whose
+answer requires TWO stored facts where the second is only findable
+AFTER the first is resolved ("Which company does the user's manager's
+spouse work at?" -- you cannot know to search 'Sarah Chen's husband'
+before recalling who the manager is). Prediction: standard map-reduce
+(extract facts RELEVANT to the question) fails by construction -- the
+second-hop entry has no lexical overlap with the question -- while an
+extraction variant that lists EVERY entity-relation pair (unfiltered)
+keeps both hops.
+
+- 8 hand-built two-hop questions; pool = 2 evidence entries + 13
+  distractors each (independent store instance).
+- Arms: RRF top-5; MAPREDUCE-std (relevant-facts extraction);
+  MAPREDUCE-REL (extract every subject-relation-object triple).
+- STRICT vs gold two-hop answers, same judge.
+- SUPPORTED : REL strict >= RRF + 15pp AND REL > std (compositional
+  transfer holds through the memory path and needs UNFILTERED
+  extraction); PARTIAL: +5..15pp; NULL: < +5pp (two-hop composition
+  fails even with full triples -- the answer-side reduce is the limit).
+- Script: bench_combo_qa.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-30-M5T · residual-registry transfer to agent memory**
 (registered BEFORE the run; verdict PENDING). Cross-repo bridge (the
 program's first): flyloop W9C proved the M5 residual registry (store
