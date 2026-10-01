@@ -188,6 +188,18 @@ no-inference instruction?
   experimental-only.
 - Script: bench_mapreduce_audit.py. VERDICT: PENDING.
 
+**Round 1 (reports/mapreduce_audit_1790875912.json): GATE FAILED -- 3/50
+= 6.0% flagged**, proceeding to the registered tighten-and-re-audit
+branch. Revision recorded per the registry's one-revision rule: (1) MAP
+prompt tightened -- facts must be copied VERBATIM from the entry, exact
+number/name/date strings, no paraphrase; (2) audit caliber corrected --
+a claim derived from facts by explicit arithmetic (sum/difference of
+numbers present in the fact list) is recorded as `arithmetic_derived`
+and NOT counted unsupported (the reduce step's arithmetic is the
+protocol's function, not a fabrication; wrong arithmetic is still caught
+because the inputs are in the record). One revision only; round 2 is
+final.
+
 
 
 **P-2026-09-30-ANSWER · answer-side aggregation** (registered BEFORE the
