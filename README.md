@@ -686,6 +686,30 @@ so they neither retrieve nor answer better. Consolidation formats are now a
 measured spectrum: narrative (turns) -> prose summary -> timeline -> key-value
 (entity-state), with the optimum at timeline.
 
+## Aggregation protocol (caller-side, experimental)
+
+For questions that aggregate across many turns ("how many times...",
+"how much in total..."), single-shot top-5 retrieval structurally
+under-collects evidence (the L5 aggregation-miss family), and widening
+the pool alone does not fix answers -- the answer layer must decompose.
+The measured protocol (P-ANSWER + P-AUDIT, strict 6% -> 16% on the
+multi-session set, unsupported-claim rate 0/50 after the gate):
+
+1. **Collect wide** — top-30 by production recall (width beats every
+   smart collector; turn-recall 0.384 -> 0.683).
+2. **Extract per entry** — for each entry, ask for the atomic facts
+   that bear on the question, copied VERBATIM (no inference); skip
+   entries with none. This converts an intractable cross-turn
+   aggregation into tractable per-turn lookups.
+3. **Reduce** — answer from the atomic-fact list only; arithmetic over
+   extracted numbers is the reduce step's job.
+4. **Audit** — unsupported-claims check (answer vs fact list) before
+   trusting the answer; the audit is what passed the gate at 0/50.
+
+This is a CALLER-side protocol: the server stays LLM-free. Cost is ~31
+short calls per question — route it explicitly (aggregation-class
+queries), never on the per-message hook path.
+
 ## Design positioning
 
 FlyMemory is an **explicit, inspectable memory state machine** — not a

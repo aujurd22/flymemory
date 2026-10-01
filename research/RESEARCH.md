@@ -200,6 +200,15 @@ protocol's function, not a fabrication; wrong arithmetic is still caught
 because the inputs are in the record). One revision only; round 2 is
 final.
 
+**Round 2 FINAL (reports/mapreduce_audit_1790877542.json):
+0/50 = 0.0% -- GATE PASSED.** The verbatim-copy instruction eliminated
+all smuggling, and the arithmetic-exemption caliber kept legitimate
+reduce-step computations out of the flagged set. The map-reduce protocol
+is cleared for classify_query aggregation-class routing (caller-side),
+with the routing condition: aggregation/multi-session class queries
+only (the ~31 short calls per question are not for the per-message hook
+path).
+
 
 
 **P-2026-09-30-ANSWER · answer-side aggregation** (registered BEFORE the
