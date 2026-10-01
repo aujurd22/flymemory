@@ -198,6 +198,23 @@ PRE-REGISTERED CRITERIA (on the wrong-subset of phase 1):
 - Scope: 40 questions, one model; mechanism transfer claim, not a
   production recipe. Script: bench_m5_transfer.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-30, reports/m5_transfer_1790878138.json): NULL --
+same-question correction 5.1%, variant 2.6%.** But the failure is
+surgical, not diffuse: the residual entries COMPETED PERFECTLY --
+82.1% landed in top-8 with MEAN RANK 1.19 (they almost always ranked
+first; phase-1 wrongs were 39/40, the multi-session hard set) -- and
+the answer model still refused to use them. **The transfer breaks at an
+entry-TRUST layer, not the retrieval layer**: a "[Correction note]"
+bracketed metadata shell is treated as meta-commentary about the
+question, not as an answerable fact -- consistent with the anchor law's
+lesson that presentation framing decides what a model will do with an
+entry. M5 worked in flyloop because the registry feeds a mechanical
+predictor directly; the agent path inserts a language-trust gate.
+Follow-up candidate (not run): strip the shell -- register residuals as
+plain factual sentences ("The answer to '<q>' is <gold>.") and re-test;
+predicted to recover most of the gap. Recorded as the transfer line's
+boundary: M5's mechanism is memory-side sound, answer-side gated.
+
 
 
 **P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered
