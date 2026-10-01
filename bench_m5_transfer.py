@@ -102,8 +102,7 @@ def main():
                            "about the user, embedding the answer. No "
                            "question text, no meta wording. Reply with "
                            "only the statement.",
-                           f"Question: {w['q']['question']}
-"
+                           f"Question: {w['q']['question']} | "
                            f"Correct answer: {w['q']['answer']}")
             txt = stmt.strip() or f"{w['q']['answer']}."
         elif plain:
