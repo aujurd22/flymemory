@@ -110,6 +110,11 @@ def main():
                    f"{w['q']['question']} "
                    f"Correct answer: {w['q']['answer']}. "
                    f"A previous attempt answered this incorrectly.")
+        else:
+            txt = (f"[Correction note] Question asked: "
+                   f"{w['q']['question']} "
+                   f"Correct answer: {w['q']['answer']}. "
+                   f"A previous attempt answered this incorrectly.")
         mem.remember_text(txt, source="model")
     print(f"phase 2: {len(wrongs)} residual entries registered",
           flush=True)
