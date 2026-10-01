@@ -34,9 +34,13 @@ FINAL_K = 30
 AUDIT_SYSTEM = """You are a strict fact-support auditor. Given a QUESTION, the
 EXTRACTED FACTS (the only permitted evidence), and a FINAL ANSWER, check
 whether the answer contains any SPECIFIC claim (number, date, entity
-name, outcome) that NO extracted fact supports. Ignore hedging and
+name, outcome) that NO extracted fact supports. EXCEPTION: a
+number obtained by explicit arithmetic (sum/difference) over
+numbers present in the fact list is ALLOWED -- mark it in
+"arithmetic" instead (wrong arithmetic still counts, the
+inputs are in the record). Ignore hedging and
 "don't know" phrasing. Reply ONLY:
-{"unsupported": true/false, "claims": ["..."]}
+{"unsupported": true/false, "claims": ["..."], "arithmetic": ["..."]}
 - unsupported=true only if at least one specific claim lacks support."""
 MODEL = "deepseek-chat"
 
@@ -90,11 +94,13 @@ def main():
         dec, _ = parse_decision(araw)
         unsupported = bool(dec.get("unsupported")) if dec else None
         claims = dec.get("claims", []) if dec else []
+        arith = dec.get("arithmetic", []) if dec else []
         if unsupported:
             flagged += 1
         rows.append({"qi": qi, "question": q["question"][:120],
                      "facts": facts, "answer": answer,
-                     "unsupported": unsupported, "claims": claims})
+                     "unsupported": unsupported, "claims": claims,
+                     "arithmetic": arith})
         print(f"[{qi+1}/{N_Q}] unsupported={unsupported} "
               f"{claims[:1] if claims else ''}", flush=True)
 

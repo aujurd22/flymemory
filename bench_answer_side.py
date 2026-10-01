@@ -49,7 +49,8 @@ truth. Reply with ONLY:
 - wrong: contradicts the ground truth or is off topic"""
 MAP_SYSTEM = """You extract stated facts. Given ONE memory entry and a
 question, list the atomic facts in the entry that bear on the question
-(numbers, dates, entities, outcomes). Copy them as short bullet lines.
+(numbers, dates, entities, outcomes). COPY VERBATIM from the entry --
+exact numbers, names and dates, never paraphrased or reformatted.
 Do NOT infer, compute, or add anything not explicitly stated. If nothing
 in the entry bears on the question, reply exactly: NONE."""
 HIGHLIGHT_SYSTEM = """You are preparing to answer a question from a pool of
