@@ -102,9 +102,8 @@ def main():
     verdict = ("GATE PASSED -- protocol may be wired into aggregation "
                "routing (caller-side)" if rate < 0.05 else
                "GATE FAILED -- tighten MAP prompt and re-audit once")
-    print(f"\nunsupported-claim rate: {flagg}/{N_Q} = {rate:.1%}")
-    print(f"PRE-REGISTERED VERDICT: {verdict}" if False else
-          f"PRE-REGISTERED VERDICT: {verdict} (rate {rate:.1%})")
+    print(f"\nunsupported-claim rate: {flagged}/{N_Q} = {rate:.1%}")
+    print(f"PRE-REGISTERED VERDICT: {verdict} (rate {rate:.1%})")
 
     ts = int(time.time())
     out = os.path.join(_HERE, "reports", f"mapreduce_audit_{ts}.json")
