@@ -179,6 +179,14 @@ than the original: absolute accuracy may shift):
 - Script: bench_anchor_crossmodel.py + run_crossmodel_ark.py.
   VERDICT: PENDING.
 
+**VERDICT (2026-09-30, reports/anchor_crossmodel_1790877836.json):
+REPLICATED.** doubao-seed-2.1-lite: acc(A) = 47/48 = 97.9% (identical to
+deepseek-chat's 47/48), discordant 14:0 in the anchored direction,
+resist-class repair 11/12, acc(U) 33/48 (the unanchored side degrades
+slightly differently but the ordering is identical). L6 now holds on
+two model lineages; the remaining gap (a true cross-vendor run, e.g.
+GLM-5.3 or Claude) is recorded, not blocking.
+
 
 
 **P-2026-09-30-AUDIT · map-reduce unsupported-claims gate** (registered
