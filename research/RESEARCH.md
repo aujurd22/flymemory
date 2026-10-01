@@ -166,6 +166,40 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-M5T · residual-registry transfer to agent memory**
+(registered BEFORE the run; verdict PENDING). Cross-repo bridge (the
+program's first): flyloop W9C proved the M5 residual registry (store
+prediction residuals as retrievable correction items) recovers +0.787
+E20 with a bit-identical control. Question: does the same mechanism
+transfer to agent memory QA?
+
+- Setup: independent instance of the 9,729-entry turn store; 40
+  multi-session questions (seed 7, first 40 of the P-AGENT sample).
+- Phase 1 (base): each question answered from RRF top-5 (deepseek-chat,
+  temp 0); verdicts recorded.
+- Phase 2 (residual registration): for every WRONG question, store one
+  residual entry via remember_text: "[Correction note] Question asked:
+  <q>. Correct answer: <gold>. A previous attempt answered incorrectly."
+- Phase 3 (retest): (a) the SAME questions re-answered (the residual
+  entries now compete in recall); (b) one REPHRASED variant per wrong
+  question (LLM-paraphrased wording, same fact target; the variant tests
+  GENERALIZATION beyond verbatim self-recognition). The comparison to
+  phase 1 needs no separate control arm: temp 0 makes the no-residual
+  rerun identical to phase 1 by construction.
+
+PRE-REGISTERED CRITERIA (on the wrong-subset of phase 1):
+  SUPPORTED : same-question correction rate >= 60% AND variant
+              correction rate >= 25% (residuals transfer past verbatim
+              recognition);
+  PARTIAL   : same-question >= 60% but variants < 25%;
+  NULL      : same-question < 30% (residual entries fail to compete in
+              recall or to be used).
+- Also recorded: mean rank of the residual entry in the phase-3 recall.
+- Scope: 40 questions, one model; mechanism transfer claim, not a
+  production recipe. Script: bench_m5_transfer.py. VERDICT: PENDING.
+
+
+
 **P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered
 BEFORE the run; verdict PENDING). Doubao-seed-2.1-lite (ARK API) re-runs
 the exact 48-turn paired experiment. Within-vendor-family but a
