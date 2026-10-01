@@ -99,6 +99,14 @@ def flymemory_remember(text: str, tags: str = "",
 
     Auto-dedup: if semantically similar to an existing memory,
     strengthens/merges instead of creating a duplicate.
+
+    FORM RULE (P-M5T): entries must be DECLARATIVE third-person factual
+    statements ("The user's favourite editor is Zed"). Never store
+    question-answer transcripts, bracketed meta notes, or "[Correction
+    note]" shells -- answer models refuse to use them (measured: 2.6-5%
+    usage vs 100% for declarative form). Corrections of earlier wrong
+    answers: store the correct fact as a plain statement; the dedup and
+    merge path will attach it to the evidence.
     Args:
         text: The text to remember
         tags: Optional comma-separated tags
@@ -144,6 +152,15 @@ def flymemory_recall(query: str, top_k: int = 5,
     ~10 tokens cannot reliably retrieve their target; above ~25 tokens
     they can. If a short query returns nothing relevant, rephrase with
     more context rather than concluding the memory does not exist.
+
+    Aggregation/multi-session questions ("how many times...", totals):
+    single-shot top-5 structurally under-collects evidence. Measured
+    protocol (strict 6% -> 16%, P-ANSWER): collect wide (top-30), then
+    extract atomic facts from EACH entry VERBATIM (no inference), then
+    answer from the fact list only. Two-hop questions ("my manager's
+    spouse's employer"): extract relation triples UNFILTERED from the
+    pool -- relevance filtering deletes the second-hop evidence
+    (P-COMBO: unfiltered 100% vs filtered 75%).
 
     Args:
         query: The query text (can be partial/incomplete)
