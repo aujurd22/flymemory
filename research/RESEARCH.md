@@ -238,6 +238,26 @@ answer model's refusal to change a prior answer regardless of entry
 form (an answer-persistence prior, deeper than storage). Same bands.
 Script: bench_m5_transfer.py --residual-declarative. VERDICT: PENDING.
 
+**M5T-2 VERDICT (reports/m5_transfer_1790878947.json): SUPPORTED --
+same-question 39/39 = 100%, variants 35/39 = 89.7%.** The full
+three-form gradient across the line: metadata shell 5.1% / QA pair
+2.6% / declarative statement 100%. Mechanism note with one honest
+uncertainty: the declarative residuals were DETECTED in 0% of the
+top-8 -- but that detection looked for the (absent) shell marker; the
+plausible path is that the declarative statements MERGED into /
+strengthened the existing same-topic evidence turns (flymemory's native
+merge), so the fix works by *repairing the evidence*, not by adding a
+citable correction entry. Whether any independent residual entry also
+survived was not recorded -- a caliber gap for any follow-up.
+
+**M5T LINE FINAL: the transfer succeeds when and only when the residual
+is expressed in the same form as autobiographical memory.** The
+flyloop mechanism is memory-side sound; the agent-path gate was never
+retrieval or trust of corrections -- it was memory FORM. This is the
+L6 anchoring lesson at the storage layer: what the model will use is
+decided by the form the information takes, and the correct form for
+agent memory is the declarative third-person statement.
+
 
 
 **P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered
