@@ -93,11 +93,20 @@ def main():
 
     # ---- phase 2: residual registration ----
     plain = "--residual-plain" in sys.argv
+    declarative = "--residual-declarative" in sys.argv
     for w in wrongs:
-        if plain:
-            txt = (f"The answer to the question '{w['q']['question']}' "
-                   f"is: {w['q']['answer']}.")
-        else:
+        if declarative:
+            stmt = ds_chat(client,
+                           "Turn a question and its correct answer into "
+                           "ONE natural third-person factual statement "
+                           "about the user, embedding the answer. No "
+                           "question text, no meta wording. Reply with "
+                           "only the statement.",
+                           f"Question: {w['q']['question']}
+"
+                           f"Correct answer: {w['q']['answer']}")
+            txt = stmt.strip() or f"{w['q']['answer']}."
+        elif plain:
             txt = (f"[Correction note] Question asked: "
                    f"{w['q']['question']} "
                    f"Correct answer: {w['q']['answer']}. "

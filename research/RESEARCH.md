@@ -223,6 +223,21 @@ correction recovers to >= 60%. Falsified if it stays under 30%. One
 run, no revision. Script: bench_m5_transfer.py --residual-plain.
 VERDICT: PENDING.
 
+**M5T-FOLLOWUP VERDICT (reports/m5_transfer_1790878393.json):
+FALSIFIED -- plain factual sentences 2.6%, rank still 1.13.** The shell
+was not the gate; the QUESTION-ANSWER PAIRING is: an entry that embeds
+the verbatim question reads as a transcript of a past exchange, not as
+autobiographical memory, and the answerer will not cite it.
+
+**M5T-2 (registered immediately; final step of the line)**: residuals
+as DECLARATIVE THIRD-PERSON MEMORIES -- an LLM turns (question, gold
+answer) into a natural factual statement ("The user tried making
+Negroni about ten times.") with no question text embedded. This is the
+form actual memories take; if correction STILL fails, the gate is the
+answer model's refusal to change a prior answer regardless of entry
+form (an answer-persistence prior, deeper than storage). Same bands.
+Script: bench_m5_transfer.py --residual-declarative. VERDICT: PENDING.
+
 
 
 **P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered
