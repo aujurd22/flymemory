@@ -189,6 +189,20 @@ keeps both hops.
   fails even with full triples -- the answer-side reduce is the limit).
 - Script: bench_combo_qa.py. VERDICT: PENDING.
 
+**VERDICT (2026-09-30, reports/combo_qa_1790879244.json): PARTIAL with a
+clean mechanism.** strict: RRF-5 87.5% / MR-std 75.0% / **MR-REL
+100.0%**. Unfiltered triple extraction beat BOTH baselines and was the
+only arm at ceiling; standard relevant-facts extraction was WORSE than
+RRF (75% < 87.5%) -- exactly the registered failure mode: the hop-2
+entry (whose subject is only known after hop 1 resolves) has no lexical
+overlap with the question, so question-relevance filtering deletes it.
++12.5pp lands inside PARTIAL (n=8, the band is honest). **Bridge to
+flyloop V10 P2 closes: composition transfer holds through the memory
+path IF extraction is unfiltered** -- relevance filtering, the default
+in every RAG stack, is precisely what destroys two-hop evidence.
+Design rule: for compositional queries, extract relations from the
+pool UNFILTERED, then let the reduce step compose.
+
 
 
 **P-2026-09-30-M5T · residual-registry transfer to agent memory**
