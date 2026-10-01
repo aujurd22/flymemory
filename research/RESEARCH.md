@@ -215,6 +215,14 @@ plain factual sentences ("The answer to '<q>' is <gold>.") and re-test;
 predicted to recover most of the gap. Recorded as the transfer line's
 boundary: M5's mechanism is memory-side sound, answer-side gated.
 
+**M5T-FOLLOWUP (registered immediately; the shell-stripping prediction)**:
+same protocol, residual entries rewritten as PLAIN FACTUAL SENTENCES
+("The answer to '<question>' is <answer>." -- no bracket, no meta
+label). Prediction: if the trust gate was the shell, same-question
+correction recovers to >= 60%. Falsified if it stays under 30%. One
+run, no revision. Script: bench_m5_transfer.py --residual-plain.
+VERDICT: PENDING.
+
 
 
 **P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered

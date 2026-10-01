@@ -92,12 +92,17 @@ def main():
           flush=True)
 
     # ---- phase 2: residual registration ----
+    plain = "--residual-plain" in sys.argv
     for w in wrongs:
-        mem.remember_text(
-            f"[Correction note] Question asked: {w['q']['question']} "
-            f"Correct answer: {w['q']['answer']}. "
-            f"A previous attempt answered this incorrectly.",
-            source="model")
+        if plain:
+            txt = (f"The answer to the question '{w['q']['question']}' "
+                   f"is: {w['q']['answer']}.")
+        else:
+            txt = (f"[Correction note] Question asked: "
+                   f"{w['q']['question']} "
+                   f"Correct answer: {w['q']['answer']}. "
+                   f"A previous attempt answered this incorrectly.")
+        mem.remember_text(txt, source="model")
     print(f"phase 2: {len(wrongs)} residual entries registered",
           flush=True)
 
