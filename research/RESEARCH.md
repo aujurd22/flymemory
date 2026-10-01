@@ -166,6 +166,21 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-XMODEL · P-ANCH-1 cross-model replication** (registered
+BEFORE the run; verdict PENDING). Doubao-seed-2.1-lite (ARK API) re-runs
+the exact 48-turn paired experiment. Within-vendor-family but a
+different vendor lineage from DeepSeek (doubao was also the judge whose
+conservative novelty bias motivated P32-i). Replication bands (weaker
+than the original: absolute accuracy may shift):
+  REPLICATED    : acc(A) >= 40/48 AND discordant margin >= 3:1 in the
+                  anchored direction
+  PARTIAL       : acc(A) >= 34/48 with direction preserved
+  NOT-REPLICATED: acc(A) < 34/48 or direction flips
+- Script: bench_anchor_crossmodel.py + run_crossmodel_ark.py.
+  VERDICT: PENDING.
+
+
+
 **P-2026-09-30-AUDIT · map-reduce unsupported-claims gate** (registered
 BEFORE the run; verdict PENDING). Closes the open gate left by P-ANSWER
 before any production wiring: does the map-reduce protocol introduce

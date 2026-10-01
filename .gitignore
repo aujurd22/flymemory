@@ -37,3 +37,4 @@ run_treee2e_with_key.py
 run_agent_with_key.py
 run_answer_with_key.py
 run_audit_with_key.py
+run_crossmodel_ark.py
