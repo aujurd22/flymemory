@@ -178,6 +178,22 @@ downstream value before any such filter is built. Sample: 30 entries
 (deterministic stride). Script: bench_discovery_profile.py +
 run_discovery_ark.py. VERDICT: descriptive (no pass/fail).
 
+**PROFILE (2026-09-30, reports/discovery_profile_1790879416.json,
+doubao independent judge):** V mean 1.10 (the only axis with real
+mass), C 0.40, N 0.13, **T 0.00 (30/30 entries scored zero)**; no
+entry reached insight grade (total>=5: 0/30); cross-axis: C-N rho 0.48,
+C-V 0.62, N-V 0.49 (compression, novelty and value travel together),
+T undefined (constant zero). **Reading: current LLM consolidation
+produces VALUE-CARRYING COMPRESSION, not insight** -- V survives while
+N/T sit at the floor. This is a production-side measurement point for
+the program's umbrella question ("when does compression induce
+structure?"): the everyday consolidation regime compresses WITHOUT
+inducing structure; structure induction (N/T > 0) would require
+deliberately synthesized cross-entry conclusions, i.e. the regime
+P152's math-track entries occupy. A Discovery-Score filter (keep V>=1,
+flag N+T>=2 as insights) is feasible on this calibration if ever
+needed.
+
 **P-2026-09-30-COMBO · two-hop compositional QA** (registered BEFORE the
 run; verdict PENDING). Cross-repo bridge #2: flyloop V10 adjudicated
 composition transfer REAL (P2). Memory-side version: questions whose
