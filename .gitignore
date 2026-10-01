@@ -31,3 +31,9 @@ data_longmemeval_v2/trajectories_small.jsonl
 data_longmemeval_v2/lmev2_flymemory.pkl
 run_twostep_with_key.py
 run_atomic_with_key.py
+run_anchor_with_key.py
+run_phase_with_key.py
+run_treee2e_with_key.py
+run_agent_with_key.py
+run_answer_with_key.py
+run_audit_with_key.py

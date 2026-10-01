@@ -177,7 +177,7 @@ def main():
     adj_f = (E @ E.T >= thr_f)
     np.fill_diagonal(adj_f, False)
     spread_f = adj_f.sum(1)
-    tri_sim = T_tri @ T.T
+    tri_sim = T_tri @ T_tri.T
     adj_t = (tri_sim >= 60)   # ~ cos 0.6 equivalent for balanced ternary
     np.fill_diagonal(adj_t, False)
     spread_t = adj_t.sum(1)

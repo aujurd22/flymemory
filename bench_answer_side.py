@@ -60,7 +60,21 @@ what information is still MISSING from the pool (the gap). Reply ONLY:
 
 def main():
     t0 = time.time()
-    E, ids, texts = load_store()
+    E, sess, _turn_keys = load_store()
+    # rebuild entry texts from the SAME snapshot load_store used
+    # (bench_needle_search's SNAP = a copy of longmemeval_bench.pkl)
+    import pickle
+    from bench_needle_search import SNAP
+    dd = pickle.load(open(SNAP, "rb"))
+    texts = []
+    for m in dd["memories"]:
+        if m.get("superseded_by") is not None:
+            continue
+        v = np.asarray(m["embedding"], dtype=np.float32)
+        if np.linalg.norm(v) == 0:
+            continue
+        texts.append(m["text"])
+    assert len(texts) == len(E)
     n = len(E)
     qs = json.load(open(os.path.join(_HERE, "data_longmemeval",
                                      "longmemeval_s_cleaned.json"),

@@ -33,9 +33,11 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, "flymemory"))
 
 from bench_memory_judgment import (  # noqa: E402
-    ds_client, ds_chat, parse_decision, MODEL)
+    ds_client, ds_chat, parse_decision)
+
+MODEL = "deepseek-chat"
 from bench_needle_search import (  # noqa: E402
-    load_store, needle_words, STOP)
+    load_store, needle_words, STOP, SNAP)
 
 QS = os.path.join(_HERE, "data_longmemeval", "longmemeval_s_cleaned.json")
 N_Q = 50
@@ -88,7 +90,7 @@ def main():
                         dtype=np.float32)
         pool = {}                                   # idx -> best sim
         def add(idxs):
-            for i in idx:
+            for i in idxs:
                 s = float(E[i] @ qv)
                 if i not in pool or s > pool[i]:
                     pool[i] = s
