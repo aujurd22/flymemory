@@ -166,6 +166,18 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-09-30-DISCOVERY · Insight-score profile of consolidation
+entries** (descriptive, registered BEFORE the run; no adoption decision
+attached). Intuition-mechanism P152-P155 operationalized insight value
+as the Discovery Score (C/N/V/T) with cross-judge reproducibility. This
+bench ports that scorer onto FlyMemory's own consolidation entries
+(LME overlay set) with the INDEPENDENT judge (doubao, ARK) and reports
+the distribution + cross-axis correlations. Purpose: calibrate whether
+a Discovery-Score-style filter could rank consolidation entries by
+downstream value before any such filter is built. Sample: 30 entries
+(deterministic stride). Script: bench_discovery_profile.py +
+run_discovery_ark.py. VERDICT: descriptive (no pass/fail).
+
 **P-2026-09-30-COMBO · two-hop compositional QA** (registered BEFORE the
 run; verdict PENDING). Cross-repo bridge #2: flyloop V10 adjudicated
 composition transfer REAL (P2). Memory-side version: questions whose

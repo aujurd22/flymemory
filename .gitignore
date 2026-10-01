@@ -38,3 +38,6 @@ run_agent_with_key.py
 run_answer_with_key.py
 run_audit_with_key.py
 run_crossmodel_ark.py
+run_m5_with_key.py
+run_combo_with_key.py
+run_discovery_ark.py
