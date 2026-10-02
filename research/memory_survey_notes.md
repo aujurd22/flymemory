@@ -229,3 +229,25 @@ learning=内化 oracle(神经博弈论框架)。安全原则 CCA=任务复杂度
    理论定位语(可用,不必引)。
 3. CCA ≙ classify_query 的复杂度分级路由已经做了同样的事(五类路由)。
 工程增量有限;引用价值低于 Xu 2024 / Kalai–Vempala。
+
+## Insight Law v1 提议的评估与资产映射(2026-10-02,外部评审+本仓核对)
+
+评审主张:intuition-mechanism 应从四条件+Arena 升维到 Insight Law v1
+("结构在验证与迁移约束下达到最大解释压缩时成为洞察")+四方法效率对照
+(brute force / LLM prompting / compression-based search / pipeline)。
+
+**核对结论:80% 成立。**阶段判断准(定义先行轨迹 P133→P154→P155);
+边界研究价值判断准。两处修正:①P154 已把定义正式化,评审基于旧状态
+(真缺口是预测性理论,非定义);②"缺 Selection Mechanism"低估存量——
+Score 组件大半已测:compression gain=SCR(P154/P155)、transfer=Arena T
++V10 P2+P-DISCOVERY T=0、complexity=P12 容量非单调+P43 m*≈20、
+verification cost=P161、**prediction gain=真缺口**。
+
+**Insight Law v1 的可执行设计**(供 intuition 侧取用):
+1. 定义 Score(structure) = SCR + prediction-gain + transfer - complexity
+   的可计算形式(各项已有测量器,缺 prediction-gain 探针);
+2. 题集:ambiguity-by-design 构造对(P159 已指路,late-divergence 规则);
+3. 判别实验:四方法 × 三指标 = 命中率 + **到达同等 SCR 的调用预算
+   (效率维度,从未测过)** + Score 事前排序 vs 事后验证命中的相关性
+   (排序不能预测命中则 Law 是描述非理论);
+4. 停止扩自然案例,只加构造性案例。
