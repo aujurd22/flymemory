@@ -241,6 +241,27 @@ PRE-REGISTERED CRITERIA:
                    the "law" is a description, not a mechanism).
 - VERDICT: PENDING. Script: intuition-mechanism/p162_insight_law.py.
 
+**VERDICT (2026-10-02, intuition-mechanism p162_law1_results.json):
+LAW-NULL with a strong INVERSE signal -- and this is the informative
+outcome.** Deterministic core (LLM arms pending): all three collectors
+hit@1=100% (exact-fit is near-unique in the template space -- no search
+pressure, P159's lesson repeating), so the discriminative weight falls
+entirely on Score-vs-verification. Pooled top-10 exact candidates:
+Score rank vs held-out hit Spearman **rho = -0.826 (p=1.8e-9)** -- the
+shortest-description exact fit IS the shadow rule, and only held-out
+verification separates it from the true rule. Insight Law v1's
+compression term is therefore ANTI-correlated with truth under
+late-divergence ambiguity: a description-length prior actively prefers
+the wrong structure. Same signature as P-TREE/P-AGENT at the retrieval
+level (unverified ordering criteria sacrifice the true rule); same
+conclusion at the theory level: **verification cannot be outsourced to
+a description-length prior -- Insight Law v1 must carry held-out
+verification cost INSIDE the Score, compression alone is the wrong
+currency.** Adjacent (same-day, intuition side): P170 finds the
+verbalization gap is at the knowledge level (stated rules all 50%
+chance vs operative 79-94%) -- statement and operation dissociate, as
+score and verification dissociate here.
+
 
 
 **P-2026-09-30-DISCOVERY · Insight-score profile of consolidation
