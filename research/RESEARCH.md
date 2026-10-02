@@ -203,6 +203,46 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-02-LAW1 · Insight Law discriminative experiment** (registered
+BEFORE the run; verdict PENDING). Operationalizes the round-17
+recommendation: Insight Law v1 is only a theory if Score(structure)
+PREDICTS verification outcomes. 
+
+- Score made computable: for a candidate rule h over a sequence with D
+  observed terms, Score(h) = (D*L2-residual(h) penalized fit) expressed
+  as description length: bits(h) + bits(residual), lower = better; a
+  candidate EXACTLY fits D terms iff residual = 0 (exact-rule regime).
+  Components: compression = D - bits(h); transfer = exact fit on
+  HELD-OUT divergence terms (scored separately, never in the fit);
+  prediction-gain and verification-cost are measured per method.
+- Items: 20 ambiguity-by-design pairs. True rule A and shadow rule B
+  agree on the first W terms (W in 6..10) and diverge afterwards; the
+  item shows the first W terms and asks for the next 3. B is a
+  same-template near-miss (parameter flip / late conditional), so
+  verbatim pattern matching cannot separate them -- only the held-out
+  terms can.
+- Methods (all output a RANKED top-3 candidate list, mechanically
+  parsed and executed): BRUTE (template enumeration in fixed order,
+  first-fit), MDL (full enumeration ranked by description length),
+  LLM (doubao asked for top-3 rules as executable recurrence forms),
+  PIPE (LLM candidates + mechanical fit filter + MDL ranking).
+- Metrics: hit@1 / hit@3 (true rule ranked correctly); BUDGET =
+  candidates evaluated until hit (LLM calls counted for LLM/PIPE);
+  SCORE-PREDICTION = Spearman between Score ranking and verification
+  hit across candidates.
+
+PRE-REGISTERED CRITERIA:
+  LAW-SUPPORTED  : SCORE-PREDICTION Spearman rho >= 0.4 (p<0.01) AND
+                   PIPE hit@3 >= BRUTE hit@3 (the law adds search value
+                   beyond enumeration);
+  LAW-DESCRIPTIVE: rho >= 0.4 but PIPE <= BRUTE (law ranks but does not
+                   guide search);
+  LAW-NULL       : rho < 0.25 (Score does not predict verification;
+                   the "law" is a description, not a mechanism).
+- VERDICT: PENDING. Script: intuition-mechanism/p162_insight_law.py.
+
+
+
 **P-2026-09-30-DISCOVERY · Insight-score profile of consolidation
 entries** (descriptive, registered BEFORE the run; no adoption decision
 attached). Intuition-mechanism P152-P155 operationalized insight value
