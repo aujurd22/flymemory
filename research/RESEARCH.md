@@ -138,6 +138,43 @@ geometry; capacity never substituted by structure; store until
 fringe-reachability; budget novelty screening by l_min and open the
 window with contrast; evict by redundancy; report arrival profile).
 
+## The three-way distinction (round-17, formalized)
+
+Round-17 review converged with the experiments on the program's deepest
+empirical finding: three things that used to blur together are now
+measured to be DIFFERENT, each with its own repo-level evidence:
+
+- **COMPRESSION** (FlyMemory) — making information shorter.
+  Evidence: overlay +5.8pp, P-DISCOVERY profile V 1.10 with N 0.13 /
+  T 0.00 — consolidation produces value-carrying compression WITHOUT
+  inducing structure. Memory is necessary, never sufficient, for insight.
+- **COMPOSITION** (FlyLoop) — combining existing knowledge into new
+  candidates. Evidence: V10 P2 (composition transfer real) BUT V10b E1
+  in-loop P-COMBO failed honestly — no inference-time chain to cut; M7
+  (FULL-COMP, preemptive composition inference) is the repair. And the
+  FlyMemory P-COMBO (same name, different experiment): unfiltered
+  triple extraction reaches 100% on two-hop QA — composition needs BOTH
+  unfiltered relation storage AND an inference-time consumer.
+- **INSIGHT** (intuition-mechanism) — producing transferable new
+  structure. Evidence: Insight Arena P152-P155 (Discovery Score,
+  cross-judge SCR), P156 Polanyi paradox quantified (stated rules fail
+  where operative accuracy is 79-94%), P159 ambiguity pressure requires
+  constructed late-divergence rule pairs, P160 duplication-shadow law,
+  P157/P161 boundary honesty (6xHeegner REFUTED; RSA ceiling 70 vs 862
+  bits).
+
+The umbreeta question "when does compression induce structure?" now
+decomposes: compression alone never induced structure in any measured
+regime (FlyMemory T=0; FlyLoop needs an explicit composition step;
+intuition needs ambiguity pressure). Structure induction requires the
+COMPOSITION step running ON TOP OF compression, and the INSIGHT gate
+(ambiguity pressure + transfer verification) on top of that.
+
+Open interface (round-17 recommendation ③, queued as P-MI candidate):
+memory -> insight pipeline = cross-entry synthesis during consolidation
+(forced multi-entry conclusions), Discovery N/T filtering, then
+downstream-contribution verification. Not yet registered.
+
 ## Cross-testbed evidence chain (2026-09-28, round-9/10)
 
 The program-level question "which cognitive tasks compress into an
