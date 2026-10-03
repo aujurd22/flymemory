@@ -1,5 +1,7 @@
 # FlyMemory
 
+**English** | [简体中文](README.zh-CN.md)
+
 *Last updated: 2026-10-03 · v4.0 — plain-language intro, results charts, aggregation protocol, dream (idle-time consolidation) now runs silently on a schedule*
 
 **A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
@@ -51,39 +53,6 @@ negative". I want *the research laws* → the law ledger at
 > In v3 the production recall path is semantic + lexical retrieval; the Hopfield
 > matrix survives only as an *experimental* associative-expansion layer, and
 > measurements (see [Benchmarks](#benchmarks)) currently argue against enabling it.
-
-
-## 中文速读（一分钟版）
-
-**这是什么？** 给 AI 助手装一个"不会失忆的笔记本"。你跟 AI 说过的话会被自动记下来，
-下次开新对话时，相关的笔记会被自动递回给 AI——带时间戳和出处。
-
-**它怎么工作？（打个比方）** 想象一本管理得极好的纸质笔记本：
-
-- 你说的每句话单独记一行（一个话题不会糊成一团）；
-- 你重复说一件类似的事，笔记本只在旧行下面划一道线（加重），不会抄两遍；
-- 你**纠正**一件事（"其实我搬到杭州了"），旧行被划掉——但没撕掉，问历史时还能翻到；
-- 每隔一阵，零散的短句会被蒸馏成干净的摘要笔记；
-- 几个月没人碰的笔记会慢慢褪色（但不会突然消失）；
-- 找笔记双管齐下：按**意思**找（换个说法也能找到）+ 按**关键词**找（货号、文件路径这种精确串）。
-
-**谁负责动脑子？** 笔记本自己从不思考。一个机械小程序只管记录和取回；
-所有判断——什么重要、什么过时、什么该忘——都由你正在用的 AI 通过几个工具完成。
-"存储傻瓜化、判断可追责"，这是整个设计的核心赌注。
-
-**最近测出来的三条硬结论（都有预注册和完整数据）：**
-
-1. **形态决定命运**：同一条修正信息，用陈述句存进记忆，100% 会被用上；
-   存成元数据标签，只剩 5%。——AI 的记忆 correction，"存成什么样"比"存没存"更关键。
-2. **默认设置是错的**：市面上所有 RAG 检索默认开"相关性过滤"，但两跳问题
-   （"我经理的经理是谁"）的第二跳证据恰恰会被它删掉——关掉过滤，75% → 100%。
-   这条定律还在一个纯机械的复现系统里得到了独立验证。
-3. **笔记本不产生洞见**：AI 自动整理的摘要笔记，测出来是"有价值的压缩"，
-   但没有任何新结构产生（新颖性 0.13、可迁移性 0.00）。压缩≠洞见，
-   这是给整个方向泼的冷水，也是给后续路线画的界线。
-
-**想深入？** 想用它 → 直接跳 [Install](#install)。想看证据 → 下一节的四张图和
-各 benchmark。想看所有走过的弯路 → 各节里标了 measured negative 的段落都在。
 
 
 ## Results at a glance
