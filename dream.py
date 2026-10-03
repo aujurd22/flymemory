@@ -27,7 +27,30 @@ import sys
 import time
 import urllib.request
 
+# silent under pythonw (scheduled task): route prints to a log file.
+# Text mode + line buffering -- the pythonw/buffering lesson from
+# server.log (buffering=0 binary streams crash sys.stderr writes).
+if sys.stdout is None or sys.stderr is None:
+    _log = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "dream.log"), "a", buffering=1,
+                encoding="utf-8")
+    sys.stdout = sys.stderr = _log
+
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+# scheduled-task context has no shell env: fall back to the verified
+# key source (same file the run_*_with_key.py helpers use). Key stays
+# out of the repo and out of logs.
+if not os.environ.get("DEEPSEEK_API_KEY"):
+    try:
+        import re as _re
+        _src = open(r"D:/djr82/Documents/trae/6a8dbce9f0e28e9922d54185"
+                    r"/hkt_login/audit_labels.py", encoding="utf-8").read()
+        _m = _re.search(r'api_key="([^"]+)"', _src)
+        if _m:
+            os.environ["DEEPSEEK_API_KEY"] = _m.group(1)
+    except Exception:
+        pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "flymemory"))
