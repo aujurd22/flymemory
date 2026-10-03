@@ -1,6 +1,6 @@
 # FlyMemory
 
-**English** | [简体中文](README.zh-CN.md)
+[English](README.md) | **简体中文**
 
 *最后更新:2026-10-03 · v4.0 — 通俗介绍、结果图表、聚合协议、dream(空闲时整合)已改为定时静默运行*
 
