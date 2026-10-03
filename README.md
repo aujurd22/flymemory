@@ -1,10 +1,44 @@
 # FlyMemory
 
-*Last updated: 2026-09-28 · v4.0 + judgment dataset v1.5 (168 cases; balanced stale/new detection; P32-i Arm-S transplant studied as a negative result)*
+*Last updated: 2026-10-03 · v4.0 — plain-language intro, results charts, aggregation protocol, dream (idle-time consolidation) now runs silently on a schedule*
 
 **A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
 
 FlyMemory gives a coding agent a persistent, self-managed memory: every user message is captured by a hook, stored as per-sentence chunks, deduplicated, and recalled into later conversations with age and provenance stamps. Stale facts are not deleted — the calling model marks them *superseded*, so history stays queryable while current state stays clean.
+
+## FlyMemory in plain language
+
+**What problem does it solve?** AI assistants forget everything between
+conversations. FlyMemory gives one a notebook that survives: every
+message you send is automatically noted down, and later conversations
+get the relevant notes injected back — with a timestamp and where they
+came from.
+
+**How does it work, in one paragraph?** Think of a well-kept paper
+notebook. Every sentence you say gets written on its own line (so
+topics don't blur together). If you say something almost identical to
+an existing line, the notebook just underlines the old one harder
+instead of copying it twice. If you *correct* something ("actually I
+moved to Hangzhou"), the old note is crossed out — but not torn out,
+you can still peek at crossed-out notes when you ask about history.
+Every night-ish, short scribbles get condensed into clean summary
+notes, and anything untouched for months slowly fades. Finding notes
+works two ways at once: by meaning (even if the wording differs) and
+by exact keywords (part numbers, file paths, IDs).
+
+**Who does the thinking?** The notebook itself never thinks. A small
+mechanical program captures and fetches notes; your AI (the LLM you
+already use) makes every judgment call — what's important, what's
+outdated, what can be forgotten — through a small set of tools
+(`flymemory_remember`, `flymemory_supersede`, `flymemory_forget`, ...).
+This split — *dumb, reliable storage; smart, accountable model* — is
+the design's core bet, and every benchmark below exists to test it.
+
+**Do I need the research sections?** No. Everything up to
+[Install](#install) is enough to use it. The rest is the measured
+evidence: benchmarks, ablations, and a long list of things we tried
+that did *not* work (kept on purpose — negative results are part of
+the record).
 
 > Note on the name: v1 of this project was a pure Hopfield associative memory
 > inspired by the Drosophila mushroom body (kept below as [v1/v2](#v1v2-hopfield-experiments)).
@@ -312,6 +346,8 @@ standing regression guard for this decision. S-edition spot check (first
 150 questions, run under a saturated host): rrf 21.3%, state10 22.0%,
 state20 20.7% — within noise of plain RRF, same ordering by pool size.
 
+Can the AI actually *operate* the notebook correctly — update what changed, stay silent when nothing did, forget only what it should? This section grades exactly that, as a test the model takes.
+
 ## Memory Judgment Benchmark (Phase 1)
 
 Retrieval metrics answer "can the evidence be found"; they say nothing about
@@ -510,6 +546,8 @@ abstain. With a naive store it reaches 83-87% current but still leaks
 17% stale; only the state-maintenance arms reach 0% stale while staying
 at the 87% ceiling.
 
+Some questions need more than one lookup. This is what we measured when the assistant was allowed to search repeatedly with a time filter.
+
 ### TOOL2: time-scoped agentic search (56% strict)
 
 `bench_toolanswer.py --tool2` (TOOL2): the answer model's search_memory
@@ -557,6 +595,8 @@ them, which is the concrete argument for session-level consolidation
 (below). Not comparable to official LongMemEval end-to-end scores: they feed
 the full haystack (long-context setting), this is a memory-augmented top-k
 setting.
+
+When short notes get condensed into summaries, should the originals be thrown away? Measured answer: never throw them away — keep both. Replacing lost 10 accuracy points; keeping both gained 6.
 
 ### Granularity A/B: consolidation must OVERLAY, never replace
 
@@ -709,6 +749,8 @@ multi-session set, unsupported-claim rate 0/50 after the gate):
 This is a CALLER-side protocol: the server stays LLM-free. Cost is ~31
 short calls per question — route it explicitly (aggregation-class
 queries), never on the per-message hook path.
+
+Where FlyMemory sits among the alternatives, and the deliberate things it refuses to do.
 
 ## Design positioning
 
