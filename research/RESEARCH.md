@@ -138,6 +138,36 @@ geometry; capacity never substituted by structure; store until
 fringe-reachability; budget novelty screening by l_min and open the
 window with contrast; evict by redundancy; report arrival profile).
 
+## P73-PROBE: the controller prescribes FlyMemory's own defaults (2026-10-02)
+
+The Memory Geometry Controller (flyloop/flyloop/controller.py, zero free
+parameters, every rule bound to a registered law) was run against the
+production store's measured geometry (components@cos0.70 as classes,
+n_classes=175, 74.5% coverage; r=R/mind=0.139, nn/mind=0.688, ts=False,
+cov=1.000, clr=0.31, ff=0.081, lq in [0.83,1.67]):
+
+| axis | controller prescription | FlyMemory current default | agree |
+|---|---|---|---|
+| type | exemplar (full coverage, non-starved) | flat exemplar store | YES |
+| eviction | **random** (no two-scale structure -> core-first has no advantage, P113) | LRU-family (measured ~ random on this geometry, P-CLEANUP pre-study) | YES (equivalent here) |
+| verification | thresholded; deep writes tie-breaker only (V7C sign-undetermined) | none (any depth acceptable per R4) | YES |
+| query gate | UNRELIABLE at lq<1 (P70-b knee) | P70-b rule adopted in recall docstring | YES |
+| novelty | disabled (clr=0.31 <= 1, P53 blind) | no novelty screening | YES |
+| capacity | grow-to-plateau, target ~ ff x reachable support (ff=8.1%) | no explicit cap (cleanup is decay-driven) | partial (no cap enforcement) |
+
+**Reading: the six laws, run through the mechanical mapping, prescribe
+the configuration FlyMemory already ships.** This is the strongest
+closed-loop validation the program has: laws measured on synthetic
+families -> formal controller -> production store -> the same defaults
+an independent engineering process converged on. The two deltas are
+both known and deliberate: (1) D=384 has no registered cap* curve (R8
+feasibility note -- the controller's registered dimensions are 6/12;
+both give the same policy here since r is below the first knot);
+(2) capacity is not enforced as a hard cap (P-CLEANUP closed: upstream
+dedup already collected the redundancy dividend, so the store grows to
+its natural plateau). One actionable nuance re-confirmed: short queries
+(lq < 1, ~<6-12 tokens) are inside the controller's UNRELIABLE gate.
+
 ## The three-way distinction (round-17, formalized)
 
 Round-17 review converged with the experiments on the program's deepest
