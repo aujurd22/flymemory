@@ -42,13 +42,20 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 # key source (same file the run_*_with_key.py helpers use). Key stays
 # out of the repo and out of logs.
 if not os.environ.get("DEEPSEEK_API_KEY"):
+    # key file path is machine-local (flymemory/local_config.py is
+    # git-ignored); set DEEPSEEK_KEY_FILE or create local_config.py with
+    # DEEPSEEK_KEY_FILE=<path> on your own machine.
     try:
         import re as _re
-        _src = open(r"D:/djr82/Documents/trae/6a8dbce9f0e28e9922d54185"
-                    r"/hkt_login/audit_labels.py", encoding="utf-8").read()
-        _m = _re.search(r'api_key="([^"]+)"', _src)
-        if _m:
-            os.environ["DEEPSEEK_API_KEY"] = _m.group(1)
+        try:
+            from local_config import DEEPSEEK_KEY_FILE  # type: ignore
+        except ImportError:
+            DEEPSEEK_KEY_FILE = os.environ.get("DEEPSEEK_KEY_FILE", "")
+        if DEEPSEEK_KEY_FILE and os.path.exists(DEEPSEEK_KEY_FILE):
+            _src = open(DEEPSEEK_KEY_FILE, encoding="utf-8").read()
+            _m = _re.search(r'api_key="([^"]+)"', _src)
+            if _m:
+                os.environ["DEEPSEEK_API_KEY"] = _m.group(1)
     except Exception:
         pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

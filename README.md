@@ -735,6 +735,29 @@ so they neither retrieve nor answer better. Consolidation formats are now a
 measured spectrum: narrative (turns) -> prose summary -> timeline -> key-value
 (entity-state), with the optimum at timeline.
 
+## Lesson channel (never re-hit the same pitfall)
+
+Recurring mistakes have a dedicated mechanism (P-LESSON). Pitfall
+lessons live in a separate `lessons` compartment and follow a strict
+form: **they start with their trigger words** — the environment/tool
+names whose presence should recall them — because plain text similarity
+does not connect "a new task in X" with "don't do Y under X"; exact
+keywords do. The capture hook injects the top-2 lessons on EVERY
+message, in addition to normal recall, so lessons never compete for
+regular slots. Registering one:
+
+```json
+flymemory_remember(
+  text="PowerShell/Git Bash: inline quoting breaks -- write a script
+        file instead",
+  compartment="lessons", tags="lesson")
+```
+
+Rules for the caller: check `flymemory_recall(compartment="lessons")`
+before bug-fix/environment tasks; register every fixed pitfall. Honest
+limits: the FIRST occurrence of a pitfall is always hit (no lesson
+exists yet), and reading a lesson does not guarantee applying it.
+
 ## Aggregation protocol (caller-side, experimental)
 
 For questions that aggregate across many turns ("how many times...",

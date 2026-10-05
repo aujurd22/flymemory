@@ -30,7 +30,8 @@ import numpy as np
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-sys.path.insert(0, r"D:/djr82/flyloop")          # controller source
+sys.path.insert(0, os.environ.get(
+    "FLYLOOP_REPO", os.path.join(os.path.dirname(_HERE), "flyloop")))  # controller source
 
 from flyloop.controller import controller  # noqa: E402  (pure, no I/O)
 

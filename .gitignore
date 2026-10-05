@@ -41,3 +41,8 @@ run_crossmodel_ark.py
 run_m5_with_key.py
 run_combo_with_key.py
 run_discovery_ark.py
+flymemory/local_config.py
+dream.log
+p70_*.json
+p70b_*.json
+0@*.15

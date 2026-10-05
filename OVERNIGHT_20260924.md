@@ -53,7 +53,7 @@ in Chinese, translated per repo language policy).
 ## Reproduction commands
 
 ```bash
-PY="C:\Users\djr82\AppData\Local\Programs\Python\Python313\python.exe"
+PY="<python313>\python.exe"
 $PY bench_state_fidelity.py                      # state-fidelity audit
 $PY bench_memory_judgment.py --actor oracle      # harness check (all 1.0)
 DEEPSEEK_API_KEY=sk-... $PY bench_memory_judgment.py --actor deepseek --judge
