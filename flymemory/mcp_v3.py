@@ -107,6 +107,13 @@ def flymemory_remember(text: str, tags: str = "",
     usage vs 100% for declarative form). Corrections of earlier wrong
     answers: store the correct fact as a plain statement; the dedup and
     merge path will attach it to the evidence.
+
+    LESSON RULE (P-LESSON): pitfall/lesson entries MUST (a) start with
+    their TRIGGER WORDS -- the environment/tool names whose presence
+    should recall them ("PowerShell/Git Bash: inline quoting breaks --
+    write a script file instead"), because the lexical channel is the
+    situational trigger; (b) use compartment="lessons" so the hook's
+    fixed lesson channel can inject them on every message.
     Args:
         text: The text to remember
         tags: Optional comma-separated tags
@@ -166,7 +173,10 @@ def flymemory_recall(query: str, top_k: int = 5,
         query: The query text (can be partial/incomplete)
         top_k: Number of memories to return
         include_superseded: include entries marked as superseded
-        compartment: optional semantic-domain partition to scope recall
+        compartment: optional semantic-domain partition to scope recall;
+            pitfall/lesson entries belong in compartment="lessons" (the
+            hook injects a fixed top-2 of that compartment on every
+            message)
     Returns:
         Relevant memories with ids, scores, age and provenance stamps
     """
