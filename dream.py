@@ -37,10 +37,14 @@ if sys.stdout is None or sys.stderr is None:
     sys.stdout = sys.stderr = _log
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "flymemory"))
 
 # scheduled-task context has no shell env: fall back to the verified
 # key source (same file the run_*_with_key.py helpers use). Key stays
-# out of the repo and out of logs.
+# out of the repo and out of logs.  NOTE: the sys.path inserts above
+# must precede this block -- local_config lives next to dream.py.
 if not os.environ.get("DEEPSEEK_API_KEY"):
     # key file path is machine-local (flymemory/local_config.py is
     # git-ignored); set DEEPSEEK_KEY_FILE or create local_config.py with
