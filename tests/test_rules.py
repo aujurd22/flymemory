@@ -730,3 +730,31 @@ def test_v4_state_lookup_supersedes_all_older_same_key(mem, warm_model):
     hist = mem.state_history("user.phone")
     assert len(hist) == 3
     assert sum(1 for m in hist if m.superseded_by is None) == 1
+
+
+def test_state_keyed_writes_never_merge(mem):
+    """Two different state_keys with similar texts must create separate
+    entries -- a merge would let the second key overwrite the first
+    (found 2026-10-03: cloud.instance was buried by cloud.experiments)."""
+    mem.remember_text("flyloop 云端实例状态:已关机,当前无实例运行",
+                      state_key="a.instance", state_value="off")
+    mem.remember_text("flyloop 云端实验线状态:已在本地完成,云端待重启",
+                      state_key="a.experiments", state_value="local")
+    a = mem.state_lookup("a.instance")
+    b = mem.state_lookup("a.experiments")
+    assert a is not None and b is not None, "keyed writes merged away a key"
+    assert "关机" in a.text and "待重启" in b.text
+
+
+def test_state_same_key_rewrite_supersedes(mem):
+    """Same state_key rewrite keeps the I1 chain: exactly one active."""
+    mem.remember_text("服务器当前 IP 是 192.168.1.50",
+                      state_key="srv.ip", state_value="192.168.1.50")
+    mem.remember_text("服务器当前 IP 改成了 192.168.1.99",
+                      state_key="srv.ip", state_value="192.168.1.99")
+    cur = mem.state_lookup("srv.ip")
+    assert cur is not None and "1.99" in cur.text
+    assert cur.superseded_by is None
+    hist = mem.state_history("srv.ip")
+    assert len(hist) == 2
+

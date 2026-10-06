@@ -558,6 +558,17 @@ class SmartMemory:
         new_tokens = (_tokenize(text) - _tokenize(best_match.text)
                       ) if best_match is not None else set()
 
+        # v4 keyed-write rule (bug found 2026-10-03): two DIFFERENT
+        # state_keys whose texts are similar must never merge or
+        # strengthen -- the merge path's state_key ride-along would let
+        # the second key OVERWRITE the first (state_lookup then loses the
+        # first state entirely). Keyed writes always create their own
+        # entry; the I1 active-unique chain below handles same-key
+        # replacement.
+        if state_key and best_match is not None:
+            best_match = None
+            best_sim = -1.0
+
         if best_sim > dup_t and not new_tokens:
             best_match.access_count += 1
             best_match.last_accessed = time.time()
