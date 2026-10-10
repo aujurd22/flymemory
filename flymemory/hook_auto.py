@@ -73,8 +73,19 @@ def main():
                                         if isinstance(c, dict))
         except Exception:
             lesson_text = ""
-        if text.strip():
-            block = ("<flymemory>\n[flymemory 召回]\n" + text[:1500] + "\n")
+        # 乱回忆门: top-1 相似度过低说明当前消息与库内记忆无实质关联——
+        # 硬塞 5 条弱相关条目只会制造时序混乱和噪音。低置信时只保留
+        # RECENT 与 lessons 通道，正常召回照旧。
+        import re as _re
+        low_conf = False
+        try:
+            sims = [float(x) for x in _re.findall(r"sim=(0\.\d+)", text)]
+            low_conf = bool(sims) and max(sims) < 0.40
+        except Exception:
+            low_conf = False
+        if text.strip() and not low_conf:
+            block = ("<flymemory>\n[flymemory 召回——每条带日期，时序冲突"
+                     "以日期新者为准]\n" + text[:1500] + "\n")
             if lesson_text.strip():
                 block += ("\n[lessons 教训通道——踩过的坑，先看再动手]\n"
                           + lesson_text[:800] + "\n")

@@ -201,15 +201,17 @@ def mem_decay_pct(entry, mem):
     return dw * 100
 
 def _age_str(ts: float) -> str:
-    """记忆条目的相对年龄标注——模型据此把旧状态当'可能已过期'处理，而非当前事实。"""
+    """相对年龄+绝对日期双标注。只有相对时长时模型需要心算换算才能
+    比较新旧（实测时序混乱的成因之一）；绝对日期让"哪条更新"一眼可判。"""
     dt = time.time() - ts
+    day = time.strftime("%m-%d", time.localtime(ts))
     if dt < 90:
-        return "刚刚"
+        return f"刚刚({day})"
     if dt < 3600:
-        return f"{int(dt // 60)}分钟前"
+        return f"{int(dt // 60)}分钟前({day})"
     if dt < 86400:
-        return f"{int(dt // 3600)}小时前"
-    return f"{int(dt // 86400)}天前"
+        return f"{int(dt // 3600)}小时前({day})"
+    return f"{int(dt // 86400)}天前({day})"
 
 @mcp.tool()
 def flymemory_stats() -> str:
