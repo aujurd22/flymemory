@@ -168,6 +168,39 @@ dedup already collected the redundancy dividend, so the store grows to
 its natural plateau). One actionable nuance re-confirmed: short queries
 (lq < 1, ~<6-12 tokens) are inside the controller's UNRELIABLE gate.
 
+## Phase decision: CONVERGENCE (2026-10-11, round-18 external review adopted)
+
+The round-18 review (first one with zero stale-cache errors -- every
+cited commit verified: P269 seed expansion FAILED as recorded, flypoet
+650M matched pair, flyloop V11 pre-registration) made one structural
+critique that the internal record confirms: **the program has ~270
+registered predictions and zero flagship results** -- no single
+packaged, externally-checkable claim that an outsider can restate,
+compare against existing methods, and replicate.
+
+ADOPTED, effective immediately:
+1. **No new research lines.** The expansion phase is closed. New work
+   must serve one of the flagship conclusions below.
+2. **Flagship assignments:**
+   - FlyPoet = the research paper: "the sparse-learning benefit comes
+     from stable feature subsets + update throttling, not from sparse
+     representation itself" -- multi-seed fair replication + training-
+     budget controls + a current PAPER.md.
+   - FlyMemory = the product claim: memory-augmented answering with
+     the measured aggregation protocol (16% vs 6%) and stale 0%
+     (P-ANCH-1/state machine), **compared against external baselines**
+     (published LongMemEval end-to-end numbers / Mem0-style setup) --
+     the one comparison never run; internal arms alone do not prove
+     advantage.
+   - intuition-mechanism = the boundary map: C1/C2 two-condition law +
+     insight/hallucination boundary (Arena, P269's honest nulls) --
+     explicitly NOT claiming "reproduced Ramanujan intuition".
+   - flyloop = verification harness in service of the above; the
+     strong self-improvement claim stays withdrawn (G4').
+3. **Stop rule:** at the end of the convergence window, if a flagship
+   claim still lacks external validation, the claim is narrowed
+   honestly rather than the experiment budget expanded.
+
 ## The three-way distinction (round-17, formalized)
 
 Round-17 review converged with the experiments on the program's deepest
