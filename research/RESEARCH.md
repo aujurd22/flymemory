@@ -266,6 +266,38 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-03-COMMIT · committee-consistency write gate for
+selflearner** (registered BEFORE the run; verdict PENDING). From the
+committee-lobe v2 bench (known-cue agreement 0.998 vs novel 0.23 --
+near-perfect OOD self-report) and the selflearner pain point (single
+write path has NO OOD check; L4's silent small-edit losses were the
+cost). Question: does a K-lobe committee consistency gate, inserted as
+the second admission gate in selflearner's write path, correctly admit
+known-family proposals and flag novel/foreign ones?
+
+- Mechanism: K=5 independent random projections (384->192) of the
+  181k mathlib statement vectors; per lobe, cosine top-1; agreement =
+  fraction of lobes whose top-1 statement id matches the modal id.
+- Gate placement: AFTER the existing gates (name collision / exact
+  restatement / semantic-dup 0.93) -- committee is the second,
+  independent signal, not a replacement.
+- Thresholds (from the measured separation 0.998/0.23, margin at 0.9):
+  agreement >= 0.9 -> ADMIT; 0.5 <= agreement < 0.9 -> ADMIT but tag
+  "committee-uncertain" (kept, observable); agreement < 0.5 -> REJECT
+  as "OOD-of-library" (the proposal is about something the corpus does
+  not cover -- for a lemma-admission pipeline that is a duplication or
+  off-domain signal, the conservative default).
+- Budget guard: committee runs only on proposals that passed all prior
+  gates (~5 matmuls of 192x384 per proposal -- negligible).
+- Validation run: 20 known-family proposals (rephrasings of mathlib
+  theorems, must ADMIT) + 10 off-domain statements (cooking, sports,
+  gossip -- must REJECT). SUPPORTED iff >= 18/20 known admitted AND
+  >= 9/10 off-domain rejected; PARTIAL if one side holds; NULL if both
+  fail. Script: selflearner/committee_gate.py + patch to propose_check.
+  VERDICT: PENDING.
+
+
+
 **P-2026-10-02-LAW1 · Insight Law discriminative experiment** (registered
 BEFORE the run; verdict PENDING). Operationalizes the round-17
 recommendation: Insight Law v1 is only a theory if Score(structure)
