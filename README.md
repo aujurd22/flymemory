@@ -974,10 +974,21 @@ Measured on a real 1370-entry library, CPU (see `bench_recall_speed.py`,
 | End-to-end recall | ~11.5 ms/query |
 | Hopfield associative expansion vs pure vector recall | Recall@5 0.189 → 0.043 — **hurts**; disabled by default |
 
-The Hopfield result is a capacity story: 1370 patterns far exceed what a
-4096-bit binary matrix can separate, so crosstalk dominates. The layer remains
-available behind `SmartMemory(enable_hopfield=True)` for small-N experiments —
-run `bench_hopfield.py` before trusting it.
+**REVISITED 2026-10-03: the v1 Hopfield path was broken from day one --
+the original "N=1370 crosstalk" reading was wrong.** The v1 hash encoder
+(`encoder.py`) has a k-WTA boundary bug: a short text hashes to ~200
+non-zero bits, but k=204 (`5% of 4096`) makes `np.partition(code, -k)[-k]`
+land on 0.0, so `code >= 0.0` sets every zero bit to 1 as well -- **every
+text encodes to the same all-ones vector** (reproduced 2026-10-03: three
+unrelated sentences, bit-identical 4096/4096 codes). The 2026-09-22
+"N=1370 patterns exceed capacity" verdict therefore measured 3 identical
+all-ones codes, not capacity limits. Secondary: even with a fixed sparse
+code, `sign(W·s)` iteration converges to the all +1 attractor
+(classic unbalanced-Hebbian bias); centered Hebbian and view-normalized
+variants do not rescue it. The production path (v3 embed+RRF) never used
+this encoder and is unaffected. The biology-correct reading is one-step
+linear readout (MBON-style: fixed synaptic weights, no recurrent
+dynamics) -- 200/200 perfect recall in the committee bench.
 
 ## Two-stage retrieval (Hamming prefilter + dense rerank)
 
