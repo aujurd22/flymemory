@@ -183,6 +183,46 @@ dedup already collected the redundancy dividend, so the store grows to
 its natural plateau). One actionable nuance re-confirmed: short queries
 (lq < 1, ~<6-12 tokens) are inside the controller's UNRELIABLE gate.
 
+## Hy-Memory comparison & contribution plan (2026-10-16)
+
+Tencent Hunyuan open-sourced Hy-Memory 2.0 (three-scene dual-system
+memory: Chat 8-layer / Working two-layer / Coding diff-chain; EMNLP
+2026 paper + CMB benchmark submitted to ICLR 2027 + 30B-A3B
+attributed-RL writing model). Full comparison by the memory-boundary
+project: `D:/djr82/memory_boundary/VERSUS_HYMEMORY.md`.
+
+**Complementarity verdict**: they own engineering maturity (SDK /
+MemHub / multi-backend), the benchmark niche (CMB, 216 tasks + 750
+diagnostic questions, 36.6% collective failure), and the writing-model
+asset (30B-A3B). We own what they lack: the failure-boundary phase
+diagram (their conflict reconciliation has no quantitative "when does
+it fail"), L4's precise mechanism split (P-PHASE-1), L6 (entirely
+unique to us), L5 type-split retrieval, and negative-result discipline.
+
+**Contribution sequence (flymemory side, fits the CONVERGENCE window
+as external-baseline work):**
+1. **L6-anchored vs 30B (cheapest, sharpest)**: on CMB's
+   conflict-reconciliation task subset, three arms -- small model
+   no-anchor / small model + L6 anchor prompt / their 30B-A3B. If
+   anchor+small >= 30B - 3pp, L6 gains an industrial-grade replication
+   AND challenges the "writing needs a dedicated 30B model" narrative.
+2. **Phase-diagram transfer onto CMB tasks**: run the five-arm +
+   three-axis protocol on their frozen trajectories; if the cluster
+   hierarchy lifts their attribute-class questions, the phase diagram
+   is validated on an external benchmark (direct contribution to THEIR
+   benchmark).
+3. **Cite CMB's 36.6% collective failure as the motivation source**
+   for the phase-diagram paper (they show the gap exists; we give the
+   quantitative boundary and the repair).
+
+Adjacent evidence already landed by the memory-boundary project
+(2026-10-16): H1-H6 chain closed on a 200-pair x 4-arm mechanical run
+-- supersede-gate trigger is delta-monotonic, the time-filter cost
+concentrates in the 0.7-0.9 delta bin, and the counter-intuitive
+finding that stale rate PEAKS at mid-delta (0.5-0.7 bin, 26%;
+attribute updates are the worst family at 46%) gives the LLM-side run
+a sharper prediction target.
+
 ## Phase decision: CONVERGENCE (2026-10-11, round-18 external review adopted)
 
 The round-18 review (first one with zero stale-cache errors -- every
