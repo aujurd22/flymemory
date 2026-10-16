@@ -1,0 +1,161 @@
+{
+ "n_laws": 14,
+ "n_verified": 14,
+ "n_files_missing": 0,
+ "rows": [
+  {
+   "id": "L1",
+   "law": "未标注属性轴从纯语流共现中无监督涌现（上下文分布+谱聚类）",
+   "file": "bench_kiko_emergence_result.json",
+   "file_exists": true,
+   "key_metric": "noun_cluster_purity",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "单轴世界; 混合轴需子流隔离（L4）"
+  },
+  {
+   "id": "L2",
+   "law": "涌现轴可自动注册为槽位并接入语言产出（发现→可用闭环）",
+   "file": "bench_kiko_axis_register_result.json",
+   "file_exists": true,
+   "key_metric": "registration_to_production",
+   "measured": true,
+   "expected": true,
+   "verified": true,
+   "boundary": "轴值候选需过滤数字词"
+  },
+  {
+   "id": "L3",
+   "law": "轴发现跨世界鲁棒（10 独立世界 39/40 轴，假阳性 0）",
+   "file": "bench_kiko_robust_result.json",
+   "file_exists": true,
+   "key_metric": "false_axes_per_world",
+   "measured": 0.0,
+   "expected": 0.0,
+   "verified": true,
+   "boundary": "属性值覆盖 <25% 名词时数据稀疏可能漏检（大轴 9/10）"
+  },
+  {
+   "id": "L4",
+   "law": "多轴混合流稀释单轴效应量（0.71→0.09）——子流隔离注册修复",
+   "file": "bench_kiko_multiaxis_result.json",
+   "file_exists": true,
+   "key_metric": "R3_combined_production",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "要求按 value 拆子流"
+  },
+  {
+   "id": "L5",
+   "law": "对话失败日志可无监督发现新问句框架（marker 频率+门控）",
+   "file": "bench_kiko_iter_result.json",
+   "file_exists": true,
+   "key_metric": "patterns_learned",
+   "measured": 3,
+   "expected": 3,
+   "verified": true,
+   "boundary": "marker 必须有公共前缀; 抗噪边界见 L6/L10"
+  },
+  {
+   "id": "L6",
+   "law": "机制注册有干扰效应——新框架 few-shot 侵占共享字维度；无条件联合重训+撤销恢复",
+   "file": "bench_kiko_errstress_result.json",
+   "file_exists": true,
+   "key_metric": "final_acc_after_revert",
+   "measured": 0.667,
+   "expected": 0.667,
+   "verified": true,
+   "boundary": "'噪声'类公共前缀噪声仍会误提案（发⑭负结果）"
+  },
+  {
+   "id": "L7",
+   "law": "涌现槽位可跨脑教学扩散（共享编码器下 P3 3 代 1.0）",
+   "file": "bench_kiko_share9_result.json",
+   "file_exists": true,
+   "key_metric": "final_coverage",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "符号绑定教学与编码器无关; 连续表征教学需共享空间"
+  },
+  {
+   "id": "L8",
+   "law": "多轮对话一致性（代词链/话题回切/跨干扰记忆）",
+   "file": "bench_kiko_multiturn_result.json",
+   "file_exists": true,
+   "key_metric": "M1_pronoun_chain",
+   "measured": true,
+   "expected": true,
+   "verified": true,
+   "boundary": "聚光灯栈深度有限; 无限长对话未测"
+  },
+  {
+   "id": "L9",
+   "law": "成长循环零灾难性遗忘（24 轮 acc 全 1.0）",
+   "file": "bench_kiko_retention_result.json",
+   "file_exists": true,
+   "key_metric": "staircase_clean",
+   "measured": true,
+   "expected": true,
+   "verified": true,
+   "boundary": "合成世界; 真实分布漂移未测"
+  },
+  {
+   "id": "L10",
+   "law": "轴发现门控的抗噪边界（4/4 世界判别）",
+   "file": "bench_kiko_stress_result.json",
+   "file_exists": true,
+   "key_metric": "gate_score",
+   "measured": "4/4",
+   "expected": "4/4",
+   "verified": true,
+   "boundary": "多轴世界只检出 1 轴（剥离遗留）"
+  },
+  {
+   "id": "L11",
+   "law": "语流切分（Saffran 范式）在无空格中文上 F1=1.0，切分词表=真词表",
+   "file": "bench_kiko_segment_result.json",
+   "file_exists": true,
+   "key_metric": "final_f1",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "合成词表; 真实儿童语料未测"
+  },
+  {
+   "id": "L12",
+   "law": "多轴轮转问答全 1.0（子流隔离注册修复混合流稀释）",
+   "file": "bench_kiko_multiaxis_result.json",
+   "file_exists": true,
+   "key_metric": "R3_combined_production",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "每 value 需独立子流"
+  },
+  {
+   "id": "L13",
+   "law": "群体成长：非对称体验下 P3 教学 3 代 coverage 0.861→1.0（部分覆盖教学门控修复）",
+   "file": "bench_kiko_colony_teach_result.json",
+   "file_exists": true,
+   "key_metric": "final_slot_coverage",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "教学门控必须接受部分覆盖者"
+  },
+  {
+   "id": "L14",
+   "law": "涌现轴跨世界更新：世界翻转后 slot 100% 更新零残留+选择性覆写",
+   "file": "bench_kiko_crossworld_result.json",
+   "file_exists": true,
+   "key_metric": "slot_after_B",
+   "measured": 1.0,
+   "expected": 1.0,
+   "verified": true,
+   "boundary": "合成世界; 真实信念更新未测"
+  }
+ ]
+}

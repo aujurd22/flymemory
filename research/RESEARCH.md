@@ -16,6 +16,21 @@ fail is experimentally measurable.
 
 ## Testbeds (two experimental axes of the same question)
 
+> **2026-10-16 update:** a third, engineering-axis testbed landed in this
+> repo from the parallel session: **KIKO-1** (KIKO_PROFILE.md, 35 benches
+> with results) -- a 24-lobe chimeric fly-brain stack (numpy: random
+> projection expansion + k-WTA 10% + linear readout + per-lobe memory
+> stores, fusion voter, dopamine reward channel), dormant-pool verified at
+> 200 resident processes with sub-ms wake. Headline results: committee
+> known/novel 0.998/0.23, infant-Chinese +13.5pp with visual grounding,
+> true-concurrency W=4 sweet spot 0.865, pure-NumPy brain RSS 74MB. Role:
+**the "many small brains around an LLM" engineering substrate -- the
+> compression half runs here at process scale**, complementing FlyPoet
+> (activation compression inside one model) and FlyMemory (episodic
+> compression of experience). Not yet git-tracked (179 files pending the
+> other session's own commit; left untouched by this update).
+
+
 | Testbed | Compression form | Local mechanism | Downstream capability |
 |---|---|---|---|
 | **FlyMemory** | memory compression (dedup / supersede / merge / consolidation) | similarity selection + time decay | QA accuracy, stale rate |
