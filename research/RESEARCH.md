@@ -321,6 +321,37 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-16-CLUSTER · unsupervised entity-version cluster layer**
+(registered BEFORE the run; verdict PENDING). From the memory_boundary
+project's H4b/H5/H6 (seven pre-registered experiments, sealed
+2026-10-16): entity-version pairs form dense cos>=th regions, so
+connected components over NORMALIZED embedding edges recover supersede
+lineages without naming rules (H5 on this store: 99.5% recovery / 0.6%
+cross-link at th=0.55); exploiting the cluster (newest-by-timestamp
+within cluster wins for "current" queries) removed the largest failure
+class (H4: attribute stale 46%->0%; H6 e2e 14%->89%).
+
+- Deliverable: `flymemory/clusters.py` -- a standalone experimental
+  module (NOT wired into default recall; CONVERGENCE discipline: the
+  capability lands validated-but-opt-in).
+- Reproduction gate on the CURRENT production snapshot (store grew from
+  ~16.5k; re-measure, do not trust the old numbers): threshold scan
+  0.5/0.55/0.6/0.65, sampling 200 multi-member lineages: SUPPORTED iff
+  lineage recovery >= 99% AND cross-link <= 1% at some threshold in
+  {0.55, 0.6}.
+- Fix demo (middle-version trap, H6-style, supersede marks HIDDEN):
+  for each sampled lineage (len>=2), query with the oldest member text,
+  arm A1 = top-1 by cosine; arm CLUSTER = cluster-of-top-1 -> newest
+  member by timestamp. SUPPORTED iff stale(A1) - stale(CLUSTER) >= 30pp.
+- Safety: singleton clusters must resolve to themselves (no behavior
+  change for the vast majority of entries); normalization invariance
+  covered by a unit test (the pkl stores UNNORMALIZED embeddings --
+  the normalize-before-compare trap recorded by memory_boundary).
+- VERDICT: PENDING. Module: flymemory/clusters.py; bench:
+  bench_cluster_layer.py; tests: tests/test_clusters.py.
+
+
+
 **P-2026-10-03-COMMIT · committee-consistency write gate for
 selflearner** (registered BEFORE the run; verdict PENDING). From the
 committee-lobe v2 bench (known-cue agreement 0.998 vs novel 0.23 --
