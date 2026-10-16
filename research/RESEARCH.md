@@ -350,6 +350,32 @@ class (H4: attribute stale 46%->0%; H6 e2e 14%->89%).
 - VERDICT: PENDING. Module: flymemory/clusters.py; bench:
   bench_cluster_layer.py; tests: tests/test_clusters.py.
 
+**VERDICT (2026-10-16, three escalating replays): NULL -- and the
+replays uncovered a metric flaw in the source work (H5).** Chain:
+(1) whole-store connected components PERCOLATE on the production store:
+at th=0.55 a **98% giant component (16,264/16,588)** forms -- median NN
+cosine here is 0.69, direct random-pair edges are 0.4% but
+both-in-giant is 95.6%, so **H5's "99.5% lineage recovery" is
+TRIVIALLY satisfied** (any pair is "in one cluster"); its cross-link
+metric (direct edges only) structurally cannot see percolation.
+(2) Local pool resolution (H6-faithful, top-10 pool of ALL entries):
+A1 stale 92% vs CLUSTER stale 93% -- delta -1pp. The binding constraint
+is upstream: **newest character only enters the top-10 pool in 67% of
+cases**, so the resolver usually has nothing to resolve -- consistent
+with the program's standing verdict that collection, not resolution, is
+the bottleneck (P-TREE/P-NEEDLE/P-AGENT line). (3) H6's own +75pp
+(14->89) was measured on 5-8-entry synthetic pools (lineage + 3
+distractors, query = oldest-member prefix) -- a within-pool resolver
+test, not an end-to-end one; the capability EXISTS given both versions
+in the pool, but production recall does not deliver that precondition.
+**Line closed under CONVERGENCE: no wiring.** `flymemory/clusters.py`
+stays as the audited carrier of the local resolver (unit-tested,
+normalize-first fix included); the result feeds the phase-diagram paper
+as a boundary datum: structural layers help inside the pool, not at
+pool construction. Recommendation to the source project (memory_boundary):
+replace the whole-store recovery metric with a percolation-aware one
+(giant-component fraction, direct-edge vs component-reach distinction).
+
 
 
 **P-2026-10-03-COMMIT · committee-consistency write gate for
