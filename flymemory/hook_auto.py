@@ -20,6 +20,14 @@ def main():
         head = prompt.lstrip()[:200]
         if head.startswith("<system-reminder") or "Continue working toward the active session goal" in head:
             return
+        # 自动化/心跳调度消息同样不是用户输入：约定调度提示首行放
+        # "AUTOMATION-DISPATCH:" 标记，旧格式开头（已知自动化）作兜底。
+        # 2026-10-17 实测事故：flybeing 心跳提示词被拆成 32 条碎片入库，
+        # 当天唤醒的召回前几条全是自己的提示词而非记忆。
+        if ("AUTOMATION-DISPATCH:" in head
+                or head.startswith("flybeing 心跳唤醒")
+                or "KIKO 6 小时陪伴教育到点检查" in head):
+            return
         # 凭据永不入库：token 密钥一旦进入记忆库，会被召回注入未来所有会话
         if any(pat in prompt for pat in ("ghp_", "github_pat_", "pypi-AgEI", "sk-ant-", "sk-proj-",
                                          "AKIA", "-----BEGIN", "xoxb-", "xoxp-")):

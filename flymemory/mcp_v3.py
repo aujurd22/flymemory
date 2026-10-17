@@ -477,10 +477,12 @@ def flymemory_auto(context: str, response: str = "") -> str:
 
         recalled_ids = set()
         # ===== RECALL: find relevant memories =====
+        recall_parts = []          # defined for EVERY path: the final hint
+        # check below reads it unconditionally (parallel-session finding,
+        # 2026-10-17: empty-library first run raised NameError here)
         if mem.size > 0:
             results = mem.recall(context, top_k=3)
             if results:
-                recall_parts = []
                 for entry, sim, eff in results:
                     if sim > 0.4:  # only report meaningful matches
                         recalled_ids.add(entry.memory_id)

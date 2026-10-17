@@ -24,6 +24,15 @@ Usage:
 CRITICAL: embeddings in the production pkl are UNNORMALIZED (norms
 3-4). Every cosine comparison here normalizes first -- the
 normalize-before-compare trap (memory_boundary README).
+
+SCALE LIMIT (parallel-session finding, 2026-10-17): construction is
+O(n^2) edges in Python -- fine offline at 16.5k entries (~12s), NOT
+usable inside the recall path (per-query latency). If this layer is
+ever wired into a hot path, replace the union-find with
+scipy.sparse.csgraph.connected_components. Also: whole-store clustering
+percolates on dense stores (98% giant component at th=0.55; see
+P-CLUSTER verdict in research/RESEARCH.md) -- use the LOCAL pool API
+(current_for on retrieved candidates), never whole-store components.
 """
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence
