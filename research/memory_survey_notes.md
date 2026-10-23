@@ -288,3 +288,13 @@ v1 哈希编码器 k-WTA 边界 bug:短文本词哈希仅 ~200 个非零位,k=20
 良好" vs "我们的 Hopfield 有害"),除了容量解释外,先排查实现 bug——
 全 1 向量这种病态输出应该在任何 sanity check 里被抓到,当年没有做
 码本多样性检查。**
+
+## scope-recall-hermes(410979729,456★,MIT,2026-10-24 分析)——全程最像的姊妹项目
+
+**定位**:本地长期记忆 for Hermes/Codex/Claude Code/WorkBuddy/dsh 五 harness;一库多端("tell one, all recall");SQLite 为事实权威 + LanceDB 向量索引可重建;证据积累制("facts from accumulated evidence, not judged on sight")= 我们的 overlay/L1 同款哲学;原始聊天绝不静默变档案 = 我们的"服务器零 LLM"同款纪律。
+
+**他们有我们没有的(四样)**:①多 harness 适配层( systematic adapter pattern);②SQLite 权威+向量可重建架构(绕开"改库先停服");③面向用户的记忆 CLI(浏览/纠正/删除带依赖展示);④基准设计规整度——三主四域五 scope 七任务配硬负例,指标含 recall@k/MRR/nDCG/**"被替换值压过当前值"率**、弃答率、跨 scope 泄漏门、包大小/延迟/通道归因,CI 卡 scope 泄漏。基准自述"刻意不建立整合质量"——正是我们失效边界工作填的位置。
+
+**我们有他们没有的**:定律账本+失效边界相图+状态机纪律(supersede 谱系/I1)+L6+map-reduce 实测+199k 规模验证+渗透分析。重心差异:他们产品/工程优先(CLI/适配器/迁移/回执),我们研究/定律优先(账本/边界/预注册)。
+
+**可借鉴排序**:①"被替换值压过当前值"逐问句指标→加进 judgment 基准;②跨 scope 隔离 CI 门→compartment 测试;③向量可重建架构→v5 设想。**注意重叠**:他们支持 dsh,而并行会话刚做了 FlyMemory DSH 插件——DSH 记忆生态现有两选项;其"一库多端"需求被 456★ 部分验证。**贡献机会**:其基准"刻意不测整合质量/失效边界"= 我们相图工作可作为其诊断层的候选贡献(同 Hy-Memory 模式)。
