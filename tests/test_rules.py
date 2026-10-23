@@ -758,3 +758,32 @@ def test_state_same_key_rewrite_supersedes(mem):
     hist = mem.state_history("srv.ip")
     assert len(hist) == 2
 
+
+
+def test_scope_isolation_compartment_never_leaks(mem):
+    """Cross-scope isolation gate (borrowed from scope-recall-hermes
+    benchmark design, 2026-10-24): entries stored in one compartment must
+    NEVER appear in another compartment's recall, regardless of similarity.
+    CI gate: any leak fails the suite."""
+    mem.remember_text("alice 项目的部署配置在 config/alice.yaml",
+                      compartment="alice", force_new=True)
+    mem.remember_text("bob 项目的部署配置在 config/bob.yaml",
+                      compartment="bob", force_new=True)
+    a_hits = mem.recall("部署配置在哪里", top_k=10, compartment="alice")
+    b_hits = mem.recall("部署配置在哪里", top_k=10, compartment="bob")
+    a_texts = " ".join(h[0].text for h in a_hits)
+    b_texts = " ".join(h[0].text for h in b_hits)
+    assert "alice.yaml" in a_texts and "bob.yaml" not in a_texts, \
+        "compartment alice leaked bob content"
+    assert "bob.yaml" in b_texts and "alice.yaml" not in b_texts, \
+        "compartment bob leaked alice content"
+
+
+def test_scope_isolation_no_compartment_is_global(mem):
+    """Without a compartment filter, recall sees everything (the isolation
+    must be opt-in, not a global silent filter)."""
+    mem.remember_text("carol 项目的部署配置在 config/carol.yaml",
+                      compartment="carol", force_new=True)
+    hits = mem.recall("部署配置在哪里", top_k=10)
+    assert any("carol.yaml" in h[0].text for h in hits), \
+        "global recall lost compartment content it should see"

@@ -183,6 +183,33 @@ dedup already collected the redundancy dividend, so the store grows to
 its natural plateau). One actionable nuance re-confirmed: short queries
 (lq < 1, ~<6-12 tokens) are inside the controller's UNRELIABLE gate.
 
+## Borrowed infrastructure (2026-10-24, from scope-recall-hermes)
+
+Three engineering adoptions from the closest sibling project
+(github.com/410979729/scope-recall-hermes, 456 stars, MIT -- local
+long-term memory for five harnesses, one SQLite store, evidence-backed
+facts; the survey's closest sibling to FlyMemory):
+
+1. **Human-facing CLI** (`flymemory_cli.py` rewritten): stats / search /
+   history (supersede lineage view) / dependents (pre-delete view:
+   evidence back-links, replaced-by, state_key orphans) / forget (via the
+   running service, dependents shown first) / correct (remember +
+   supersede, the L6 anchored protocol). Reads run offline on a snapshot;
+   writes go through the running service (改库先停服 rule).
+2. **Rebuildable store** (`flymemory/maintenance.py`): facts are the
+   authority (SQLite export, model-independent), embeddings are a
+   rebuildable companion. `rebuild-embeddings` re-embeds all 18.5k texts
+   (~5 min) preserving memory ids and lineage -- validated: zero
+   mismatches on supersede/evidence/state fields, recall intact. Solves
+   model switching and corruption recovery. Guarded: refuses while the
+   service runs (port probe, not HTTP -- the MCP endpoint 4xx-rejects
+   bare POSTs and would read as down).
+3. **Benchmark design**: cross-scope isolation is now a CI gate
+   (tests/test_rules.py: compartments never leak, non-compartment recall
+   stays global); the "replaced value outranks current" metric is
+   formalized (measured 92% on old-prefix queries -- bench_cluster_layer
+   v3's A1 arm is this metric on production lineages).
+
 ## Hy-Memory comparison & contribution plan (2026-10-16)
 
 Tencent Hunyuan open-sourced Hy-Memory 2.0 (three-scene dual-system
