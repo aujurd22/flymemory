@@ -12,7 +12,7 @@ Tools:
                                 所有会话共享一份模型与记忆，连接毫秒级；
                                 端口已被占用时直接退出（幂等，适合开机自启）。
 """
-import sys, os, json, pickle, time, socket, argparse, threading
+import sys, os, json, pickle, time, socket, argparse, threading, re
 import numpy as np
 _here = os.path.dirname(os.path.abspath(__file__))
 # 包目录与其父目录都入 path：父目录保证 `import flymemory` 成立（不依赖 PYTHONPATH），
@@ -74,7 +74,48 @@ def save_memory():
     if _mem is None: return
     save(_mem, DB_PATH)
 
-from mcp.server.fastmcp import FastMCP
+# ----- multi-app provenance -----
+# One shared store is used by several host apps (ZCode, Qoder, ...). Every
+# write is stamped with an "app:<name>" tag so recall can show which software
+# produced an entry. The name comes from, in order: the tool argument, the
+# ?app= query parameter of the HTTP MCP URL, FLYMEMORY_APP, then "unknown".
+_APP_SLUG = re.compile(r"[^a-z0-9_.-]+")
+
+def _norm_app(value: str) -> str:
+    v = _APP_SLUG.sub("-", (value or "").strip().lower()).strip("-._")
+    return v[:32]
+
+def _query_app(ctx) -> str:
+    try:
+        request = ctx.request_context.request
+        if request is not None:
+            return _norm_app(request.query_params.get("app", ""))
+    except Exception:
+        pass
+    return ""
+
+def _resolve_app(app: str, ctx) -> str:
+    return (_norm_app(app) or _query_app(ctx)
+            or _norm_app(os.environ.get("FLYMEMORY_APP", "")) or "unknown")
+
+def _app_of(entry) -> str:
+    apps = [t[4:] for t in entry.tags if t.startswith("app:")]
+    return "+".join(apps) if apps else "legacy"
+
+def _stamp_app(mem, memory_id: int, app: str) -> None:
+    """Add the app tag to a touched entry (merge/strengthen keeps old tags).
+    Untagged entries predate provenance tracking and are marked legacy first,
+    so a later restatement does not erase the fact that they came from before."""
+    tag = f"app:{app}"
+    for entry in mem.memories:
+        if entry.memory_id == memory_id:
+            if not any(t.startswith("app:") for t in entry.tags):
+                entry.tags.append("app:legacy")
+            if tag not in entry.tags:
+                entry.tags.append(tag)
+            return
+
+from mcp.server.fastmcp import FastMCP, Context
 
 # stateless_http=True：不跟踪会话，每个请求自包含——服务重启不会使已连接的
 # ZCode 会话失效（否则报 Session not found 且客户端不会自动重连）。
@@ -89,12 +130,18 @@ Use flymemory_remember to store important findings (source=model).
 Use flymemory_recall to retrieve; pass include_superseded for history queries.
 Use flymemory_supersede to mark an outdated memory as replaced by a newer one.
 Use flymemory_cleanup to remove fully decayed memories.
+
+Multi-app sharing: the store is shared across host apps. Every entry carries
+an app:<name> tag naming the software that wrote it (Qoder uses ?app=qoder on
+its MCP URL; ZCode uses ?app=zcode). Recall output shows app=<name>; entries
+created before provenance tagging show app=legacy.
 """)
 
 @mcp.tool()
 def flymemory_remember(text: str, tags: str = "",
                        compartment: str = "", state_key: str = "",
-                       state_value: str = "") -> str:
+                       state_value: str = "", app: str = "",
+                       ctx: Context = None) -> str:
     """Store an important finding or decision.
 
     Auto-dedup: if semantically similar to an existing memory,
@@ -122,14 +169,22 @@ def flymemory_remember(text: str, tags: str = "",
         state_key: Optional entity-state key (e.g. 'user.phone'); remembering
             with the same key mechanically supersedes the older active entry
         state_value: The current value for state_key
+        app: Optional source app name (e.g. 'qoder'); defaults to the ?app=
+            query parameter of the MCP URL, then 'unknown'
     """
     with _mem_lock:
         mem = get_memory()
+        app_name = _resolve_app(app, ctx)
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+        app_tag = f"app:{app_name}"
+        if app_tag not in tag_list:
+            tag_list.append(app_tag)
         result = mem.remember_text(text, tags=tag_list, source="model",
                                    compartment=compartment or None,
                                    state_key=state_key or None,
                                    state_value=state_value or None)
+        for mid in result.get("memory_ids") or []:
+            _stamp_app(mem, mid, app_name)
         save_memory()
     action = result["action"]
     counts = result.get("counts") or {}
@@ -144,7 +199,7 @@ def flymemory_remember(text: str, tags: str = "",
     # models otherwise treat it as a fresh node (Phase 1.5 finding, 2026-09-23)
     if "merged" in counts or "strengthened" in counts:
         id_str += " (existing entry updated in place)"
-    return f"[{label} {id_str}] {text[:80]}"
+    return f"[{label} {id_str} | app={app_name}] {text[:80]}"
 
 @mcp.tool()
 def flymemory_recall(query: str, top_k: int = 5,
@@ -193,7 +248,7 @@ def flymemory_recall(query: str, top_k: int = 5,
             state = "superseded" if entry.superseded_by else "active"
             output.append(f"[#{entry.memory_id} | {state} | sim={sim:.2f} | "
                           f"{_age_str(entry.timestamp)} | src={entry.source} | "
-                          f"{decay_pct}] {entry.text[:80]}")
+                          f"app={_app_of(entry)} | {decay_pct}] {entry.text[:80]}")
         return "\n".join(output)
 
 def mem_decay_pct(entry, mem):
@@ -224,10 +279,17 @@ def flymemory_stats() -> str:
         ages = [(now - m.timestamp) / 60 for m in mem.memories]  # minutes
         access_counts = [m.access_count for m in mem.memories]
         avg_decay = np.mean([mem._decay_weight(m) for m in mem.memories])
+        apps = {}
+        for m in mem.memories:
+            a = _app_of(m)
+            apps[a] = apps.get(a, 0) + 1
+        app_str = ", ".join(f"{a}={n}" for a, n in
+                            sorted(apps.items(), key=lambda kv: -kv[1])[:8])
         return (f"Memories: {mem.size}, "
                 f"Oldest: {max(ages):.0f}min, Newest: {min(ages):.0f}min, "
                 f"Avg access count: {np.mean(access_counts):.1f}, "
-                f"Avg decay weight: {avg_decay:.2f}")
+                f"Avg decay weight: {avg_decay:.2f}\n"
+                f"Apps: {app_str}")
 
 @mcp.tool()
 def flymemory_cleanup(min_retention: float = 0.1, protect_model_stored: bool = True) -> str:
@@ -301,7 +363,8 @@ def flymemory_session_pack(minutes: float = 180) -> str:
     return pack if pack else "Nothing to recover: no entries in the requested window."
 
 @mcp.tool()
-def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
+def flymemory_consolidate(memory_ids: list, conclusion: str, app: str = "",
+                          ctx: Context = None) -> str:
     """Consolidate several related memories into ONE higher-order conclusion.
 
     The judgment (which ids belong together, what the conclusion says) belongs
@@ -316,6 +379,7 @@ def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
     """
     with _mem_lock:
         mem = get_memory()
+        app_name = _resolve_app(app, ctx)
         ids = [int(i) for i in memory_ids]
         if len(set(ids)) < 2:
             return "[REJECTED] consolidation needs at least 2 distinct memories"
@@ -328,8 +392,8 @@ def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
         # force_new: a consolidation node is a NEW entity carrying evidence —
         # letting dedup merge it into an arbitrary existing entry would retype
         # that entry and corrupt the graph (invariant added 2026-09-23)
-        r = mem.remember_text(conclusion, tags=["consolidation"], source="model",
-                              force_new=True)
+        r = mem.remember_text(conclusion, tags=["consolidation", f"app:{app_name}"],
+                              source="model", force_new=True)
         if not r.get("stored"):
             reason = r.get("reason") or "dedup rejected"
             return f"[REJECTED] conclusion not stored ({reason})"
@@ -340,10 +404,11 @@ def flymemory_consolidate(memory_ids: list, conclusion: str) -> str:
         # not orphans earlier pieces (multi-chunk bug fixed 2026-09-23)
         evidence = sorted(set(ids))
         for cid in chunk_ids:
+            _stamp_app(mem, cid, app_name)
             entry = next(m for m in mem.memories if m.memory_id == cid)
             entry.evidence_ids = evidence
         save_memory()
-        return (f"[CONSOLIDATED -> #{chunk_ids[-1]}] chunks {len(chunk_ids)} "
+        return (f"[CONSOLIDATED -> #{chunk_ids[-1]} | app={app_name}] chunks {len(chunk_ids)} "
                 f"evidence: {evidence} | {conclusion[:80]}")
 
 @mcp.tool()
@@ -402,6 +467,7 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         out = []
         for entry, sim, _eff in results:
             out.append(f"[#{entry.memory_id} | {sim:.2f} | "
+                       f"app={_app_of(entry)} | "
                        f"{_age_str(entry.timestamp)}] {entry.text[:50]}")
         return "\n".join(out)
 
@@ -414,7 +480,7 @@ def flymemory_get_memory(memory_id: int) -> str:
         for m in mem.memories:
             if m.memory_id == memory_id:
                 meta = [f"#{m.memory_id}", f"src={m.source}",
-                        f"age={_age_str(m.timestamp)}"]
+                        f"app={_app_of(m)}", f"age={_age_str(m.timestamp)}"]
                 if m.superseded_by:
                     meta.append(f"SUPERSEDED by #{m.superseded_by}")
                 return f"[{' | '.join(meta)}]\n" + m.text
@@ -454,7 +520,8 @@ def flymemory_state_history(state_key: str) -> str:
 
 
 @mcp.tool()
-def flymemory_auto(context: str, response: str = "") -> str:
+def flymemory_auto(context: str, response: str = "", app: str = "",
+                   ctx: Context = None) -> str:
     """Automatic memory management — call this every conversation turn.
 
     Does two things in one call:
@@ -473,6 +540,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
     """
     with _mem_lock:
         mem = get_memory()
+        app_name = _resolve_app(app, ctx)
         output_parts = []
 
         recalled_ids = set()
@@ -487,6 +555,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
                     if sim > 0.4:  # only report meaningful matches
                         recalled_ids.add(entry.memory_id)
                         recall_parts.append(f"  [#{entry.memory_id} | {sim:.2f} | "
+                                            f"app={_app_of(entry)} | "
                                             f"{_age_str(entry.timestamp)}] {entry.text[:80]}")
                 if recall_parts:
                     output_parts.append("RECALLED MEMORIES:")
@@ -505,8 +574,8 @@ def flymemory_auto(context: str, response: str = "") -> str:
                   if m.memory_id not in recalled_ids]
         if recent:
             output_parts.append("RECENT CONTEXT (last ~90 min):")
-            output_parts.extend(f"  [#{m.memory_id} | {_age_str(m.timestamp)}] "
-                                f"{m.text[:70]}" for m in recent)
+            output_parts.extend(f"  [#{m.memory_id} | app={_app_of(m)} | "
+                                f"{_age_str(m.timestamp)}] {m.text[:70]}" for m in recent)
 
         # ===== Progressive-disclosure hint (round-7 review finding) =====
         # Models default to re-searching the web when a recalled one-liner is
@@ -523,7 +592,10 @@ def flymemory_auto(context: str, response: str = "") -> str:
         combined_text = context
         if response:
             combined_text = f"{context} ||| {response}"
-        result = mem.remember_text(combined_text, tags=["auto"], source="hook")
+        result = mem.remember_text(combined_text, tags=["auto", f"app:{app_name}"],
+                                   source="hook")
+        for mid in result.get("memory_ids") or []:
+            _stamp_app(mem, mid, app_name)
         save_memory()
 
     action = result["action"]
@@ -534,7 +606,7 @@ def flymemory_auto(context: str, response: str = "") -> str:
         kinds = [k for k in ("new", "merged", "strengthened") if counts.get(k)]
         label = "+".join(f"{k.upper()}x{counts[k]}" if counts[k] > 1 else k.upper() for k in kinds) or action.upper()
         id_str = ",".join(f"#{i}" for i in (result.get("memory_ids") or [])[:8])
-        output_parts.append(f"STORED: [{label} {id_str}] {context[:60]}")
+        output_parts.append(f"STORED: [{label} {id_str} | app={app_name}] {context[:60]}")
 
     return "\n".join(output_parts)
 
