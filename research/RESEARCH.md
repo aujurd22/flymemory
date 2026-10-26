@@ -320,6 +320,26 @@ memory -> insight pipeline = cross-entry synthesis during consolidation
 (forced multi-entry conclusions), Discovery N/T filtering, then
 downstream-contribution verification. Not yet registered.
 
+**P-MI scope update (2026-10-17, round-19 review merged in)**: the
+governance thin-layer proposal (write_gate() / use_gate() /
+conflict_judge() over the store) merges into the P-MI queue. Verified
+against the code before adoption -- the review's evidence table had
+three misreads: (1) "dual timestamps 0" -- valid_from/valid_to exist in
+12 places (I1 chain, write path, state_history sort); the true gap is
+only t_recorded ("when we learned it") as a field separate from
+valid_from; (2) "authority model basically absent" -- _SOURCE_RANK
+(model>import>hook>auto, never-downgrade) IS a mechanical authority
+model, just unnamed; (3) find_conflicts being judgment-free is the
+DESIGN (judgment lives in the caller), not a defect -- the real gap is
+L-008: conflict verdicts are not recorded back, so the same candidate
+re-surfaces. P-MI registered scope when the window opens: use_gate
+(conflict verdict recording + the measured aggregation protocol as the
+aggregation-class answer path), write_gate (committee consistency signal
+-- P-COMMIT PARTIAL stands: usable as OOD flag, not novelty oracle),
+dual-timestamp completion (t_recorded), TTL for INTENTION-class entries.
+Precondition per the CONVERGENCE stop rule: flagship external baseline
+comparison finished first (due 11-22).
+
 ## Cross-testbed evidence chain (2026-09-28, round-9/10)
 
 The program-level question "which cognitive tasks compress into an
