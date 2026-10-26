@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-*Last updated: 2026-10-03 · v4.0 — plain-language intro, results charts, aggregation protocol, dream (idle-time consolidation) now runs silently on a schedule*
+*Last updated: 2026-10-26 · v4.1 — lesson channel (never re-hit the same pitfall), aggregation protocol (16% vs 6%), state-key writes, CLI + rebuildable store, DSDH/DSH plugin (community), failure-boundary phase diagram*
 
 **A long-term memory layer for personal AI agents: hybrid retrieval (dense + lexical → RRF, optional cross-encoder) + a memory state machine (supersede lineage, evidence-linked consolidation, power-law decay, rehearsal, directed forgetting) + model-driven judgment — the server maintains state, the calling model decides.**
 
@@ -783,6 +783,51 @@ short calls per question — route it explicitly (aggregation-class
 queries), never on the per-message hook path.
 
 Where FlyMemory sits among the alternatives, and the deliberate things it refuses to do.
+
+## How FlyMemory compares
+
+Mechanism-level comparison against published memory systems (Mem0, Zep,
+Letta, Tencent Hy-Memory, scope-recall), based on their public papers and
+docs as of 2026-10-26. Full methodology and sources:
+[research/RESEARCH.md](research/RESEARCH.md) and the industry charts in
+[docs/img](docs/img).
+
+**Where FlyMemory is ahead — the state-update axis** (the dimension
+published benchmarks don't measure):
+
+- **Mechanical supersede lineage**: every outdated fact is marked, kept
+  queryable, and excluded from current-state recall — measured stale rate
+  **0%** across the judgment benchmark (naive RAG leaks 13-17%).
+- **state_key writes**: "X's current status" facts auto-supersede their
+  older versions (I1 invariant) — the "cloud is off but memory says on"
+  failure class is prevented by construction, not by hoping the LLM
+  notices.
+- **The failure-boundary phase diagram**: we measured WHERE memory fails
+  (stale peaks at mid semantic-Δ, 26%; attribute updates are the 46%
+  epicenter; time-filtering costs 42 historical queries) — no other
+  system, commercial or open, publishes a quantitative "when does memory
+  fail" map.
+- **The lesson channel**: pitfalls are re-injected on every message with
+  trigger-word matching — the "same pitfall hit twice" failure has a
+  mechanical countermeasure.
+
+**Where the competition is ahead (honest)**:
+
+- **Product surface**: Mem0/Zep ship SDKs, dashboards, cloud sync,
+  multi-user. FlyMemory is deliberately single-user, local, one file.
+- **Integration breadth**: scope-recall ships adapters for five agent
+  harnesses; FlyMemory natively covers ZCode (+ community DSH/Qoder
+  plugins).
+- **Model-driven writing**: Hy-Memory trains a 30B model for memory
+  writing; we hold that a smaller model with anchored comparison matches
+  it (L6, 97.9% — replication across two model families), and published
+  a testable proposal to that effect (issue #8 on their tracker).
+
+**The one comparison still missing**: same-protocol, same-judge runs
+against published baselines — scheduled in the current convergence
+window. Until then, the claims above are mechanism-level, verified
+internally with pre-registered experiments (270+ registered predictions,
+every one with artifacts), not vendor-marketed numbers.
 
 ## Design positioning
 
