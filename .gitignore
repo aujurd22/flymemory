@@ -46,3 +46,7 @@ dream.log
 p70_*.json
 p70b_*.json
 0@*.15
+
+flymemory/facts.db
+flymemory/facts.db-journal
+flymemory/*.db-journal
