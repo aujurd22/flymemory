@@ -368,6 +368,42 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-26-USEGATE · use_gate accounting + pointer injection**
+(registered BEFORE the run; verdict PENDING). From the cross-session
+review (2026-10-26): "probability-fed memory" and "model self-selects"
+are both wrong -- the correct form is "point, then pull" (L0 pointer /
+L1 index / L2 full text). Two changes proposed; measured here on the
+LongMemEval-S harness (500-question oracle store) with a
+DETERMINISTIC mock-injection protocol (hook messages simulated by the
+question text; no live LLM in the loop -- this measures the MECHANISM,
+not the answerer):
+
+- Change 1 (accounting): every recall result stamps injected ids into a
+  per-session ledger; a later use_gate query reports which injected ids
+  were (a) expanded via get_memory, (b) re-called, (c) superseded.
+  Metric: injection→use rate (the "#19023 gap" -- today nobody records
+  whether injected ids were ever used).
+- Change 2 (pointer injection): the recall block header switches from
+  truncated full text (70-80 chars, looks like the whole entry) to
+  index-style pointers (id + one-line summary + "fetch full text with
+  get_memory"). Same channel, same budget.
+
+- A/B design: 200 sampled multi-session questions; arm BASE = current
+  recall top-5; arm UG = top-5 + pointer header + ledger. Metric:
+  evidence-in-pool rate (turn-recall at k=5 vs k=10+pointer-expanded)
+  -- does the pointer form pull MORE evidence when the model follows
+  the pointer? Secondary: pool size (tokens) -- pointer must not blow
+  the budget.
+
+PRE-REGISTERED CRITERIA:
+  SUPPORTED : evidence-in-pool(UG) >= evidence-in-pool(BASE) + 10pp AND
+              pool tokens(UG) <= 1.5x pool tokens(BASE);
+  PARTIAL   : +5..10pp or token blowout;
+  NULL      : < +5pp -> pointer form stays cosmetic-only, no adoption.
+- Script: bench_usegate.py. VERDICT: PENDING.
+
+
+
 **P-2026-10-16-CLUSTER · unsupervised entity-version cluster layer**
 (registered BEFORE the run; verdict PENDING). From the memory_boundary
 project's H4b/H5/H6 (seven pre-registered experiments, sealed
