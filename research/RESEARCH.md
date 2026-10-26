@@ -402,6 +402,25 @@ PRE-REGISTERED CRITERIA:
   NULL      : < +5pp -> pointer form stays cosmetic-only, no adoption.
 - Script: bench_usegate.py. VERDICT: PENDING.
 
+**VERDICT (2026-10-26, reports/usegate_1792996122.json): PARTIAL --
+the evidence gain is real, the token budget is not.** turn-coverage:
+BASE 63.9% -> UG 74.4% (+10.5pp, inside the PARTIAL band) BUT pool
+tokens/question went 397 -> 4,824 (**x12.15**, against the 1.5x line) --
+the pointer+expansion mechanism works exactly as theorized (pointing
+invites a second pull that brings 11.5pp more turn coverage), but the
+deterministic expansion proxy pulled ALL lexical-overlap neighbors,
+which a real model would not do. use_gate ledger worked (514 distinct
+ids injected, re-injection concentrated on 3 hot ids -- the accounting
+machinery is sound). **Adoption: NO as the default injection form; the
+ledger mechanism is adopted (zero-cost, closes the L-008
+"verdicts not recorded" gap at the accounting layer); the pointer form
+is deferred to a budget-aware expansion rule (e.g. expand only pointers
+whose summary is a QUESTION echo, cap at 3 expansions).** Registration
+typo noted: N_Q written 200, actual pool 133 (percentage criteria
+unaffected). The answer-side question (does more evidence in pool
+convert to more correct answers?) remains the standing P-ANSWER
+boundary -- map-reduce is the proven converter, not pool widening.
+
 
 
 **P-2026-10-16-CLUSTER · unsupervised entity-version cluster layer**
