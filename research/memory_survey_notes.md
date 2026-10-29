@@ -298,3 +298,22 @@ v1 哈希编码器 k-WTA 边界 bug:短文本词哈希仅 ~200 个非零位,k=20
 **我们有他们没有的**:定律账本+失效边界相图+状态机纪律(supersede 谱系/I1)+L6+map-reduce 实测+199k 规模验证+渗透分析。重心差异:他们产品/工程优先(CLI/适配器/迁移/回执),我们研究/定律优先(账本/边界/预注册)。
 
 **可借鉴排序**:①"被替换值压过当前值"逐问句指标→加进 judgment 基准;②跨 scope 隔离 CI 门→compartment 测试;③向量可重建架构→v5 设想。**注意重叠**:他们支持 dsh,而并行会话刚做了 FlyMemory DSH 插件——DSH 记忆生态现有两选项;其"一库多端"需求被 456★ 部分验证。**贡献机会**:其基准"刻意不测整合质量/失效边界"= 我们相图工作可作为其诊断层的候选贡献(同 Hy-Memory 模式)。
+
+## MemoryTax(arXiv 2610.34073,UIUC/清华/人大/Verdent/Waterloo,2026-10-30 精读)——相图论文的必引前作
+
+**核心框架(benefit−tax)**:memory 的净价值 = 只用 memory 能答对的题 − memory 答错但 naive RAG 能答对的题。**90/99 个 memory 结果低于 naive RAG**。评测三场景(LongMemEval-s/PersonaMem-v2/MINT-Eval)×3 骨干×200+ runs/20B tokens。
+
+**三个 tax 维度(与我们的发现逐条对应)**:
+1. **Faithfulness tax**(整合/改写不可逆丢失证据)≙ 我们 L1 的反例(replace −10pp)+L4(去重吞小幅编辑 5/20)+P-DISCOVERY(consolidation V1.10/N0.13/T0)
+2. **Accessibility tax**(证据活着但埋得更深:碎片化/稀释/改写远离查询匹配)≙ 我们 FLAT-30 发现(宽度胜过一切聪明收集器)+P-TREE/NEEDLE/AGENT 三连负
+3. **Robustness tax**(一模型建库另一模型作答,退化甚于 RAG)≙ 我们 cross-model 验证线(L6 doubao 复现、GLM 30% vs DS 32% 模型无关)
+
+**他们已占的位置**:①"报告 naive RAG 并排"成为方法论建议(与 CONVERGENCE 的外部基线纪律同向);②PoC 修复=source-augmented retrieval(memory 与原始历史联合重排,SimpleMem 73.6/12.0→82.8/5.2)——**这与我们 H6 的结构层修复同型**(池内修,不重建);③扩展到 experiential/world-model memory。
+
+**我们独有而他们没有的**(相图论文的增量空间):
+1. **三轴相图**(语义Δ×状态类型×时间指向)——他们按 benchmark 分桶,没有"边界在哪个箱"的定量刻画;我们的 0.5-0.7 箱 stale 峰值 26%/attribute 族 46% 是可操作预测
+2. **状态机的机制拆分**——L4 写入引擎层 vs L6 判断层的锚定拆分(P-PHASE-1),他们三层归因没下到这层
+3. **state_key/I1 构造性预防**(0% stale)——他们的 PoC 是检索侧补丁,我们给写入侧的构造性修复
+4. **教训通道/边界定律的 caller-side 协议**——他们的 design implications 停留在原则,我们有实测协议
+
+**定位修正(重要)**:相图论文不能再自称"首个质疑 memory vs naive RAG 的"——MemoryTax 已占。正确定位:**MemoryTax 测了"净价值是否存在"并给出 tax 三维归因;我们给"边界在哪个箱"的定量相图+构造性修复+caller 协议**——是他们的后继与深化,引用姿势=致谢性引用+增量声明。**11-22 旗舰对比的外部协议首选 MemoryTax 的三场景**(naive RAG 并排正是我们要的),比 Mem0 eval 更合适。
