@@ -368,6 +368,38 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-29-DIACT · conversational-unit ingestion** (registered
+BEFORE the run; verdict PENDING). From P-LOCO-OVERLAY's falsified
+hypothesis: single-hop 0/10 survives summary overlay, so the root is
+INGESTION GRANULARITY -- per-sentence chunking shatters
+conversationally-carried facts ("Hey Mel! Good to see you! How have you
+been?" contains state) and the strict judge cannot connect them to
+attribute questions.
+
+- Mechanism: dialogue-act grouping at ingestion -- consecutive turns by
+  the SAME speaker merge into one entry (a "dialogue act": one person's
+  complete statement including asides where facts hide), speaker
+  changes cut. Entries become "Speaker [date]: turn1 turn2 ..." instead
+  of per-sentence fragments.
+- Implementation: `split_dialogue(turns)` helper + `ingest_dialogue()`
+  in bench_locomo_overlay.py -- behind a flag, default recall path
+  UNCHANGED until verdict.
+- A/B: same 30-question LOCOMO sample; arms FLY-turns (baseline 10%)
+  vs FLY-diact (dialogue-unit ingestion). Metric: strict overall +
+  per-category (single-hop is the targeted class).
+
+PRE-REGISTERED CRITERIA:
+  SUPPORTED : FLY-diact >= FLY-turns + 5pp overall (>= 15%) --
+              adoption proposed as an opt-in ingestion mode;
+  PARTIAL   : +2..5pp (direction holds, magnitude marginal);
+  NULL      : <= +2pp (granularity is not the root either -- next
+              hypothesis: judge-side answer normalization).
+- Guard: entry-count shrink expected (~40% fewer entries); if dedup
+  merge-storms (entries > 400 chars), cap group size at 6 turns.
+- VERDICT: PENDING.
+
+
+
 **P-2026-10-29-LOCO-OVERLAY · overlay arm on LOCOMO** (registered BEFORE
 the run; verdict PENDING). The 30-question LOCOMO sample showed
 single-hop 0/10 -- the known failure mode (important facts buried in
