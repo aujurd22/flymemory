@@ -368,6 +368,40 @@ first candidate).
 
 ## Registered Predictions (registered before running; git timestamps are the proof)
 
+**P-2026-10-29-READER · reader-strength x intervention phase diagram**
+(registered BEFORE the run; verdict PENDING). RAW-RAG (2610.30755)
+reports that DISABLING Mem0's UPDATE/DELETE improves accuracy (strong
+reader: GPT-4o-mini/4.1-mini can resolve dynamic state from raw
+evidence); our own line reports that supersede structure gives 0%
+stale where naive recall leaks (weaker-reader setting: DeepSeek on
+multi-session). Hypothesis: **the two "contradictory" conclusions are
+one phase diagram -- the optimal intervention level depends on reader
+strength**.
+
+- Design: 2 readers (deepseek-chat = weaker; deepseek-reasoner =
+  stronger) x 3 intervention arms (RAW = unfiltered top-10 raw turns;
+  SUP = supersede-lineage-aware pool: only current-state members of
+  each cluster; SUP+HINT = SUP pool + lineage stamps in context) on
+  the 30-question LOCOMO sample. Same judge throughout.
+- Metrics: strict per reader x arm; the phase prediction is an
+  INTERACTION (difference-in-differences), not a main effect.
+
+PRE-REGISTERED CRITERIA (phase-diagram claim requires the interaction):
+  PHASE-CONFIRMED : (SUP - RAW) under weak reader > (SUP - RAW) under
+                    strong reader by >= 10pp -- i.e. structure helps the
+                    weak reader more (the RAW-RAG "less intervention is
+                    better" conclusion holds ONLY for strong readers).
+  PHASE-NULL      : |interaction| < 10pp -- intervention level and reader
+                    strength are independent (RAW-RAG's disabling result
+                    would NOT transfer to weaker readers; supersede stays
+                    correct as our default).
+- Predictions: weak reader benefits MORE from SUP (Raw-RAG only tested
+  GPT-4o-mini/4.1-mini = strong readers).
+- Budget: 30 q x 2 readers x 3 arms = 180 answer calls + 180 judge calls.
+- Script: bench_reader_phase.py. VERDICT: PENDING.
+
+
+
 **P-2026-10-29-DIACT · conversational-unit ingestion** (registered
 BEFORE the run; verdict PENDING). From P-LOCO-OVERLAY's falsified
 hypothesis: single-hop 0/10 survives summary overlay, so the root is
