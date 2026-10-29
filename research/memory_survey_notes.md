@@ -323,3 +323,14 @@ v1 哈希编码器 k-WTA 边界 bug:短文本词哈希仅 ~200 个非零位,k=20
 **结论**:dense 检索+CE 重排的 raw-history RAG 在 LoCoMo(93.70 GPT-4.1-mini)/LongMemEval(87.53)/MEME/MemoryAgentBench 七设定中六/七第一,胜 EverMemOS/Memora/MemMachine 0.13-5.53pp。机制:覆盖率>利用率;**有用证据=答案值+关系+依赖路径**;禁用 Mem0 的 UPDATE/DELETE 反而提分(强 reader 可从足够 raw 证据自行解析);原子事实抽取(28.7)/摘要增强(42.5)/图扩展(42.5)全输 RAW-RAG(48.3)。
 
 **对 flymemory 的印证**:v3 生产路径(raw turns 保留+RRF+CE+reader 推理)与 RAW-RAG 管线同构——我们 09-22 的"宁叠不换"和 09-25 的"形式二阶"提前站在此结论上。**互补新实验候选:读者强度×干预程度相图**(强 reader 下禁 UPDATE/DELETE 提分 vs 弱 reader 下 supersede 结构兜底——两个"矛盾"结论的调和变量是 reader 能力)。教训:与 MemoryTax 双证"naive RAG 并排"是必做基线;实现 bug(全 1 向量)与容量混淆的可能已在 v1 Hopfield 撤回中预演过。
+
+## Attention as Lattice Gauge Theory(arXiv 2610.37656,MLLPS 2026 workshop,UCSF/Harvard,2026-10-30 精读)
+
+**主张**:注意力的关系更新被对称性**强制**为规范场论形式——边更新唯一允许 U=Ψ(H)·T_ij(共享实体配对),三角一致性=Wilson 环和洛伦兹分数 T=Tr(T_ij·T_jk·T_ki);知识图谱交换算子/AlphaFold 三角更新/Edge Transformer 是特例。无监督 holonomy attention:稀疏图关系推断 0.88(近专家上限),损坏三角检测 AUC 0.99。
+
+**与四仓发现的三重共振**:
+1. **两跳组合=三角闭合**——P-COMBO 失败(第二跳与查询无词面重叠)在 Wilson 环视角下必然:组合信息在环上不在单边;我们的"池内解析"缺构造环机制
+2. **frame freedom=锚定定律数学化**——实体无内禀坐标系,比较须规范输运;P-ANCH-1 97.9%/70.8%=给了规范固定后的跃升
+3. **与 RAW-RAG 互证**——"raw 保留+锚定解析胜过变换存储"获得理论侧解释
+
+**可信度打折**:workshop 级、无外部复现、形式重构非预测定理。**可执行启示**:写入时维护实体三角闭包表(A-B/B-C 写入挂 A-C 候选)给两跳解析供环结构——候选实验(先过 30 题 A/B 判据)。**定位警示**:该文+MemoryTax+RAW-RAG 三连发继续挤压"memory 结构组织"的独立新颖性,我们的差异化越来越集中在失效边界相图+教训通道+state_key 构造性预防。
