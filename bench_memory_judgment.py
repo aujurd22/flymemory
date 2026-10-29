@@ -156,7 +156,17 @@ def ds_client():
     key = os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         sys.exit("DEEPSEEK_API_KEY not set")
-    return OpenAI(api_key=key, base_url=BASE_URL)
+    http_client = None
+    if "--allow-httpx2" not in sys.argv:
+        try:
+            import httpx
+            http_client = httpx.Client(
+                headers={"Accept-Encoding": "gzip, deflate"},
+                trust_env=False)
+        except Exception:
+            http_client = None
+    return OpenAI(api_key=key, base_url=BASE_URL,
+                  http_client=http_client)
 
 
 def ds_chat(client, system, user, max_tokens=512):
