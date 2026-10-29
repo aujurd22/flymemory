@@ -317,3 +317,9 @@ v1 哈希编码器 k-WTA 边界 bug:短文本词哈希仅 ~200 个非零位,k=20
 4. **教训通道/边界定律的 caller-side 协议**——他们的 design implications 停留在原则,我们有实测协议
 
 **定位修正(重要)**:相图论文不能再自称"首个质疑 memory vs naive RAG 的"——MemoryTax 已占。正确定位:**MemoryTax 测了"净价值是否存在"并给出 tax 三维归因;我们给"边界在哪个箱"的定量相图+构造性修复+caller 协议**——是他们的后继与深化,引用姿势=致谢性引用+增量声明。**11-22 旗舰对比的外部协议首选 MemoryTax 的三场景**(naive RAG 并排正是我们要的),比 Mem0 eval 更合适。
+
+## RAW-RAG(arXiv 2610.30755,西交大 LUD,2026-10-22,MIT)——与 MemoryTax 同期同向的"朴素基线"双证
+
+**结论**:dense 检索+CE 重排的 raw-history RAG 在 LoCoMo(93.70 GPT-4.1-mini)/LongMemEval(87.53)/MEME/MemoryAgentBench 七设定中六/七第一,胜 EverMemOS/Memora/MemMachine 0.13-5.53pp。机制:覆盖率>利用率;**有用证据=答案值+关系+依赖路径**;禁用 Mem0 的 UPDATE/DELETE 反而提分(强 reader 可从足够 raw 证据自行解析);原子事实抽取(28.7)/摘要增强(42.5)/图扩展(42.5)全输 RAW-RAG(48.3)。
+
+**对 flymemory 的印证**:v3 生产路径(raw turns 保留+RRF+CE+reader 推理)与 RAW-RAG 管线同构——我们 09-22 的"宁叠不换"和 09-25 的"形式二阶"提前站在此结论上。**互补新实验候选:读者强度×干预程度相图**(强 reader 下禁 UPDATE/DELETE 提分 vs 弱 reader 下 supersede 结构兜底——两个"矛盾"结论的调和变量是 reader 能力)。教训:与 MemoryTax 双证"naive RAG 并排"是必做基线;实现 bug(全 1 向量)与容量混淆的可能已在 v1 Hopfield 撤回中预演过。
