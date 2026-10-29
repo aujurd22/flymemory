@@ -787,3 +787,27 @@ def test_scope_isolation_no_compartment_is_global(mem):
     hits = mem.recall("部署配置在哪里", top_k=10)
     assert any("carol.yaml" in h[0].text for h in hits), \
         "global recall lost compartment content it should see"
+
+
+def test_state_key_normalisation_split_brain(mem):
+    """'User.Phone' / 'user.phone ' / 'user.phone' are ONE logical key
+    (split-brain bug reproduced on main 2026-10-29, ported from the dsh
+    plugin fork). I1 must fire across spelling variants."""
+    mem.remember_text("用户的手机号是 13800001111", state_key="User.Phone")
+    mem.remember_text("用户的手机号换成 13700003333 了",
+                      state_key="user.phone ")
+    cur = mem.state_lookup("user.phone")
+    assert cur is not None, "normalised key lost"
+    assert "3333" in cur.text, "lookup returned the stale value"
+    active = [m for m in mem.memories
+              if m.state_key == "user.phone" and m.superseded_by is None]
+    assert len(active) == 1, "multiple active entries for one logical key"
+
+
+def test_state_key_normalisation_casefold(mem):
+    """Case variants must also collapse (casefold, not .lower())."""
+    mem.remember_text("服务器 IP 是 10.0.0.1", state_key="Server.IP")
+    mem.remember_text("服务器 IP 现在是 10.0.0.9", state_key="server.ip")
+    active = [m for m in mem.memories
+              if m.state_key == "server.ip" and m.superseded_by is None]
+    assert len(active) == 1

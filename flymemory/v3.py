@@ -105,6 +105,23 @@ def _is_junk_chunk(text: str) -> bool:
 
 
 # ===== Memory Entry =====
+def _norm_state_key(k):
+    """Canonical form of an entity-state key (v4 fix, ported from the
+    dsh plugin fork 2026-10-29, measured there first).
+
+    Without it, 'user.phone', 'User.Phone' and 'user.phone ' are three
+    DIFFERENT state_keys: the I1 active-unique rule never fires across
+    them, three "current" states coexist, and state_lookup returns
+    whichever was written first -- silently stale (reproduced on the
+    main repo the same day). Normalisation is strip + casefold
+    (Unicode-aware; .lower() is not full case folding). Callers still
+    own the namespacing convention."""
+    if not isinstance(k, str):
+        return None
+    k = k.strip()
+    return k.casefold() if k else None
+
+
 @dataclass
 class MemoryEntry:
     text: str
@@ -451,6 +468,10 @@ class SmartMemory:
             return {"stored": False, "action": "rejected", "novelty": 0.0,
                     "memory_id": None, "reason": "credential-like content"}
         chunks = [c for c in split_chunks(text) if not _is_junk_chunk(c)]
+        # v4 key canonicalisation: normalise BEFORE any dedup/I1 logic so
+        # 'User.Phone' and 'user.phone ' can never become separate states
+        state_key = _norm_state_key(state_key)
+
         # v4 atomicity constraint: state_key is only valid for ATOMIC storage.
         # A multi-chunk text with one state_key would let the I1 active-unique
         # rule cascade-supersede its own earlier chunks (different facts!),
