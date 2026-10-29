@@ -823,11 +823,15 @@ published benchmarks don't measure):
   it (L6, 97.9% — replication across two model families), and published
   a testable proposal to that effect (issue #8 on their tracker).
 
-**The one comparison still missing**: same-protocol, same-judge runs
-against published baselines — scheduled in the current convergence
-window. Until then, the claims above are mechanism-level, verified
-internally with pre-registered experiments (270+ registered predictions,
-every one with artifacts), not vendor-marketed numbers.
+**The first external comparison landed (2026-10-29, 30-question LOCOMO
+sample, `bench_locomo.py`, deepseek answer+judge):** NoMemory 0% /
+RAG-top5 6.7% / **FlyMemory 10%** strict (J: 1.7 / 11.7 / 15.0) —
+FlyMemory beats both internal controls. Absolute numbers are far below
+the Mem0 paper's LOCOMO table (Mem0 66.9 J) because this harness differs
+from theirs on every axis: strict judge (partials don't count), 30-question
+sample, deepseek answerer, no tuning — treat it as an internal A/B win,
+not a leaderboard entry. Full-protocol external comparison remains
+scheduled in the convergence window.
 
 ## Design positioning
 
