@@ -398,6 +398,22 @@ PRE-REGISTERED CRITERIA:
   merge-storms (entries > 400 chars), cap group size at 6 turns.
 - VERDICT: PENDING.
 
+**VERDICT (2026-10-29, reports/diact_1793267536.json): NULL -- +0.0pp
+(both arms exactly 10.0%, identical per-category).** Dialogue-act
+grouping is also NOT the root. Three granularities now falsified on the
+same 30 questions: per-turn (baseline), dialogue-act merged, and
+summary-overlay -- single-hop stays 0/10 in all. Per the registered
+next-hypothesis chain: **the remaining suspect is judge-side answer
+normalization** -- LoCoMo gold answers are short-form ("7 May 2023",
+"Caroline") while our strict judge requires the key fact verbatim; a
+correct-in-substance answer phrased differently scores wrong. That is
+testable WITHOUT new inference: re-judge the existing 30-question traces
+with a lenient normalization judge (case/date-format/synonym tolerant).
+If single-hop jumps under lenient judging, the "0%" was a MEASUREMENT
+artifact, not a memory failure -- which would retroactively explain the
+gap to Mem0's 60-76% single-hop numbers (their J judge is lenient by
+construction).
+
 
 
 **P-2026-10-29-LOCO-OVERLAY · overlay arm on LOCOMO** (registered BEFORE
