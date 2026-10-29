@@ -388,6 +388,23 @@ session-level consolidated summaries on top of the turns.
   baseline.
 - Script: bench_locomo_overlay.py. VERDICT: PENDING.
 
+**VERDICT (2026-10-29, reports/loco_overlay_1793266379.json):
+PARTIAL -- overlay helps multi-hop, does NOT touch single-hop.**
+RAG 6.7% / FLY 10.0% / **FLY+OVERLAY 13.3%** (+3.3pp over FLY, below
+the 5pp SUPPORTED band). Only 2 of 30 questions flipped: q0 multi-hop
+wrong->correct (the overlay summary carried the evidence the bare turns
+buried), q27 temporal partial->wrong (one regression, noise-range).
+**Single-hop stayed 0/10 -- the registered hypothesis is FALSIFIED:**
+the single-hop zero is NOT a missing-summary problem (summaries were in
+the pool and didn't help); it traces to ingestion granularity --
+LoCoMo's small-talk turns carry facts conversationally ("Hey Mel! Good
+to see you! How have you been?" contains state), and per-sentence
+chunking + strict judge never connect them to the attribute-style
+questions. What would fix it: conversational-unit ingestion (group
+turns into dialogue acts) -- a real engine change, queued, not run.
+Verdict per registration: PARTIAL (total gains without the single-hop
+fix).
+
 
 
 **P-2026-10-26-USEGATE · use_gate accounting + pointer injection**
