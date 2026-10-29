@@ -151,13 +151,12 @@ Reply with ONLY:
  "stale_leakage": true/false}"""
 
 
-def ds_client():
+def ds_client(http_client=None):
     from openai import OpenAI
     key = os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         sys.exit("DEEPSEEK_API_KEY not set")
-    http_client = None
-    if "--allow-httpx2" not in sys.argv:
+    if http_client is None and "--allow-httpx2" not in sys.argv:
         try:
             import httpx
             http_client = httpx.Client(
