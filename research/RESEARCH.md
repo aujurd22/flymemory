@@ -1843,3 +1843,68 @@ discoverable (MDL), causally the bottleneck (P32-i), and its
   Continuous-overlapping families: instance memory wins.  This IS
   the prototype-vs-exemplar dissociation from cognitive psychology,
   replicated with a mechanistic pipeline.
+
+## 2026-10-30 - external harness: retrieval vs tool protocol vs full context vs mem0
+
+**Status: EXPLORATORY, not pre-registered here.** These runs came from the
+`dsh-flymemory` plugin session and its own harness
+(`scripts/bench_three_arms.py`), not from a registration in this ledger. Treat
+them as hypotheses with evidence, not as confirmations; the two replications
+that would promote them are named at the end.
+
+Protocol, identical across arms: LongMemEval oracle (500 q, haystack ~6k tokens)
+and S (500 q, ~153k tokens/question); a fresh store per question built from that
+question's haystack; reader `deepseek/deepseek-v4.1-flash` with
+`reasoning_effort=off`, temperature 0; the same model as judge with one rubric
+(correct / partial / wrong); exact McNemar on paired per-question outcomes.
+
+Oracle split, n=500:
+
+| arm | strict | weighted | prompt tokens/answer |
+|---|---|---|---|
+| no memory | 2.8% | 4.3% | ~98 |
+| RAG top-5 | 40.6% | 43.5% | ~213 |
+| agentic 2 rounds | 51.8% | 56.4% | ~2,150 |
+| agentic 3 rounds | 54.8% | 60.6% | ~2,900 |
+
+- **retrieval vs no memory**: +37.8pp.
+- **tool protocol vs the same store read once**: +14.2pp, 94 gained / 23 lost,
+  p<0.0001. The gain is not in the store, it is in the model being able to pull.
+- **agentic 3 vs 2 rounds**: +3.0pp, 34/19, p=0.053 for +35% tokens -- directional,
+  not established; default guidance should be "one or two reads".
+
+Oracle split, injection shape (n=120): five one-line summaries 40.0%, twenty full
+entries 48.3%, a 6000-character budget 50.8%, fifty full entries 56.7%. Score is
+monotone in how much history reaches the reader; a character budget bounds cost
+without guessing a count (now `flymemory_recall_block`).
+
+Negative control, oracle split (n=120): **full context 76.7% vs our best 56.7%**
+(McNemar +35/-11, p=0.0005). When the history fits in the prompt, retrieval is
+lossy compression and loses. This is a limit, not a bug.
+
+Long split (n=150, 153k tokens/question): full context 45.3% vs tool protocol
+52.0% (33 gained / 23 lost for us, p=0.229) at **37x** the tokens (111,283 vs
+3,040 per answer, and 180x RAG-top-20's 616). Context rot is visible by type --
+temporal-reasoning 12/37 for full context vs 22/37 for the tool protocol,
+multi-session 10/43 vs 18/43 -- while single-session-assistant still favours full
+context (16/22 vs 10/22). Direction: the store wins where history is long, which
+is the only regime where a memory system is load-bearing.
+
+External competitor, same ruler (n=120): **mem0 2.2.1** local Qdrant,
+`infer=False`, same embedder, same reader/judge -> 58.3% vs our 56.7%
+(19/21, p=0.875): parity. By type mem0 wins single-session recall
+(16/16 vs 10/16 assistant, 16/16 vs 13/16 user) and we win temporal-reasoning
+(14/24 vs 11/24). `infer=False` is mem0's raw-store mode; its published numbers
+use `infer=True`, which runs an LLM per message and could not be run at this scale.
+
+Honest negatives from the same harness: **knowledge-update is flat** across every
+arm (56-60% at n=500), so `supersede` keeps the store clean but does not make the
+answer easier -- the remaining win there is answer-side presentation, not
+retrieval; **preference questions fail everywhere** (0-17%), so a synthesised user
+profile is a gap nobody in this harness closes; and a retrieved "profile block"
+scored exactly RAG (37.5%, p=1.000 vs RAG), falsifying the cheap-profile idea.
+
+Replications that would promote this from exploratory to confirmed:
+1. long split at n=500 (n=150 gives direction, p=0.229);
+2. a pre-registered version of the +14.2pp tool-protocol result with the
+   registration committed before the run.

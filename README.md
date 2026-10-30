@@ -90,6 +90,46 @@ recover: orange) and the retrieval hubs (rank stability: blue). LRU wins
 the pair; the redundancy dividend was already collected by upstream
 dedup.*
 
+## What the 2026-10-30 measurements changed
+
+A separate harness (`dsh-flymemory/scripts/bench_three_arms.py`) measured this
+store against three alternatives on LongMemEval, with one reader
+(`deepseek/deepseek-v4.1-flash`, thinking disabled), one judge, one rubric and
+exact McNemar on paired per-question outcomes. Four results, two of which argue
+against parts of this design:
+
+| comparison | result |
+|---|---|
+| retrieval vs no memory | 2.8% -> 40.6% strict (n=500) |
+| **tool protocol vs top-5 retrieval** | **54.8% vs 40.6%, +14.2pp, p<0.0001** (n=500) |
+| full context vs everything, short haystack | **76.7% vs 56.7%** (n=120): when the history fits, retrieval is lossy compression |
+| full context vs tool protocol, long haystack (153k tokens/question) | 45.3% vs **52.0%** at ~37x the tokens (n=150, p=0.229) |
+| mem0 2.2.1 (local, `infer=False`) on the same ruler | 58.3% vs 56.7%, **p=0.875** -- parity |
+
+Per question type on the long split, the tool protocol beats full context where
+context rot bites: temporal-reasoning 22/37 vs 12/37, multi-session 18/43 vs
+10/43. Full context still wins single-session-assistant (16/22 vs 10/22) and
+knowledge-update (18/24 vs 15/24).
+
+### What follows for the code
+
+- **Injection is now a character budget** (`flymemory_recall_block`): five
+  one-line summaries scored 40.0%, twenty full entries 48.3%, a 6000-char budget
+  50.8%, fifty full entries 56.7%. A budget bounds cost without guessing a count.
+- **The win lives in the pull, not the push**: the tool protocol is +14.2pp over
+  the same store read once. Agents have to be told that a second call is worth it.
+- **Two honest negatives**: knowledge-update is flat across every arm (56-60%), so
+  `supersede` keeps the store clean but does not make the answer easier; and
+  preference questions score 0-17% everywhere, so a synthesised user profile is a
+  known gap rather than a strength.
+
+### On comparing with published numbers
+
+Mem0's LOCOMO table, Zep's temporal results and EverMemOS' claims use different
+readers, judges, prompts and splits. They are not comparable to the numbers above
+and are not compared here; the only apples-to-apples row is the mem0 arm, which
+ran the same harness.
+
 ## How it works
 
 ```text

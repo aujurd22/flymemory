@@ -472,6 +472,34 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
+def flymemory_recall_block(query: str, budget_chars: int = 6000,
+                           per_entry_chars: int = 600, top_k: int = 25) -> str:
+    """Budget-aware recall: full text of as many entries as fit in ``budget_chars``.
+
+    Measured (LongMemEval oracle, 120 questions, 2026-10-30): score is monotone in
+    how much history reaches the reader -- 5 one-line summaries 40.0%, 20 full
+    entries 48.3%, a 6000-char budget 50.8%, 50 full entries 56.7%. A character
+    budget is the knob that bounds cost without guessing a count. The first line
+    carries the best similarity so a caller can gate on weak matches.
+    """
+    from recall_block import pack
+    with _mem_lock:
+        mem = get_memory()
+        results = mem.recall(query, top_k=max(1, min(int(top_k), 50)))
+        if not results:
+            return "top_sim=0.00\nNo matching memories."
+        best = results[0][1]
+        entries = []
+        for entry, sim, _eff in results:
+            label = (f"[#{entry.memory_id} | {sim:.2f} | app={_app_of(entry)} | "
+                     f"{_age_str(entry.timestamp)}]")
+            entries.append((label, entry.text))
+        block, stats = pack(entries, budget_chars=budget_chars,
+                            per_entry_chars=per_entry_chars)
+        return f"top_sim={best:.2f}\n{block}"
+
+
+@mcp.tool()
 def flymemory_get_memory(memory_id: int) -> str:
     """Progressive disclosure, layer 2: full text + metadata of one
     memory (use after flymemory_recall_index flags it as relevant)."""
