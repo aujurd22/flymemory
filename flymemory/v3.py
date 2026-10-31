@@ -200,6 +200,7 @@ _CRED_REGEX = (
     re.compile(r"rc-[0-9a-f]{32,}"),            # AMD Radeon free endpoint
     re.compile(r"user_[A-Za-z0-9]{32,}"),        # Command Code gateway
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),        # DeepSeek-style
+    re.compile(r"gsk_[A-Za-z0-9]{20,}"),         # Groq
     re.compile(r"\b[A-Za-z0-9_-]{40,}\b(?=.*(?:key|token|secret))", re.I),
 )
 
