@@ -514,10 +514,16 @@ def flymemory_recall_block(query: str, budget_chars: int = 6000,
                                     window_s=window)
             parent_budget = int(budget_chars * parent_share)
             for key, _sim in batches:
-                members = [m for m in mem.memories
-                           if m.superseded_by is None
-                           and app_tag(m) == key[0]
-                           and int(m.timestamp // window) == key[1]]
+                # A single 5-minute window often holds one entry on a quiet day, so
+                # widen until the batch has something to show (bounded cascade).
+                members = []
+                for span in (window, window * 6, window * 24):
+                    members = [m for m in mem.memories
+                               if m.superseded_by is None
+                               and app_tag(m) == key[0]
+                               and int(m.timestamp // span) == int(key[1] * window // span)]
+                    if len(members) >= 2:
+                        break
                 if len(members) < 2:
                     continue
                 center = (key[1] + 0.5) * window
