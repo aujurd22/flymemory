@@ -84,7 +84,53 @@ by the source turns. Reply with ONLY:
 {"supported": true/false, "unsupported_claims": ["..."]}"""
 
 
+DREAM_BASE = os.environ.get("FLYMEMORY_DREAM_BASE_URL",
+                            "https://developer.amd.com.cn/radeon/api/v1").rstrip("/")
+DREAM_MODEL = os.environ.get("FLYMEMORY_DREAM_MODEL", "Qwen3.8-Flash-Next")
+# Measured on that endpoint 2026-10-31: Qwen3.8-Flash-Next returns clean JSON in
+# ~13s, GLM-5.3-Flash ~27s, Qwen3.8-27B intermittently empty, MiMo 61s,
+# DeepSeek-V4.1-Flash 429 under load.
+DREAM_FALLBACKS = ("GLM-5.3-Flash", "DeepSeek-V4-Flash")
+_DREAM_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+             "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+
+def _dream_key():
+    return (os.environ.get("FLYMEMORY_DREAM_API_KEY")
+            or os.environ.get("AMDRADEON_API_KEY") or "")
+
+
+def _free_endpoint_chat(system, user, max_tokens):
+    """One call to the free OpenAI-compatible endpoint; "" when unavailable."""
+    key = _dream_key()
+    if not key:
+        return ""
+    chain = [DREAM_MODEL] + [m for m in DREAM_FALLBACKS if m != DREAM_MODEL]
+    for model_name in chain:
+        body = json.dumps({"model": model_name,
+                           "messages": [{"role": "system", "content": system},
+                                        {"role": "user", "content": user}],
+                           "temperature": 0, "max_tokens": max_tokens}).encode()
+        req = urllib.request.Request(
+            DREAM_BASE + "/chat/completions", data=body,
+            headers={"Content-Type": "application/json", "Accept": "application/json",
+                     "Authorization": "Bearer " + key, "User-Agent": _DREAM_UA})
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                payload = json.loads(resp.read().decode())
+            text = payload["choices"][0]["message"].get("content") or ""
+            if text.strip():
+                return text
+        except Exception:
+            continue
+    return ""
+
+
 def ds_chat(client, system, user, max_tokens=900):
+    """Free endpoint when configured, otherwise the original DeepSeek client."""
+    text = _free_endpoint_chat(system, user, max_tokens)
+    if text:
+        return text
     r = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "system", "content": system},
