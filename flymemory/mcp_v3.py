@@ -473,31 +473,60 @@ def flymemory_recall_index(query: str, top_k: int = 10,
 
 @mcp.tool()
 def flymemory_recall_block(query: str, budget_chars: int = 6000,
-                           per_entry_chars: int = 600, top_k: int = 25) -> str:
-    """Budget-aware recall: full text of as many entries as fit in ``budget_chars``.
+                           per_entry_chars: int = 600, top_k: int = 25,
+                           include_parents: bool = True,
+                           parent_share: float = 0.4,
+                           parent_window_s: float = 300.0,
+                           parent_max_entries: int = 20) -> str:
+    """Budget-aware recall, optionally with the capture batches the hits came from.
 
-    Measured (LongMemEval oracle, 120 questions, 2026-10-30): score is monotone in
-    how much history reaches the reader -- 5 one-line summaries 40.0%, 20 full
-    entries 48.3%, a 6000-char budget 50.8%, 50 full entries 56.7%. A character
-    budget is the knob that bounds cost without guessing a count. The first line
-    carries the best similarity so a caller can gate on weak matches.
+    Two measurements drive this shape:
+
+    * score is monotone in how much history reaches the reader (top-5 40.0%,
+      top-50 56.7%), so the budget -- not a count -- is the knob;
+    * adding the *sessions* that the hits came from lifted multi-session questions
+      by 13.4pp while single-session recall moved -1.9pp, and stacking that with
+      extract-then-compute answering reached 69.2% at ~1.9k tokens per answer
+      (docs/COMPARISON.md). So parents ride alongside the hits, on their own share
+      of the budget, and never replace them.
+
+    The first line carries the best similarity so a caller can gate weak matches.
     """
-    from recall_block import pack
+    from recall_block import pack, group_by_batch, app_tag
     with _mem_lock:
         mem = get_memory()
         results = mem.recall(query, top_k=max(1, min(int(top_k), 50)))
         if not results:
             return "top_sim=0.00\nNo matching memories."
         best = results[0][1]
+        fine_budget = int(budget_chars * (1.0 - parent_share)) if include_parents else budget_chars
         entries = []
         for entry, sim, _eff in results:
             label = (f"[#{entry.memory_id} | {sim:.2f} | app={_app_of(entry)} | "
                      f"{_age_str(entry.timestamp)}]")
             entries.append((label, entry.text))
-        block, stats = pack(entries, budget_chars=budget_chars,
+        block, stats = pack(entries, budget_chars=max(400, fine_budget),
                             per_entry_chars=per_entry_chars)
-        return f"top_sim={best:.2f}\n{block}"
-
+        parts = [f"top_sim={best:.2f}", block]
+        if include_parents:
+            window = max(1.0, float(parent_window_s))
+            batches = group_by_batch([(e, s) for e, s, _ in results],
+                                    window_s=window)
+            parent_budget = int(budget_chars * parent_share)
+            for key, _sim in batches:
+                members = [m for m in mem.memories
+                           if m.superseded_by is None
+                           and app_tag(m) == key[0]
+                           and int(m.timestamp // window) == key[1]]
+                if len(members) < 2:
+                    continue
+                center = (key[1] + 0.5) * window
+                members.sort(key=lambda m: abs(m.timestamp - center))
+                members = members[:max(2, int(parent_max_entries))]
+                body = "\n".join(m.text for m in members)[:max(300, parent_budget // max(1, len(batches)))]
+                stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(members[0].timestamp))
+                parts.append(f"[capture batch {stamp} · {len(members)} entries]\n{body}")
+        return "\n".join(parts)
 
 @mcp.tool()
 def flymemory_get_memory(memory_id: int) -> str:

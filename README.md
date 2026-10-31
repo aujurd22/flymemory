@@ -111,6 +111,29 @@ context rot bites: temporal-reasoning 22/37 vs 12/37, multi-session 18/43 vs
 10/43. Full context still wins single-session-assistant (16/22 vs 10/22) and
 knowledge-update (18/24 vs 15/24).
 
+### The recipe that measured 69.2%
+
+Two changes were measured separately and then stacked, on the same harness and
+reader (120 questions):
+
+| what | strict | prompt tokens / answer |
+|---|---|---|
+| RAG top-20 | 50.8% | ~545 |
+| two-level block (sentence hits + the capture batches they came from) | 57.5% | ~1,728 |
+| extract-then-compute answering | 56.7% | ~1,272 |
+| **both together** | **69.2%** | ~1,947 |
+| the entire history in one prompt | 76.7% | ~6,230 |
+
+Both halves are independently significant (paired p=0.007 and p=0.001 against
+either half alone), and they stack because they touch different things: the block
+changes what reaches the reader, the answer protocol changes what the reader does
+with it. `flymemory_recall_block(include_parents=True)` implements the first;
+the second is pure instruction.
+
+Three designs were measured and **rejected**: routing by question type (53.3%),
+gating the parent blocks on a lexical cue (54.2%, p=0.688 vs ungated), and a cheap
+profile block for preference questions (exactly RAG, p=1.000).
+
 ### What follows for the code
 
 - **Injection is now a character budget** (`flymemory_recall_block`): five

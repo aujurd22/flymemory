@@ -41,3 +41,37 @@ def top_sim(line):
     import re
     match = re.search(r"\[#(\d+)\s*\|\s*([0-9.]+)", line or "")
     return float(match.group(2)) if match else None
+
+
+def batch_key(app, timestamp, window_s=2.0):
+    """Group key for "the same capture batch": same app, same ~2s window.
+
+    The engine stores one entry per sentence, each with its own timestamp a few
+    milliseconds apart, so the entries produced by one captured message share an
+    app and a tiny time window. That is the parent grouping available without a
+    schema change (a real session id would be better, and is a follow-up).
+    """
+    return (str(app or ""), int(float(timestamp) // max(0.5, float(window_s))))
+
+
+def group_by_batch(hits, window_s=2.0, parents=3):
+    """Map the closest hits to their capture batches, best batch first.
+
+    `hits` is an iterable of (entry, sim) or (entry, sim, score). Returns a list of
+    (key, best_sim), at most `parents` entries.
+    """
+    best = {}
+    for hit in hits:
+        entry, sim = hit[0], hit[1]
+        key = batch_key(getattr(entry, "app", "") or app_tag(entry),
+                        entry.timestamp, window_s)
+        if key not in best or sim > best[key]:
+            best[key] = sim
+    return sorted(best.items(), key=lambda item: -item[1])[:parents]
+
+
+def app_tag(entry):
+    for tag in getattr(entry, "tags", []) or []:
+        if isinstance(tag, str) and tag.startswith("app:"):
+            return tag[4:]
+    return ""
