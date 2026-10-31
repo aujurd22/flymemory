@@ -182,13 +182,34 @@ def split_chunks(text: str, min_len: int = 10, max_len: int = 120) -> List[str]:
 
 
 _CRED_PATTERNS = ("ghp_", "github_pat_", "pypi-AgEI", "sk-ant-", "sk-proj-",
-                  "AKIA", "-----BEGIN", "xoxb-", "xoxp-")
+                  "AKIA", "-----BEGIN", "xoxb-", "xoxp-",
+    "npm_",
+    "hf_",
+    "AIza",
+    "glpat-",
+    "gho_",
+    "xoxa-",
+    "sk_live_",
+)
+
+
+# Prefix families that cannot be matched as plain substrings without false
+# positives ("src-" contains "rc-"). Two free-endpoint keys reached the live store
+# on 2026-10-31 before these existed.
+_CRED_REGEX = (
+    re.compile(r"rc-[0-9a-f]{32,}"),            # AMD Radeon free endpoint
+    re.compile(r"user_[A-Za-z0-9]{32,}"),        # Command Code gateway
+    re.compile(r"sk-[A-Za-z0-9_-]{20,}"),        # DeepSeek-style
+    re.compile(r"\b[A-Za-z0-9_-]{40,}\b(?=.*(?:key|token|secret))", re.I),
+)
 
 
 def _contains_credential(text: str) -> bool:
     """Server-side sanitizer: applies to EVERY write path (hook, model, import),
     not just the hook -- the hook filter alone is a single point of trust."""
-    return any(p in text for p in _CRED_PATTERNS)
+    if any(p in text for p in _CRED_PATTERNS):
+        return True
+    return any(rx.search(text) for rx in _CRED_REGEX)
 
 
 # merge provenance rule: a restatement must never demote the provenance of the
