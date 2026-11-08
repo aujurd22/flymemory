@@ -96,6 +96,21 @@ Rules:
 - When same=false, "merged" is an empty string.
 """
 
+REORG_SYSTEM = """You read a digest of an AI agent's long-term memory, one topic bucket at
+a time, and look for what a per-session pass cannot see: facts that are actually the
+same thing across entries, rules that keep being re-learned, and stale structures.
+
+Reply with ONLY this JSON:
+{"conclusions": ["..."], "redundant": [[id, id], ...], "stale": [id, ...]}
+
+Rules:
+- conclusions: at most 3 durable, reusable statements. Each must be supported by the
+  entries shown. Skip anything that is only true for one session.
+- redundant: id pairs that state the same fact. Only pairs whose ids are both shown.
+- stale: ids that a newer entry in the digest clearly contradicts. Only ids shown.
+- Empty lists are a good answer. Inventing structure is worse than reporting none.
+"""
+
 CLUSTER_SYSTEM = """You are given several memory entries. Decide whether they ALL state
 the same fact.
 
@@ -391,6 +406,94 @@ def cluster_pass(url=None, limit=5, min_sim=0.82, apply=False, pool=4000):
     return 0
 
 
+REORG_PROMPT = """Topic bucket: %s (%d entries total, these are the most used/recent)
+
+%s
+"""
+
+
+def reorganize_pass(url=None, apply=False, buckets=8, per_bucket=12,
+                    recent_days=0.0):
+    """The daily pass: mechanical cleanup, then one macro reading of the library.
+
+    Claude's dreams rewrite the whole store; this does the part that is safe to
+    automate daily -- retire what is structurally stale, then read a bounded digest
+    with the model and write ONE playbook entry (yesterday's is superseded), so the
+    macro view never contradicts the evidence entries it came from.
+    """
+    print("reorganize: mechanical pass", flush=True)
+    print("  " + mcp_call(url, "flymemory_organize", {"apply": True}).replace("\n", "\n  "),
+          flush=True)
+
+    raw = mcp_call(url, "flymemory_digest",
+                   {"buckets": max(1, int(buckets)), "per_bucket": max(1, int(per_bucket)),
+                    "recent_days": float(recent_days)})
+    try:
+        digest = json.loads(raw) if raw.strip().startswith("[") else []
+    except json.JSONDecodeError:
+        digest = []
+    if not digest:
+        print("reorganize: empty digest -> nothing to do", flush=True)
+        return 0
+
+    conclusions, redundant, stale = [], [], []
+    for group in digest:
+        lines = "\n".join("[%s | %s | used %dx] %s"
+                          % (item["id"], item["date"], item["uses"], item["text"])
+                          for item in group.get("entries", []))
+        answer = llm_chat(REORG_SYSTEM, REORG_PROMPT % (group.get("bucket"), group.get("total"), lines),
+                          max_tokens=800)
+        parsed, error = parse_decision(answer or "")
+        if error:
+            print(f"  [{group.get('bucket')}] skipped ({error})", flush=True)
+            continue
+        got = parsed.get("conclusions") or []
+        conclusions.extend(str(c) for c in got[:3])
+        redundant.extend(parsed.get("redundant") or [])
+        stale.extend(parsed.get("stale") or [])
+        print(f"  [{group.get('bucket')}] {len(got)} conclusion(s), "
+              f"{len(parsed.get('redundant') or [])} redundant pair(s)", flush=True)
+
+    if not conclusions:
+        print("reorganize: no conclusion survived review", flush=True)
+        return 0
+
+    body = ("每日重排（%s）\n\n" % time.strftime("%Y-%m-%d")
+            + "\n".join("* " + c for c in conclusions[:10]))
+    print("\nplaybook:", flush=True)
+    for c in conclusions[:6]:
+        print("  * " + c[:100], flush=True)
+    if redundant:
+        print(f"  redundant pairs reported: {len(redundant)}", flush=True)
+    if stale:
+        print(f"  stale ids reported: {len(stale)}", flush=True)
+
+    if not apply:
+        print("reorganize: dry-run, nothing written", flush=True)
+        return 0
+
+    previous = mcp_call(url, "flymemory_recall",
+                        {"query": "每日重排 playbook 宏观结论", "top_k": 5})
+    previous_ids = [int(m) for m in re.findall(r"#(\d+)", str(previous))]
+    written = mcp_call(url, "flymemory_remember",
+                       {"text": body, "tags": "playbook,daily", "source": "model"})
+    match = re.search(r"#(\d+)", str(written))
+    if not match:
+        print("  playbook write failed: " + str(written)[:100], flush=True)
+        return 1
+    new_id = int(match.group(1))
+    retired = 0
+    for old_id in previous_ids:
+        if old_id == new_id:
+            continue
+        result = mcp_call(url, "flymemory_supersede",
+                          {"old_memory_id": old_id, "new_memory_id": new_id})
+        if "SUPERSEDED" in str(result).upper() or "superseded" in str(result):
+            retired += 1
+    print(f"  playbook stored as #{new_id}, {retired} older playbook(s) retired", flush=True)
+    return 0
+
+
 def main():
     from flymemory.v3 import load  # read-only pkl access for the window
 
@@ -412,6 +515,11 @@ def main():
                          "ungrouped entries without any comp: tag). Use "
                          "'all' to dream everything together")
     args = ap.parse_args()
+
+    if args.reorganize or args.reorganize_apply:
+        return reorganize_pass(None, args.reorganize_apply,
+                                args.reorg_buckets, args.reorg_per_bucket,
+                                args.reorg_days)
 
     if args.cluster:
         return cluster_pass(None, args.cluster_limit,

@@ -501,6 +501,22 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
+def flymemory_digest(buckets: int = 8, per_bucket: int = 12,
+                     recent_days: float = 0.0) -> str:
+    """A compact topic-bucketed digest of the live library, as JSON.
+
+    The input a daily reorganization can actually afford: 8 buckets x 12 entries
+    instead of 17k rows. Buckets come from the topic tag, else the app.
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[]"
+        data = _mem.digest_buckets(buckets=buckets, per_bucket=per_bucket,
+                                   recent_days=recent_days)
+    return json.dumps(data, ensure_ascii=False)
+
+
+@mcp.tool()
 def flymemory_clusters(min_sim: float = 0.86, limit: int = 10, min_size: int = 3,
                        max_size: int = 8, pool_limit: int = 0,
                        offset: int = 0) -> str:

@@ -1135,6 +1135,50 @@ class SmartMemory:
                         return out
         return out
 
+    def digest_buckets(self, buckets: int = 8, per_bucket: int = 12,
+                       recent_days: float = 0.0) -> List[Dict]:
+        """Group the live library into a handful of topic buckets for a macro pass.
+
+        A daily reorganization cannot read 17k entries; it needs a representative
+        digest. Buckets come from the dominant topic tag (``comp:*``), else the app
+        tag, and within a bucket the most recently touched entries are taken first.
+        """
+        live = [m for m in self.memories if m.superseded_by is None]
+        if recent_days and float(recent_days) > 0:
+            cutoff = time.time() - float(recent_days) * 86400.0
+            fresh = [m for m in live if (m.timestamp or 0.0) >= cutoff]
+            if fresh:
+                live = fresh
+
+        groups: Dict[str, List[MemoryEntry]] = defaultdict(list)
+        for entry in live:
+            name = ""
+            for tag in (entry.tags or []):
+                if isinstance(tag, str) and tag.startswith("comp:"):
+                    name = tag[5:]
+                    break
+            if not name:
+                for tag in (entry.tags or []):
+                    if isinstance(tag, str) and tag.startswith("app:"):
+                        name = tag[4:]
+                        break
+            groups[name or "other"].append(entry)
+
+        ordered = sorted(groups.items(), key=lambda kv: len(kv[1]), reverse=True)
+        out = []
+        for name, entries in ordered[:max(1, int(buckets))]:
+            entries = sorted(entries, key=lambda m: (m.access_count or 0, m.timestamp or 0.0),
+                             reverse=True)[:max(1, int(per_bucket))]
+            out.append({
+                "bucket": name,
+                "total": len(groups[name]),
+                "entries": [{"id": m.memory_id,
+                             "date": time.strftime("%Y-%m-%d", time.localtime(m.timestamp or 0.0)),
+                             "uses": m.access_count or 0,
+                             "text": (m.text or "")[:140]} for m in entries],
+            })
+        return out
+
     def find_clusters(self, min_sim: float = 0.86, limit: int = 10,
                       min_size: int = 3, max_size: int = 8,
                       pool_limit: int = 0, offset: int = 0,
