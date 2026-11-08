@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import os
+import pathlib
 import sys
 import time
 import urllib.request
@@ -218,6 +219,12 @@ def main():
                     help="skip if fewer than this many turns in window")
     ap.add_argument("--dry-run", action="store_true",
                     help="print what would be stored, write nothing")
+    ap.add_argument("--shadow", action="store_true",
+                    help="write proposals to a JSON file instead of the store")
+    ap.add_argument("--promote", default="",
+                    help="write the proposals saved by an earlier --shadow run")
+    ap.add_argument("--shadow-dir", default="",
+                    help="where --shadow writes (default: next to this file)")
     ap.add_argument("--compartment", default="",
                     help="dream only entries tagged comp:<name> (default: "
                          "ungrouped entries without any comp: tag). Use "
@@ -263,7 +270,11 @@ def main():
         print("dream: distillation produced nothing -- skipping", flush=True)
         return
 
+    if args.promote:
+        return promote(args)
+
     stored = []
+    proposals = []
     for entry in entries:
         supported, note = audit_entry(client, turns, entry)
         print(f"  [{'KEEP' if supported else 'DROP'}] {entry[:80]}"
@@ -273,14 +284,52 @@ def main():
         if args.dry_run:
             stored.append(entry)
             continue
+        if args.shadow:
+            proposals.append(entry)
+            stored.append(entry)
+            continue
         write_args = {"text": entry}
         if args.compartment and args.compartment != "all":
             write_args["compartment"] = args.compartment
         result = mcp_call("flymemory_remember", write_args)
         print(f"    -> {result[:100]}", flush=True)
         stored.append(entry)
+    if args.shadow and proposals:
+        directory = pathlib.Path(args.shadow_dir) if args.shadow_dir else pathlib.Path(
+            os.path.dirname(os.path.abspath(__file__)))
+        directory.mkdir(parents=True, exist_ok=True)
+        target = directory / ("dream-shadow-" + time.strftime("%Y%m%d-%H%M%S") + ".json")
+        target.write_text(json.dumps({
+            "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "window_minutes": args.window,
+            "compartment": args.compartment,
+            "proposals": proposals,
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"dream: {len(proposals)} proposals written to {target}", flush=True)
+        print("       review, then: python dream.py --promote " + str(target), flush=True)
+        return
+
     mode = "(dry-run, not stored)" if args.dry_run else "stored via MCP"
     print(f"dream: {len(stored)} entries {mode}", flush=True)
+
+
+def promote(args):
+    """Write the proposals a --shadow run left on disk."""
+    path = pathlib.Path(args.promote)
+    if not path.exists():
+        print(f"dream: proposal file not found: {path}", flush=True)
+        return
+    data = json.loads(path.read_text(encoding="utf-8"))
+    written = 0
+    for entry in data.get("proposals", []):
+        write_args = {"text": entry}
+        compartment = data.get("compartment") or args.compartment
+        if compartment and compartment != "all":
+            write_args["compartment"] = compartment
+        result = mcp_call("flymemory_remember", write_args)
+        written += 1
+        print(f"  -> {result[:100]}", flush=True)
+    print(f"dream: promoted {written} entries from {path.name}", flush=True)
 
 
 if __name__ == "__main__":
