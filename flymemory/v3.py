@@ -1135,6 +1135,79 @@ class SmartMemory:
                         return out
         return out
 
+    def find_clusters(self, min_sim: float = 0.86, limit: int = 10,
+                      min_size: int = 3, max_size: int = 8,
+                      pool_limit: int = 0, offset: int = 0,
+                      block: int = 512) -> List[Dict]:
+        """Groups of entries that all say the same thing (3+ members).
+
+        Pairwise merging handles two; three or more synonyms of one fact need a
+        cluster, otherwise the merge runs get cheaper each time without ever
+        converging. Connected components over the near-duplicate graph: any two
+        members above `min_sim` join the same cluster (transitive by design -- the
+        model still gets the final say on the whole group).
+        """
+        live = [m for m in self.memories if m.superseded_by is None]
+        if len(live) < max(2, int(min_size)):
+            return []
+        live = sorted(live, key=lambda m: m.timestamp or 0.0, reverse=True)
+        total = len(live)
+        start_at = int(offset) % total if total else 0
+        live = live[start_at:]
+        if pool_limit and int(pool_limit) > 0:
+            live = live[:max(2, int(pool_limit))]
+        M = np.vstack([np.asarray(m.embedding, dtype=np.float32) for m in live])
+        Mn = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
+        n = Mn.shape[0]
+        parent = list(range(n))
+
+        def find(x: int) -> int:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: int, b: int) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+        neighbours = max(1, min(8, n - 1))
+        for chunk_start in range(0, n, block):
+            chunk = Mn[chunk_start:chunk_start + block]
+            sims = chunk @ Mn.T
+            for row in range(chunk.shape[0]):
+                i = chunk_start + row
+                row_sims = sims[row]
+                row_sims[:i + 1] = -1.0
+                if n - 1 - i <= neighbours:
+                    candidates = np.argsort(-row_sims)[: max(1, n - 1 - i)]
+                else:
+                    candidates = np.argpartition(-row_sims, neighbours)[:neighbours]
+                for j in candidates:
+                    j = int(j)
+                    if j > i and float(row_sims[j]) >= min_sim:
+                        union(i, j)
+
+        groups: Dict[int, List[int]] = defaultdict(list)
+        for i in range(n):
+            groups[find(i)].append(i)
+        clusters = []
+        for members in sorted(groups.values(), key=len, reverse=True):
+            if len(members) < max(2, int(min_size)):
+                continue
+            members = members[:max(2, int(max_size))]
+            ids = [live[i].memory_id for i in members]
+            clusters.append({
+                "ids": ids,
+                "size": len(ids),
+                "texts": [(live[i].text or "")[:160] for i in members],
+                "newest": max((live[i].timestamp or 0.0) for i in members),
+            })
+            if len(clusters) >= max(1, int(limit)):
+                break
+        return clusters
+
     def vacuum(self, older_than_days: float = 30.0, apply: bool = False) -> dict:
         """Physically drop entries that were retired long ago.
 

@@ -501,6 +501,26 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
+def flymemory_clusters(min_sim: float = 0.86, limit: int = 10, min_size: int = 3,
+                       max_size: int = 8, pool_limit: int = 0,
+                       offset: int = 0) -> str:
+    """Groups of 3+ entries that all state one fact, as JSON.
+
+    Pairwise merging cannot converge when a single fact was written down five times
+    in five different sessions: it merges two, then two more, and the rest scatter.
+    Clusters (connected components over the near-duplicate graph) let one model call
+    fold the whole group into one entry.
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[]"
+        groups = _mem.find_clusters(min_sim=min_sim, limit=limit, min_size=min_size,
+                                    max_size=max_size, pool_limit=pool_limit,
+                                    offset=offset)
+    return json.dumps(groups, ensure_ascii=False)
+
+
+@mcp.tool()
 def flymemory_vacuum(older_than_days: float = 30.0, apply: bool = False) -> str:
     """Physically drop entries retired longer ago than `older_than_days`.
 

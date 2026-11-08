@@ -96,6 +96,21 @@ Rules:
 - When same=false, "merged" is an empty string.
 """
 
+CLUSTER_SYSTEM = """You are given several memory entries. Decide whether they ALL state
+the same fact.
+
+Reply with ONLY this JSON:
+{"same": true/false, "merged": "...", "keep": [ids that differ], "why": "..."}
+
+Rules:
+- same=true ONLY if every entry describes the same subject and they agree.
+- If one entry carries a different value, date, path or decision, set same=false and
+  list that entry's id in "keep". Do not reconcile a disagreement into one sentence.
+- When same=true, "merged" is ONE self-contained sentence in the source language that
+  keeps EVERY concrete detail from every entry (numbers, names, dates, paths). Never
+  add anything that is not in the given entries.
+"""
+
 AUDIT_SYSTEM = """You are a strict factuality judge. Given SOURCE TURNS and a
 distilled MEMORY ENTRY, decide whether every claim in the entry is supported
 by the source turns. Reply with ONLY:
@@ -308,6 +323,74 @@ def merge_pass(url=None, limit=8, min_sim=0.80, apply=False, chat=None, pool=200
     return 0
 
 
+
+def cluster_pass(url=None, limit=5, min_sim=0.82, apply=False, pool=4000):
+    """Fold a whole group of synonyms into one entry with a single model call."""
+    raw = mcp_call(url, "flymemory_clusters",
+                   {"min_sim": min_sim, "limit": max(1, int(limit)),
+                    "min_size": 3, "max_size": 8, "pool_limit": max(1, int(pool))})
+    try:
+        clusters = json.loads(raw) if raw.strip().startswith("[") else []
+    except json.JSONDecodeError:
+        clusters = []
+    if not clusters and raw.strip() and not raw.strip().startswith("["):
+        print("cluster: query failed -> " + raw.strip()[:160], flush=True)
+    if not clusters:
+        print("cluster: no groups of 3+ found", flush=True)
+        return 0
+
+    merged_count = 0
+    for group in clusters:
+        ids = group.get("ids") or []
+        texts = group.get("texts") or []
+        if len(ids) < 3:
+            continue
+        numbered = "\n".join("[%s] %s" % (i, t) for i, t in zip(ids, texts))
+        answer = llm_chat(CLUSTER_SYSTEM, "ENTRIES:\n" + numbered, max_tokens=600)
+        if not (answer or "").strip():
+            print("  [skip] cluster %s (no model reply)" % (ids,), flush=True)
+            continue
+        parsed, parse_error = parse_decision(answer)
+        if parse_error:
+            print("  [skip] cluster %s (%s)" % (ids, parse_error), flush=True)
+            continue
+        if not parsed.get("same"):
+            keep = ", ".join("#%s" % i for i in parsed.get("keep", [])[:4])
+            print("  [DIFFERENT] %d entries, kept: %s -- %s"
+                  % (len(ids), keep or "n/a", str(parsed.get("why", ""))[:80]), flush=True)
+            continue
+        merged_text = str(parsed.get("merged") or "").strip()
+        if not merged_text:
+            print("  [skip] cluster %s: same but no merged text" % (ids,), flush=True)
+            continue
+        print("  [CLUSTER %d] %s -> %s" % (len(ids),
+              ", ".join("#%s" % i for i in ids), merged_text[:80]), flush=True)
+        merged_count += 1
+        if not apply:
+            continue
+        written = mcp_call(url, "flymemory_remember",
+                           {"text": merged_text, "tags": "dream,merged,cluster",
+                            "source": "model"})
+        match = re.search(r"#(\d+)", str(written))
+        if not match:
+            print("    -> write failed: %s" % str(written)[:80], flush=True)
+            continue
+        new_id = int(match.group(1))
+        retired = 0
+        for old_id in ids:
+            if int(old_id) == new_id:
+                continue
+            mcp_call(url, "flymemory_supersede",
+                     {"old_memory_id": int(old_id), "new_memory_id": new_id})
+            retired += 1
+        print("    -> #%d consolidated, %d original(s) retired" % (new_id, retired),
+              flush=True)
+
+    mode = "applied" if apply else "dry-run, nothing written"
+    print("cluster: %d group(s) consolidated (%s)" % (merged_count, mode), flush=True)
+    return 0
+
+
 def main():
     from flymemory.v3 import load  # read-only pkl access for the window
 
@@ -329,6 +412,11 @@ def main():
                          "ungrouped entries without any comp: tag). Use "
                          "'all' to dream everything together")
     args = ap.parse_args()
+
+    if args.cluster:
+        return cluster_pass(None, args.cluster_limit,
+                            args.cluster_min_sim, args.cluster_apply,
+                            pool=args.cluster_pool)
 
     if args.merge:
         return merge_pass(None, args.merge_limit, args.merge_min_sim,
