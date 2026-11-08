@@ -501,7 +501,24 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
-def flymemory_organize(apply: bool = False, min_sim: float = 0.94,
+def flymemory_conflict_pairs(min_sim: float = 0.80, limit: int = 20,
+                             pool_limit: int = 8000) -> str:
+    """Near-duplicate / contradiction pairs as JSON, for a merge pass.
+
+    The default 0.80 is empirical: on this 20k-entry library the highest cosine in
+    any 4,000-entry pool is 0.885, so the old 0.92 could never fire. At 0.80 there
+    are tens of pairs -- a size a model can actually review.
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[]"
+        pairs = _mem.find_contradiction_candidates(
+            min_sim=min_sim, limit=limit, pool_limit=pool_limit)
+    return json.dumps(pairs, ensure_ascii=False)
+
+
+@mcp.tool()
+def flymemory_organize(apply: bool = False, min_sim: float = 0.80,
                        limit: int = 40) -> str:
     """One housekeeping pass: retire structurally stale entries, report the rest.
 

@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import pathlib
 import sys
 import time
@@ -78,6 +79,22 @@ decisions worth keeping long-term: preferences, numbers, names, dates,
 plans, outcomes, corrections. Write 1-6 short self-contained entries. Do NOT
 invent anything not present in the conversation. Reply with ONLY a JSON
 array of strings."""
+
+MERGE_SYSTEM = """You decide whether two memory entries state the SAME fact.
+
+Reply with ONLY this JSON:
+{"same": true/false, "merged": "...", "why": "..."}
+
+Rules:
+- same=true ONLY when both describe the same subject and agree -- a rewording,
+  a duplicate, or one strictly containing the other.
+- If they disagree (different values, different dates, one replaces the other),
+  set same=false. Do not reconcile a contradiction into one sentence.
+- When same=true, "merged" is ONE self-contained sentence in the source language
+  that keeps EVERY concrete detail from both (numbers, names, dates, paths).
+  Never add anything that is not in the two entries.
+- When same=false, "merged" is an empty string.
+"""
 
 AUDIT_SYSTEM = """You are a strict factuality judge. Given SOURCE TURNS and a
 distilled MEMORY ENTRY, decide whether every claim in the entry is supported
@@ -209,6 +226,71 @@ def audit_entry(client, source_turns, entry):
     return bool(d.get("supported")), "; ".join(d.get("unsupported_claims", [])[:2])
 
 
+def merge_pass(url=None, limit=8, min_sim=0.80, apply=False, chat=None):
+    """Ask the model which near-duplicate pairs are actually one fact.
+
+    Mechanical organize can only retire exact copies and stale state keys. ``merge``
+    covers the rest: the model reads both entries and either produces one sentence
+    that keeps every detail, or says they differ (in which case nothing is touched).
+    """
+    call = chat or llm_chat
+    raw = mcp_call(url, "flymemory_conflict_pairs",
+                   {"min_sim": min_sim, "limit": max(1, int(limit))})
+    try:
+        pairs = json.loads(raw) if raw.strip().startswith("[") else []
+    except json.JSONDecodeError:
+        pairs = []
+    if not pairs and raw.strip() and not raw.strip().startswith("["):
+        print("merge: candidate query failed -> " + raw.strip()[:160], flush=True)
+    if not pairs:
+        print("merge: no candidate pairs", flush=True)
+        return 0
+
+    merged_count = 0
+    for pair in pairs:
+        prompt = "A:\n" + str(pair.get("a_text", "")) + "\n\nB:\n" + str(pair.get("b_text", ""))
+        decision, error = parse_decision(call(MERGE_SYSTEM, prompt, max_tokens=400))
+        if error:
+            print(f"  [skip] #{pair['a_id']}~#{pair['b_id']} ({error})", flush=True)
+            continue
+        if not decision.get("same"):
+            print(f"  [DIFFERENT] #{pair['a_id']} ~ #{pair['b_id']} "
+                  f"sim={pair['sim']}: {decision.get('why', '')[:90]}", flush=True)
+            continue
+        merged_text = str(decision.get("merged") or "").strip()
+        if not merged_text:
+            print(f"  [skip] #{pair['a_id']}~#{pair['b_id']}: same but no merged text",
+                  flush=True)
+            continue
+        print(f"  [MERGE] #{pair['a_id']} + #{pair['b_id']} -> {merged_text[:90]}", flush=True)
+        merged_count += 1
+        if not apply:
+            continue
+        written = mcp_call(url, "flymemory_remember",
+                           {"text": merged_text, "tags": "dream,merged", "source": "model"})
+        match = re.search(r"#(\d+)", str(written))
+        if not match:
+            print(f"    -> write failed: {str(written)[:80]}", flush=True)
+            continue
+        new_id = int(match.group(1))
+        retired = 0
+        for old_id in (pair["a_id"], pair["b_id"]):
+            if int(old_id) == new_id:
+                # The merged text deduped into one of the originals: that entry IS
+                # the merge target now, so superseding it into itself is pointless.
+                continue
+            mcp_call(url, "flymemory_supersede",
+                     {"old_memory_id": int(old_id), "new_memory_id": new_id})
+            retired += 1
+        where = "in place" if retired < 2 else "as a new entry"
+        print(f"    -> merge landed {where} at #{new_id}, {retired} original(s) retired",
+              flush=True)
+
+    mode = "applied" if apply else "dry-run, nothing written"
+    print(f"merge: {merged_count} pair(s) merged ({mode})", flush=True)
+    return 0
+
+
 def main():
     from flymemory.v3 import load  # read-only pkl access for the window
 
@@ -230,6 +312,9 @@ def main():
                          "ungrouped entries without any comp: tag). Use "
                          "'all' to dream everything together")
     args = ap.parse_args()
+
+    if args.merge:
+        return merge_pass(None, args.merge_limit, args.merge_min_sim, args.merge_apply)
 
     if args.organize or args.organize_apply:
         print(mcp_call("flymemory_organize",

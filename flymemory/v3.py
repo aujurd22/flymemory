@@ -710,7 +710,7 @@ class SmartMemory:
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
     # ----- supersede -----
-    def organize(self, apply: bool = False, min_sim: float = 0.94,
+    def organize(self, apply: bool = False, min_sim: float = 0.80,
                  limit: int = 40) -> dict:
         """Housekeeping pass: retire what two newer facts have already replaced.
 
@@ -1071,35 +1071,59 @@ class SmartMemory:
         return results
 
     def find_contradiction_candidates(self, min_sim: float = 0.92,
-                                       limit: int = 20) -> List[Dict]:
-        """Candidate contradictions: entry pairs whose similarity exceeds the
-        dedup threshold but whose TEXTS DIFFER -- same slot, conflicting
-        values. ask_user protocol: this returns candidates only; the calling
-        model decides supersede (real contradiction) vs merge (duplicate).
-        Mechanical layer only -- no LLM here (yantrikdb-style honest boundary).
+                                      limit: int = 20,
+                                      pool_limit: int = 8000,
+                                      block: int = 512) -> List[Dict]:
+        """Candidate contradictions: pairs whose similarity exceeds `min_sim` but
+        whose texts differ -- same slot, possibly conflicting values.
+
+        Only candidates; the calling model decides supersede vs merge. No LLM here.
+
+        The first version built the full similarity matrix. At 20,545 entries that
+        is 20545^2 floats (~1.7 GB) and a Python double loop over 4.2e8 pairs: it
+        either died or returned nothing, and the caller could not tell. This walks
+        the pool in row blocks, keeps the best few neighbours per row, and caps the
+        pool to the most recent `pool_limit` live entries -- duplicates come from
+        recent work, not from two years ago.
         """
-        if len(self.memories) < 2:
+        live = [m for m in self.memories if m.superseded_by is None]
+        if len(live) < 2:
             return []
-        M = self._emb_matrix()
-        Mn = M / (np.linalg.norm(M, axis=1, keepdims=True) + 1e-8)
-        sims = Mn @ Mn.T
-        out = []
-        n = len(self.memories)
-        for i in range(n):
-            for j in range(i + 1, n):
-                s = float(sims[i, j])
-                if s < min_sim:
-                    continue
-                a, b = self.memories[i], self.memories[j]
-                if a.text == b.text:
-                    continue  # exact duplicate, not a contradiction
-                if a.superseded_by or b.superseded_by:
-                    continue  # already resolved via lineage
-                out.append({"a_id": a.memory_id, "b_id": b.memory_id,
-                            "sim": round(s, 3),
-                            "a_text": a.text[:120], "b_text": b.text[:120]})
-                if len(out) >= limit:
-                    return out
+        live = sorted(live, key=lambda m: m.timestamp or 0.0, reverse=True)[:max(2, int(pool_limit))]
+        # build the matrix from the pooled entries' own vectors (no O(n^2) lookups)
+        M = np.vstack([np.asarray(m.embedding, dtype=np.float32) for m in live])
+        norms = np.linalg.norm(M, axis=1, keepdims=True) + 1e-8
+        Mn = M / norms
+        n = Mn.shape[0]
+        neighbours = max(1, min(5, n - 1))
+        out: List[Dict] = []
+        for start in range(0, n, block):
+            chunk = Mn[start:start + block]
+            sims = chunk @ Mn.T
+            for row in range(chunk.shape[0]):
+                i = start + row
+                row_sims = sims[row]
+                row_sims[:i + 1] = -1.0          # only j > i, skip self
+                if n - 1 - i <= neighbours:
+                    candidates = np.argsort(-row_sims)[: max(1, n - 1 - i)]
+                else:
+                    candidates = np.argpartition(-row_sims, neighbours)[:neighbours]
+                for j in candidates:
+                    j = int(j)
+                    if j <= i:
+                        continue
+                    similarity = float(row_sims[j])
+                    if similarity < min_sim:
+                        continue
+                    a, b = live[i], live[j]
+                    if (a.text or "") == (b.text or ""):
+                        continue                 # exact duplicate, not a contradiction
+                    out.append({"a_id": a.memory_id, "b_id": b.memory_id,
+                                "sim": round(similarity, 3),
+                                "a_text": (a.text or "")[:120],
+                                "b_text": (b.text or "")[:120]})
+                    if len(out) >= limit:
+                        return out
         return out
 
     def fading_valuable(self, decay_threshold: float = 0.5,
