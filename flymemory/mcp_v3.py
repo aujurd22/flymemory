@@ -501,6 +501,38 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
+def flymemory_organize(apply: bool = False, min_sim: float = 0.94,
+                       limit: int = 40) -> str:
+    """One housekeeping pass: retire structurally stale entries, report the rest.
+
+    Dreaming only ever added entries; this is the garbage-collection half. Applied
+    automatically (apply=True): two live entries claiming the same state key -- the
+    newest wins -- and byte-identical texts under one app. Reported only: near
+    duplicates and contradictions, because deciding that two similar entries are
+    "the same fact" is a model judgment, and a wrong supersede hides evidence.
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[NO-STORE] service is not ready"
+        report = _mem.organize(apply=apply, min_sim=min_sim, limit=limit)
+        if apply and (report["stale_states"] or report["exact_dups"]):
+            save_memory()
+    lines = [f"ORGANIZE ({'applied' if apply else 'report only'})",
+             f"  stale entity states : {report['stale_states']}",
+             f"  exact duplicates    : {report['exact_dups']}",
+             f"  live entries        : {report['live_before']} -> {report['live_after']}",
+             f"  reported pairs      : {len(report['candidates'])} (never auto-applied)"]
+    if report["stale_state_ids"]:
+        lines.append("  stale ids: " + ", ".join(f"#{i}" for i in report["stale_state_ids"][:12]))
+    if report["exact_dup_ids"]:
+        lines.append("  dup ids  : " + ", ".join(f"#{i}" for i in report["exact_dup_ids"][:12]))
+    for pair in report["candidates"][:5]:
+        lines.append(f"  ~ #{pair['a_id']} <-> #{pair['b_id']} sim={pair['sim']}: "
+                     f"{pair['a_text'][:50]} | {pair['b_text'][:50]}")
+    return "\n".join(lines)
+
+
+@mcp.tool()
 def flymemory_redact(memory_id: int) -> str:
     """Scrub credentials from one entry in place, keeping its audit history.
 

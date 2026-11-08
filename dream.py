@@ -231,6 +231,11 @@ def main():
                          "'all' to dream everything together")
     args = ap.parse_args()
 
+    if args.organize or args.organize_apply:
+        print(mcp_call("flymemory_organize",
+                       {"apply": bool(args.organize_apply)}), flush=True)
+        print(flush=True)
+
     here = os.path.dirname(os.path.abspath(__file__))
     # the RUNNING service owns flymemory/flymemory_v3.pkl; we only READ it
     # here (window snapshot) -- all writes go through MCP flymemory_remember

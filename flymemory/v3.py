@@ -710,6 +710,76 @@ class SmartMemory:
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
     # ----- supersede -----
+    def organize(self, apply: bool = False, min_sim: float = 0.94,
+                 limit: int = 40) -> dict:
+        """Housekeeping pass: retire what two newer facts have already replaced.
+
+        Dreaming here only ever *adds*. Claude's dreams reorganize the whole store,
+        which is the half that keeps a library from growing forever. Only the two
+        decisions that can be made mechanically are automated here:
+
+        1. two live entries claiming the same `state_key` -- keep the newest
+           (the older ones are structurally stale, no judgment needed);
+        2. byte-identical texts under the same app -- keep the newest.
+
+        Everything else (near-duplicates, contradictions) is reported, not applied:
+        deciding that two similar entries are "the same fact" is a model judgment,
+        and a wrong supersede silently hides evidence.
+
+        Returns a dict: counts, ids, and the reported candidate pairs.
+        """
+        def norm(text: str) -> str:
+            return " ".join((text or "").split()).casefold()
+
+        live = [m for m in self.memories if m.superseded_by is None]
+        report = {"applied": bool(apply), "stale_states": 0, "stale_state_ids": [],
+                  "exact_dups": 0, "exact_dup_ids": [], "candidates": [],
+                  "live_before": len(live), "live_after": len(live)}
+
+        # 1. one live entry per state_key
+        by_state: Dict[str, List[MemoryEntry]] = defaultdict(list)
+        for entry in live:
+            key = getattr(entry, "state_key", None)
+            if key:
+                by_state[key].append(entry)
+        for key, group in by_state.items():
+            if len(group) < 2:
+                continue
+            group.sort(key=lambda m: (m.timestamp or 0.0, m.memory_id or 0), reverse=True)
+            keep = group[0]
+            for stale in group[1:]:
+                report["stale_state_ids"].append(stale.memory_id)
+                report["stale_states"] += 1
+                if apply:
+                    self.supersede(stale.memory_id, keep.memory_id)
+
+        # 2. byte-identical texts
+        seen: Dict[str, MemoryEntry] = {}
+        # newest first, so the surviving copy is the newest one
+        for entry in sorted(live, key=lambda m: (m.timestamp or 0.0, m.memory_id or 0),
+                            reverse=True):
+            key = norm(entry.text)
+            if not key:
+                continue
+            if key in seen:
+                report["exact_dup_ids"].append(entry.memory_id)
+                report["exact_dups"] += 1
+                if apply:
+                    self.supersede(entry.memory_id, seen[key].memory_id)
+            else:
+                seen[key] = entry
+
+        if apply and (report["stale_states"] or report["exact_dups"]):
+            report["live_after"] = len([m for m in self.memories if m.superseded_by is None])
+
+        # 3. near-duplicates / contradictions: report only
+        try:
+            report["candidates"] = self.find_contradiction_candidates(
+                min_sim=min_sim, limit=limit)
+        except Exception:                      # noqa: BLE001 - reporting is optional
+            report["candidates"] = []
+        return report
+
     def redact(self, memory_id: int) -> Tuple[bool, str]:
         """Scrub credential-shaped text in place, keeping the entry and its history.
 
