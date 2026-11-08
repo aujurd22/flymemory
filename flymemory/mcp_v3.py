@@ -66,13 +66,42 @@ def get_memory():
     if _mem is None:
         if os.path.exists(DB_PATH):
             _mem = load(DB_PATH)
+            global _LIB_FINGERPRINT
+            _LIB_FINGERPRINT = _library_fingerprint()
         else:
             _mem = SmartMemory(n_bits=4096, decay_tau=2592000.0)  # 30 天特征时间，见 v3.SmartMemory 注释
     return _mem
 
+def _library_fingerprint():
+    """(mtime_ns, size) of the library file -- the optimistic-concurrency token."""
+    try:
+        st = os.stat(DB_PATH)
+        return (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+
+
+_LIB_FINGERPRINT = None   # as read at load time; refreshed after every save
+
+
 def save_memory():
+    """Persist, refusing to clobber a library another process has written.
+
+    Two servers pointed at one library would otherwise lose writes silently, each
+    holding its own in-memory copy. Anthropic's memory API guards concurrent agents
+    with a content-hash precondition; the file fingerprint is the cheap equivalent.
+    """
+    global _LIB_FINGERPRINT
     if _mem is None: return
+    current = _library_fingerprint()
+    if (_LIB_FINGERPRINT is not None and current is not None
+            and current != _LIB_FINGERPRINT):
+        conflict = DB_PATH + ".conflict-" + time.strftime("%Y%m%d-%H%M%S")
+        save(_mem, conflict)
+        print("[flymemory] library changed on disk -- wrote " + conflict, flush=True)
+        return
     save(_mem, DB_PATH)
+    _LIB_FINGERPRINT = _library_fingerprint()
 
 # ----- multi-app provenance -----
 # One shared store is used by several host apps (ZCode, Qoder, ...). Every
@@ -470,6 +499,82 @@ def flymemory_recall_index(query: str, top_k: int = 10,
                        f"app={_app_of(entry)} | "
                        f"{_age_str(entry.timestamp)}] {entry.text[:50]}")
         return "\n".join(out)
+
+@mcp.tool()
+def flymemory_redact(memory_id: int) -> str:
+    """Scrub credentials from one entry in place, keeping its audit history.
+
+    Deleting the entry would erase the record that something was known and when it
+    was withdrawn. Redaction keeps the entry, its timestamps and its lineage, and
+    replaces only the secret-shaped spans with [REDACTED].
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[NO-STORE] service is not ready"
+        ok, message = _mem.redact(int(memory_id))
+        if ok:
+            save_memory()
+        return ("[REDACTED] " if ok else "[NO-OP] ") + message
+
+
+@mcp.tool()
+def flymemory_wiki(query: str = "", limit: int = 40, compartment: str = "") -> str:
+    """A navigable "current truth" page built from the live entries.
+
+    The knowledge-representation layer: entity state first, then topic groups, then
+    the most-used recent memories. Derived, never authoritative -- every line links
+    back to the entry id that backs it.
+    """
+    with _mem_lock:
+        if _mem is None:
+            return "[NO-STORE] service is not ready"
+        live = [m for m in _mem.memories if m.superseded_by is None]
+        if compartment:
+            wanted = "comp:" + compartment
+            live = [m for m in live if wanted in (m.tags or [])]
+        if not live:
+            return "No live memories."
+        ranked = live
+        if query:
+            try:
+                order = {e.memory_id: sim for e, sim, _ in _mem.recall(query, top_k=max(1, limit * 2))}
+            except Exception:
+                order = {}
+            ranked = sorted(live, key=lambda m: (-order.get(m.memory_id, 0.0), -m.timestamp))
+
+        def line(m, prefix=""):
+            stamp = time.strftime("%Y-%m-%d", time.localtime(m.timestamp))
+            body = (m.text or "").replace("\n", " ")[:160]
+            return prefix + f"[#{m.memory_id} | {stamp}] " + body
+
+        out = ["# 当前真相（由库派生，非权威）", ""]
+        states = [m for m in ranked if getattr(m, "state_key", None)][:limit]
+        if states:
+            out.append("## 实体当前状态")
+            for m in states:
+                out.append(f"- `{m.state_key}` = {m.state_value or m.text[:80]}  " + line(m))
+            out.append("")
+        groups = {}
+        for m in ranked[:limit * 3]:
+            for tag in (m.tags or []):
+                if isinstance(tag, str) and tag.startswith("comp:"):
+                    groups.setdefault(tag[5:], []).append(m)
+                    break
+        if groups:
+            out.append("## 按主题")
+            for name, items in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:6]:
+                out.append(f"### {name} ({len(items)})")
+                for m in items[:6]:
+                    out.append(line(m, "  "))
+            out.append("")
+        out.append("## 最近 / 最常用")
+        recent = sorted(live, key=lambda m: (-(m.access_count or 0), -m.timestamp))[:limit]
+        for m in recent:
+            out.append(line(m))
+        out.append("")
+        out.append(f"_live={len(live)}, shown={len(recent)}_")
+        return "\n".join(out)
+
 
 @mcp.tool()
 def flymemory_recall_block(query: str, budget_chars: int = 6000,

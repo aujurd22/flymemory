@@ -710,6 +710,46 @@ class SmartMemory:
                 "novelty": 1.0 - best_sim, "memory_id": entry.memory_id}
 
     # ----- supersede -----
+    def redact(self, memory_id: int) -> Tuple[bool, str]:
+        """Scrub credential-shaped text in place, keeping the entry and its history.
+
+        Deleting a leaked entry destroys the audit trail along with the secret: the
+        record that something was known, when, and that it was later withdrawn is
+        exactly what an audit needs. Anthropic's memory API carries a `redact`
+        operation for the same reason, and a pasted key reached this store on
+        2026-11-01, so the store needs the same escape hatch.
+        """
+        entry = next((m for m in self.memories if m.memory_id == memory_id), None)
+        if entry is None:
+            return False, f"no entry #{memory_id}"
+        hits = 0
+
+        def scrub(text: str) -> str:
+            nonlocal hits
+            if not text:
+                return text
+            for pattern in _CRED_REGEX:
+                text, count = pattern.subn("[REDACTED]", text)
+                hits += count
+            for marker in _CRED_PATTERNS:
+                if marker in text:
+                    text = text.replace(marker, "[REDACTED]")
+                    hits += 1
+            return text
+
+        entry.text = scrub(entry.text or "")
+        entry.response = scrub(entry.response or "")
+        if hits == 0:
+            return False, "nothing credential-shaped found"
+        entry.updated_at = time.time()
+        entry.tags = list(entry.tags or []) + [
+            "redacted:" + time.strftime("%Y-%m-%dT%H:%M:%S")]
+        try:                      # keep the vector honest after a text edit
+            entry.embedding = _embed(entry.text)
+        except Exception:         # noqa: BLE001 - an un-embeddable redaction still wins
+            pass
+        return True, f"redacted {hits} match(es) in #{memory_id}"
+
     def supersede(self, old_id: int, new_id: int) -> Tuple[bool, str]:
         """Mark an entry as superseded by a newer one (excluded from default recall).
 
