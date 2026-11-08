@@ -1072,7 +1072,8 @@ class SmartMemory:
 
     def find_contradiction_candidates(self, min_sim: float = 0.92,
                                       limit: int = 20,
-                                      pool_limit: int = 8000,
+                                      pool_limit: int = 0,
+                                      offset: int = 0,
                                       block: int = 512) -> List[Dict]:
         """Candidate contradictions: pairs whose similarity exceeds `min_sim` but
         whose texts differ -- same slot, possibly conflicting values.
@@ -1089,7 +1090,15 @@ class SmartMemory:
         live = [m for m in self.memories if m.superseded_by is None]
         if len(live) < 2:
             return []
-        live = sorted(live, key=lambda m: m.timestamp or 0.0, reverse=True)[:max(2, int(pool_limit))]
+        # Newest first, then a rotating window: `offset` lets successive runs walk
+        # the WHOLE library without paying O(n^2) in one pass. pool_limit=0 means
+        # "everything from offset to the end" (chunked, so memory stays bounded).
+        live = sorted(live, key=lambda m: m.timestamp or 0.0, reverse=True)
+        total = len(live)
+        start = int(offset) % total if total else 0
+        live = live[start:]
+        if pool_limit and int(pool_limit) > 0:
+            live = live[:max(2, int(pool_limit))]
         # build the matrix from the pooled entries' own vectors (no O(n^2) lookups)
         M = np.vstack([np.asarray(m.embedding, dtype=np.float32) for m in live])
         norms = np.linalg.norm(M, axis=1, keepdims=True) + 1e-8
@@ -1125,6 +1134,41 @@ class SmartMemory:
                     if len(out) >= limit:
                         return out
         return out
+
+    def vacuum(self, older_than_days: float = 30.0, apply: bool = False) -> dict:
+        """Physically drop entries that were retired long ago.
+
+        Superseding keeps history, which is the point -- but a retired entry still
+        occupies the pickle and the embedding matrix. Dreaming + organize already
+        shrink the *live* set; this is the only operation that shrinks the *file*.
+        Anything retired inside the window is kept, so a recent rollback stays
+        possible.
+        """
+        cutoff = time.time() - max(0.0, float(older_than_days)) * 86400.0
+        doomed = []
+        for entry in self.memories:
+            if entry.superseded_by is None:
+                continue
+            when = getattr(entry, "valid_to", None) or getattr(entry, "updated_at", None)
+            if when is None:
+                # no retirement stamp: fall back to the entry's own age
+                when = entry.timestamp or 0.0
+            if when < cutoff:
+                doomed.append(entry.memory_id)
+        report = {"candidates": len(doomed), "removed": 0, "ids": doomed[:20],
+                  "before": len(self.memories), "after": len(self.memories),
+                  "cutoff_days": float(older_than_days)}
+        if apply and doomed:
+            drop = set(doomed)
+            self.memories = [m for m in self.memories if m.memory_id not in drop]
+            report["removed"] = len(doomed)
+            report["after"] = len(self.memories)
+            # drop every derived cache: the id space and the matrix both changed
+            self._mat = None
+            self._mat_dirty = True
+            self._codes = None
+            self._codes_dirty = True
+        return report
 
     def fading_valuable(self, decay_threshold: float = 0.5,
                         limit: int = 10) -> List[MemoryEntry]:

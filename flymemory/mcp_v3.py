@@ -501,8 +501,34 @@ def flymemory_recall_index(query: str, top_k: int = 10,
         return "\n".join(out)
 
 @mcp.tool()
+def flymemory_vacuum(older_than_days: float = 30.0, apply: bool = False) -> str:
+    """Physically drop entries retired longer ago than `older_than_days`.
+
+    Superseding keeps history on purpose, but a retired entry still costs disk and
+    an embedding row. This is the only operation that shrinks the file; entries
+    retired inside the window are kept so a recent rollback stays possible.
+    """
+    global _mem
+    with _mem_lock:
+        if _mem is None:
+            return "[NO-STORE] service is not ready"
+        report = _mem.vacuum(older_than_days=older_than_days, apply=apply)
+        if apply and report["removed"]:
+            save_memory()
+            # every derived index is stale now; reload on the next request
+            _mem = None
+    lines = [f"VACUUM ({'applied' if apply else 'report only'})",
+             f"  retired older than {report['cutoff_days']:.0f}d : {report['candidates']}",
+             f"  removed                        : {report['removed']}",
+             f"  entries                        : {report['before']} -> {report['after']}"]
+    if report["ids"]:
+        lines.append("  sample ids: " + ", ".join(f"#{i}" for i in report["ids"][:10]))
+    return "\n".join(lines)
+
+
+@mcp.tool()
 def flymemory_conflict_pairs(min_sim: float = 0.80, limit: int = 20,
-                             pool_limit: int = 8000) -> str:
+                             pool_limit: int = 8000, offset: int = 0) -> str:
     """Near-duplicate / contradiction pairs as JSON, for a merge pass.
 
     The default 0.80 is empirical: on this 20k-entry library the highest cosine in
@@ -513,7 +539,7 @@ def flymemory_conflict_pairs(min_sim: float = 0.80, limit: int = 20,
         if _mem is None:
             return "[]"
         pairs = _mem.find_contradiction_candidates(
-            min_sim=min_sim, limit=limit, pool_limit=pool_limit)
+            min_sim=min_sim, limit=limit, pool_limit=pool_limit, offset=offset)
     return json.dumps(pairs, ensure_ascii=False)
 
 
