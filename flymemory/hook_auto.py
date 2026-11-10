@@ -39,6 +39,28 @@ def _neutralise_tags(text):
 LOOPBACK = ("127.0.0.1", "localhost", "::1", "[::1]")
 
 
+def _is_low_confidence(sims, floor=None, margin_min=0.12):
+    """Should this recall block be dropped as noise?
+
+    Absolute similarity alone is a bad gate: a colloquial question against a sparse
+    store scores low even when the right entry is rank 1 (measured 0.162 on a fresh
+    three-entry library). A clear winner over the runner-up therefore keeps the block
+    even under the floor. On a 17k-entry library the floor almost never fires (0/200
+    sampled queries below 0.40), so this only matters for cold or narrow topics.
+    """
+    if not sims:
+        return False
+    if floor is None:
+        try:
+            floor = float(os.environ.get("FLYMEMORY_MIN_SIM", "0.40"))
+        except ValueError:
+            floor = 0.40
+    ordered = sorted(sims, reverse=True)
+    # a lone hit has no runner-up to beat: no margin, so the floor decides
+    margin = ordered[0] - ordered[1] if len(ordered) > 1 else 0.0
+    return ordered[0] < floor and margin < margin_min
+
+
 def _is_loopback(url):
     try:
         host = urllib.parse.urlparse(url).hostname or ""
@@ -266,7 +288,7 @@ def main():
             top = _re.search(r"top_sim=([0-9.]+)", text)
             sims = [float(top.group(1))] if top else [
                 float(x) for x in _re.findall(r"sim=(0\.\d+)", text)]
-            low_conf = bool(sims) and max(sims) < 0.40
+            low_conf = _is_low_confidence(sims)
         except Exception:
             low_conf = False
         if text.strip() and not low_conf:
