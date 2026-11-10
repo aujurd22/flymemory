@@ -15,17 +15,57 @@ stdin receives the hook JSON (prompt field); recall output is injected as
 additionalContext. Any error exits 0 silently — the service being down must
 never block a session.
 """
-import sys, os, re, json, argparse, urllib.request
+import sys, os, re, json, argparse, ipaddress, urllib.parse, urllib.request
 
 from hook_filters import high_sim_ids, strip_recent
 
 DEFAULT_URL = "http://127.0.0.1:8791/mcp"
 
 
-def _rpc(url, tool, arguments, timeout=8):
+TAG_RE = re.compile(r"</?\s*flymemory\s*>", re.I)
+
+
+def _neutralise_tags(text):
+    """Strip wrapper tags from recalled content.
+
+    Recalled memory is untrusted text: a stored entry containing "</flymemory>"
+    would close the block early and promote whatever follows to plain prompt text.
+    The audit (dsh.so, v1.8.3) flagged exactly this, so the wrapper tokens are
+    defanged before the block is assembled.
+    """
+    return TAG_RE.sub(lambda m: m.group(0).replace("<", "&lt;"), text or "")
+
+
+LOOPBACK = ("127.0.0.1", "localhost", "::1", "[::1]")
+
+
+def _is_loopback(url):
+    try:
+        host = urllib.parse.urlparse(url).hostname or ""
+    except ValueError:
+        return False
+    if host in LOOPBACK:
+        return True
+    try:                                  # 127.0.0.0/8, ::1, etc.
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _remote_allowed():
+    return os.environ.get("FLYMEMORY_ALLOW_REMOTE", "").strip() not in ("", "0", "false")
+
+
+def _rpc_unsafe(url, tool, arguments, timeout=8):
     """One tools/call round trip; returns the text blocks joined, or ''."""
     body = json.dumps({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
                        "params": {"name": tool, "arguments": arguments}}).encode()
+    if not _is_loopback(url) and not _remote_allowed():
+        # Recalled text and the user's prompt both ride this request; posting them to a
+        # host that is not this machine needs an explicit opt-in (dsh.so finding #8).
+        print("flymemory: refusing to post to a non-loopback url "
+              "(set FLYMEMORY_ALLOW_REMOTE=1 to allow)", file=sys.stderr)
+        raise RuntimeError("non-loopback url")
     request = urllib.request.Request(url, data=body, headers={
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream"})
@@ -43,6 +83,11 @@ def _rpc(url, tool, arguments, timeout=8):
             if isinstance(block, dict):
                 parts.append(block.get("text", ""))
     return "\n".join(parts).strip()
+
+
+def _rpc(url, tool, arguments, timeout=8):
+    """_rpc_unsafe plus tag neutralisation for anything recalled from the store."""
+    return _neutralise_tags(_rpc_unsafe(url, tool, arguments, timeout=timeout))
 
 
 def _budget_block(url, prompt, budget_chars):
